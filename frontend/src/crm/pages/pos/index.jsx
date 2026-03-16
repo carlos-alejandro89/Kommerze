@@ -6,16 +6,10 @@ import {
     Plus,
     Minus,
     Trash2,
-    ShoppingCart,
-    CreditCard,
-    Smartphone,
-    Monitor,
-    Zap,
+    ShoppingCart as IconShoppingCart,
     LayoutGrid,
-    ExternalLink,
     History,
     X,
-    ChevronRight,
     ScanBarcode
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardHeading, CardToolbar } from '@/components/ui/card';
@@ -26,30 +20,14 @@ import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { cn } from '@/lib/utils';
 import { Pattern as NoProducts } from './no-products';
+import { ProductDetailsSheet } from './product-details-sheet';
+import { Steps } from './steps';
 
+import { ResumenCuenta } from './resumen';
 import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 // Mock data for initial items
-const initialCart = [
-    {
-        id: 1,
-        sku: '75010321',
-        name: 'Organic Whole Milk 1L',
-        category: 'Dairy',
-        price: 24.50,
-        quantity: 2,
-        discount: 10,
-        image: 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg'
-    },
-    {
-        id: 2,
-        sku: '84123548',
-        name: 'Whole Grain Bread 500g',
-        category: 'Bakery',
-        price: 38.00,
-        quantity: 1,
-        discount: 25,
-        image: 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg'
-    }
+const shoppingCart = [
+
 ];
 
 const services = [
@@ -60,48 +38,119 @@ const services = [
 ];
 
 export default function POSPage() {
-    const [cart, setCart] = React.useState(initialCart);
+    const [cart, setCart] = React.useState(shoppingCart);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [debouncedSearch, setDebouncedSearch] = React.useState('')
+    const [open, setOpen] = React.useState(false);
+    const [productId, setProductId] = React.useState(null);
+    const [itemSelected, setItemSelected] = React.useState({});
 
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.16;
-    const total = subtotal + tax;
+
+    const subtotal = cart.reduce((sum, item) => {
+        const price = item.price;
+        return sum + (price * item.quantity)
+    }, 0);
+
+    const descuento = cart.reduce((sum, item) => {
+        const valDescuento = item.discount > 0 ? (item.price * item.discount / 100) : 0;
+        return sum + (valDescuento * item.quantity)
+    }, 0);
+
+
+    const total = subtotal - descuento;
+
+    React.useEffect(() => {
+        const cartStorage = localStorage.getItem('cart')
+        if (cartStorage) {
+            setCart(JSON.parse(cartStorage))
+        }
+    }, [])
 
     const updateQuantity = (id, delta) => {
-        setCart(prev => prev.map(item =>
-            item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-        ));
+        setCart(prev => {
+            const next = prev.map(item =>
+                item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
+            );
+            localStorage.setItem('cart', JSON.stringify(next));
+            return next;
+        });
     };
 
     const removeItem = (id) => {
-        setCart(prev => prev.filter(item => item.id !== id));
+        setCart(prev => {
+            const next = prev.filter(item => item.id !== id);
+            localStorage.setItem('cart', JSON.stringify(next));
+            return next;
+        });
     };
 
     const clearCart = () => {
-
         setCart([]);
+        localStorage.setItem('cart', JSON.stringify([]));
+    };
 
+    const handleProductResult = (result) => {
+        if (!result || result.length === 0) return;
+
+        const newItem = {
+            id: result[0].Guid,
+            sku: result[0].Codigo,
+            name: result[0].Descripcion,
+            category: result[0].category,
+            price: result[0].PrecioVenta,
+            quantity: 1,
+            empaque: result[0].Empaque,
+            discount: result[0].Descuento,
+            image: 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg',
+            caracteristicas: result[0].Caracteristicas,
+            instruccionesUso: result[0].InstruccionesUso,
+            informacionProducto: result[0].InformacionProducto,
+        };
+
+        setCart(prev => {
+            const existingItemIndex = prev.findIndex(item => item.id === newItem.id);
+            let next;
+            if (existingItemIndex >= 0) {
+                next = [...prev];
+                next[existingItemIndex] = { ...next[existingItemIndex], quantity: next[existingItemIndex].quantity + 1 };
+            } else {
+                next = [...prev, newItem];
+            }
+            localStorage.setItem('cart', JSON.stringify(next));
+            return next;
+        });
     };
 
     const handleSearch = async () => {
-        const result = await ServiceConsultaProductos(searchQuery)
-        console.log(result)
-    }
+        if (!searchQuery) return;
+        const result = await ServiceConsultaProductos(searchQuery.toUpperCase());
+        handleProductResult(result);
+        setSearchQuery('');
+    };
+
+    const handleProductDetails = (productId) => {
+        const item = cart.find(item => item.id === productId);
+        setItemSelected(item);
+        setOpen(true);
+    };
+
+    const handleAddToCart = ({ productId }) => {
+        console.log(productId);
+    };
 
     React.useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery)
-        }, 600)
+            setDebouncedSearch(searchQuery);
+        }, 600);
 
-        return () => clearTimeout(timer)
-    }, [searchQuery])
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     React.useEffect(() => {
-        if (!debouncedSearch) return
+        if (!debouncedSearch) return;
 
-        handleSearch()
-    }, [debouncedSearch])
+        handleSearch();
+    }, [debouncedSearch]);
 
     React.useEffect(() => {
         let rawBarcode = '';
@@ -111,7 +160,7 @@ export default function POSPage() {
             if (event.key === 'Enter') {
                 if (rawBarcode.length > 0) {
                     console.log("Código capturado:", rawBarcode);
-                    ServiceConsultaProductos(rawBarcode); // Ejecuta tu servicio de Go
+                    ServiceConsultaProductos(rawBarcode).then(handleProductResult);
                     rawBarcode = ''; // Limpia para la siguiente lectura
                 }
                 return;
@@ -130,31 +179,12 @@ export default function POSPage() {
     }, []);
 
     return (
+
         <div className="flex flex-col h-full w-full bg-slate-50/50 dark:bg-zinc-950/50 relative">
             <ContentHeader className="flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-
-
-                <div className="flex-1 max-w-xl relative group">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center gap-2">
-                        <Search className="size-4" />
-
-                    </div>
-                    <input
-                        type="text"
-                        placeholder=" Buscar productos, SKU o categoría..."
-                        className="w-full h-10 pl-20 pr-4 rounded-xl border-none bg-slate-100 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/50 transition-all shadow-none"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 group-focus-within:text-primary transition-colors flex items-center gap-2">
-
-                        <ScanBarcode className="size-4 opacity-50" />
-                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
-                        <Badge variant="secondary" className="text-[10px] font-bold text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded border-none">F2</Badge>
-                    </div>
+                <div className="w-full">
+                    <Steps currentStep={0} />
                 </div>
-
-
             </ContentHeader>
 
             <Content className="flex-1 overflow-hidden p-0">
@@ -163,8 +193,22 @@ export default function POSPage() {
                         {/* Left Section: Cart Items */}
                         <div className="flex-1 flex flex-col p-4 overflow-hidden border-r bg-background/40">
                             <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-
+                                <div className="relative flex-1 group mr-2">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center gap-2">
+                                        <Search className="size-4" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder=" Buscar productos, SKU o categoría..."
+                                        className="w-full h-10 pl-10 pr-24 rounded-xl border-none bg-slate-100 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/50 transition-all shadow-none"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 group-focus-within:text-primary transition-colors flex items-center gap-2">
+                                        <ScanBarcode className="size-4 opacity-50" />
+                                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                                        <Badge variant="secondary" className="text-[10px] font-bold text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded border-none">F2</Badge>
+                                    </div>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={clearCart} className="text-xs text-destructive hover:bg-destructive/10">
                                     <Trash2 className="size-3.5 mr-2" />
@@ -174,6 +218,13 @@ export default function POSPage() {
 
                             <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none">
                                 <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
+                                    <ProductDetailsSheet
+                                        open={open}
+                                        onOpenChange={() => setOpen(false)}
+                                        productId={productId}
+                                        itemSelected={itemSelected}
+                                        addToCart={handleAddToCart}
+                                    />
                                     <div className="flex flex-col gap-3">
                                         {cart.length === 0 ? (
                                             <NoProducts />
@@ -193,7 +244,9 @@ export default function POSPage() {
 
                                                             <div className="flex flex-col gap-1.5 flex-1 p-1">
                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                    <p className="text-sm font-bold text-foreground leading-tight tracking-tight">
+
+
+                                                                    <p onClick={() => handleProductDetails(item.id)} className="text-sm text-link cursor-pointer font-bold text-foreground leading-tight tracking-tight">
                                                                         {item.name}
                                                                     </p>
                                                                     {item.discount && (
@@ -276,7 +329,7 @@ export default function POSPage() {
                                 <div className="relative group">
                                     <Input
                                         type="text"
-                                        placeholder="Promo Code"
+                                        placeholder="Código de Descuento"
                                         className="w-full h-10 pl-10 pr-16 rounded-xl "
                                     />
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -291,44 +344,7 @@ export default function POSPage() {
                                 </div>
 
                                 {/* 2. Bottom Summary Section */}
-                                <div className="p-0">
-                                    <div className="bg-gradient-to-br from-slate-200 via-slate-50 to-slate-300 p-5 space-y-4 rounded-2xl shadow-sm border border-white/50">
-                                        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Resumen de Cuenta</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-slate-500 font-medium">Subtotal</span>
-                                                <span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-slate-500 font-medium">IVA (16%)</span>
-                                                <span className="font-bold text-slate-900">${tax.toFixed(2)}</span>
-                                            </div>
-                                            <div className="pt-2 border-t border-slate-900/10 flex justify-between items-baseline">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">Total Neto</span>
-                                                    <span className="text-2xl font-black tabular-nums tracking-tighter leading-none text-slate-950">${total.toFixed(2)}</span>
-                                                </div>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase">{cart.length} Art.</span>
-                                            </div>
-                                        </div>
-
-
-                                        <Button
-                                            id="pay-button"
-                                            className="w-full h-11 rounded-lg bg-slate-900 text-white hover:bg-slate-800 border-none font-black text-xs shadow-none flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all"
-                                        >
-                                            <div className="flex items-center gap-2 relative z-10 transition-transform group-hover:translate-x-1">
-                                                <ExternalLink className="size-4" />
-                                                <span>Procesar</span>
-                                            </div>
-                                            <ChevronRight className="size-4 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
-
-                                            {/* Shimmer effect */}
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] transition-transform pointer-events-none" />
-                                        </Button>
-                                    </div>
-                                </div>
-
+                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} />
                                 {/* 3. Services List */}
 
                             </div>

@@ -15,6 +15,10 @@ export namespace dto {
 	    Descuento: number;
 	    // Go type: decimal
 	    Existencia: any;
+	    Guid: string;
+	    InformacionProducto: number[];
+	    Caracteristicas: number[];
+	    InstruccionesUso: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ProductoDto(source);
@@ -35,6 +39,10 @@ export namespace dto {
 	        this.PrecioVenta = source["PrecioVenta"];
 	        this.Descuento = source["Descuento"];
 	        this.Existencia = this.convertValues(source["Existencia"], null);
+	        this.Guid = source["Guid"];
+	        this.InformacionProducto = source["InformacionProducto"];
+	        this.Caracteristicas = source["Caracteristicas"];
+	        this.InstruccionesUso = source["InstruccionesUso"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

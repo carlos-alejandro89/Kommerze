@@ -4,7 +4,6 @@ import (
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
 	"context"
-	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -138,6 +137,5 @@ func (a *App) SyncSucursalProductos(parameters map[string]any) (string, error) {
 
 func (a *App) ServiceConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
 	result, err := a.services.Pos.ConsultaProductos(busqueda)
-	fmt.Println(result)
 	return result, err
 }

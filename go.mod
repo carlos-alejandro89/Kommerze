@@ -11,13 +11,16 @@ require (
 	github.com/lib/pq v1.11.2
 	github.com/shopspring/decimal v1.4.0
 	github.com/wailsapp/wails/v2 v2.11.0
+	gorm.io/datatypes v1.2.7
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -49,6 +52,7 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
+	gorm.io/driver/mysql v1.5.6 // indirect
 )
 
 // replace github.com/wailsapp/wails/v2 v2.11.0 => /Users/carlosalejandro/go/pkg/mod
