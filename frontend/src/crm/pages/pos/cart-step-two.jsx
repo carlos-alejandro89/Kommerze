@@ -10,7 +10,11 @@ import {
     LayoutGrid,
     History,
     X,
-    ScanBarcode
+    ScanBarcode,
+    FileText,
+    ArrowRightLeft,
+    Package,
+    Info
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardHeading, CardToolbar } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +40,7 @@ export default function POSPage() {
     const [open, setOpen] = React.useState(false);
     const [productId, setProductId] = React.useState(null);
     const [itemSelected, setItemSelected] = React.useState({});
+    const [operationType, setOperationType] = React.useState('transferencia');
 
 
     const subtotal = cart.reduce((sum, item) => {
@@ -80,8 +85,91 @@ export default function POSPage() {
                         {/* Left Section: Transaction */}
                         <div className="flex-1 flex flex-col p-4 overflow-hidden border-r bg-background/40">
                             <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none">
-                                <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
+                                <CardContent className="p-6 h-full overflow-y-auto bg-transparent flex flex-col gap-8">
+                                    <header>
+                                        <h2 className="text-3xl font-extrabold text-primary mb-2">Seleccione el Tipo de Operación</h2>
+                                        <p className="text-muted-foreground">Define cómo se procesará esta transacción en el sistema.</p>
+                                    </header>
 
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                        {/* Card: COTIZACIÓN */}
+                                        <button
+                                            onClick={() => setOperationType('cotizacion')}
+                                            className={cn(
+                                                "group flex flex-col items-start p-6 bg-card rounded-xl border-2 transition-all shadow-sm text-left hover:shadow-md",
+                                                operationType === 'cotizacion' ? "border-primary outline-none ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-14 h-14 rounded-lg flex items-center justify-center mb-6 transition-colors",
+                                                operationType === 'cotizacion' ? "bg-primary text-primary-foreground" : "bg-muted text-primary group-hover:bg-primary/20"
+                                            )}>
+                                                <FileText className="size-7" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-primary mb-2">COTIZACIÓN</h3>
+                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                Genera un presupuesto formal sin afectar el inventario actual.
+                                            </p>
+                                        </button>
+
+                                        {/* Card: TRANSFERENCIA */}
+                                        <button
+                                            onClick={() => setOperationType('transferencia')}
+                                            className={cn(
+                                                "group flex flex-col items-start p-6 bg-card rounded-xl border-2 transition-all shadow-sm text-left hover:shadow-md",
+                                                operationType === 'transferencia' ? "border-primary outline-none ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-14 h-14 rounded-lg flex items-center justify-center mb-6 transition-colors",
+                                                operationType === 'transferencia' ? "bg-primary text-primary-foreground" : "bg-muted text-primary group-hover:bg-primary/20"
+                                            )}>
+                                                <ArrowRightLeft className="size-7" />
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                <h3 className="text-lg font-bold text-primary">TRANSFERENCIA</h3>
+                                                <Badge className="bg-green-100/80 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-400 text-[10px] uppercase font-black tracking-wider px-1.5 py-0 border-none">
+                                                    Recomendado
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                Envío de mercancía entre sucursales o depósitos internos.
+                                            </p>
+                                        </button>
+
+                                        {/* Card: PEDIDO */}
+                                        <button
+                                            onClick={() => setOperationType('pedido')}
+                                            className={cn(
+                                                "group flex flex-col items-start p-6 bg-card rounded-xl border-2 transition-all shadow-sm text-left hover:shadow-md",
+                                                operationType === 'pedido' ? "border-primary outline-none ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-14 h-14 rounded-lg flex items-center justify-center mb-6 transition-colors",
+                                                operationType === 'pedido' ? "bg-primary text-primary-foreground" : "bg-muted text-primary group-hover:bg-primary/20"
+                                            )}>
+                                                <Package className="size-7" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-primary mb-2">PEDIDO</h3>
+                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                Reserva de productos para entrega posterior o retiro en tienda.
+                                            </p>
+                                        </button>
+                                    </div>
+
+                                    {/* Additional Context/Notes */}
+                                    <div className="mt-auto p-5 bg-muted/50 rounded-lg flex items-start gap-4 border-l-4 border-primary shadow-sm">
+                                        <Info className="size-5 text-primary mt-0.5 shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-semibold text-primary">Nota de Sistema</p>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                {operationType === 'cotizacion' && "Las cotizaciones no reservan mercancía y tienen vigencia máxima de 15 días. Al aplicar una cotización, el cliente recibe un comprobante de precios validado para la fecha."}
+                                                {operationType === 'transferencia' && "Las transferencias requieren la validación de stock en la sucursal de origen antes de proceder al siguiente paso."}
+                                                {operationType === 'pedido' && "Los pedidos reservan el inventario al instante de apartarse y pueden requerir de al menos 50% de anticipo. Por favor revisar los acuerdos con el cliente."}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
