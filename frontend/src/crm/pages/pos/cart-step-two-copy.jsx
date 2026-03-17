@@ -33,8 +33,7 @@ import { cn } from '@/lib/utils';
 import { Steps } from './steps';
 
 import { ResumenCuenta } from './resumen';
-import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
-import { ServiceObtenerTiposPedido } from '../../../../wailsjs/go/main/App';
+import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 // Mock data for initial items
 const shoppingCart = [
 
@@ -45,28 +44,10 @@ export function CartStepTwo() {
     const navigate = useNavigate();
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
+    const [productId, setProductId] = React.useState(null);
     const [itemSelected, setItemSelected] = React.useState({});
-    const [operationType, setOperationType] = React.useState(1);
-    const [tiposPedido, setTiposPedido] = React.useState([]);
+    const [operationType, setOperationType] = React.useState('venta');
 
-    const ObtenerTiposPedido = async () => {
-        try {
-            const res = await ServiceObtenerTiposPedido();
-            setTiposPedido(res || []);
-        } catch (error) {
-            console.error('Error al llamar a ServiceObtenerTiposPedido:', error);
-        }
-    }
-
-    React.useEffect(() => {
-        ObtenerTiposPedido()
-        localStorage.setItem('operationType', JSON.stringify(operationType))
-    }, [])
-
-    const handeSetOperationType = (operationType) => {
-        setOperationType(operationType)
-        localStorage.setItem('operationType', JSON.stringify(operationType))
-    }
 
     const subtotal = cart.reduce((sum, item) => {
         const price = item.price;
@@ -141,9 +122,90 @@ export function CartStepTwo() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {/* Card: PEDIDO */}
-                                        {tiposPedido.map((tipoPedido) => (
-                                            <BtnTipoPedido key={tipoPedido.ID} tipoPedido={tipoPedido} isActive={operationType === tipoPedido.ID} onClick={() => handeSetOperationType(tipoPedido.ID)} />
-                                        ))}
+                                        <button
+                                            onClick={() => setOperationType('venta')}
+                                            className={cn(
+                                                "w-full rounded-xl border p-3 flex flex-col justify-between text-left transition-all",
+                                                operationType === 'venta'
+                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
+                                                    : "bg-background border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className="mb-1">
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <div className={cn(
+                                                        "flex items-center justify-center size-6 rounded-md transition-colors",
+                                                        operationType === 'venta' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
+                                                    )}>
+                                                        <Package className="size-3.5" />
+                                                    </div>
+
+                                                </div>
+                                                <div className="font-semibold text-sm mb-1 text-foreground">VENTA</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Reserva de productos para entrega posterior o retiro en tienda.
+                                                </div>
+
+                                            </div>
+                                        </button>
+                                        {/* Card: COTIZACIÓN */}
+                                        <button
+                                            onClick={() => setOperationType('cotizacion')}
+                                            className={cn(
+                                                "w-full rounded-xl border p-3 flex flex-col justify-between text-left transition-all",
+                                                operationType === 'cotizacion'
+                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
+                                                    : "bg-background border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className="mb-1">
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <div className={cn(
+                                                        "flex items-center justify-center size-6 rounded-md transition-colors",
+                                                        operationType === 'cotizacion' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
+                                                    )}>
+                                                        <FileText className="size-3.5" />
+                                                    </div>
+
+                                                </div>
+                                                <div className="font-semibold text-sm mb-1 text-foreground">COTIZACIÓN</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Genera un presupuesto formal sin afectar el inventario actual.
+                                                </div>
+                                            </div>
+                                        </button>
+
+                                        {/* Card: TRANSFERENCIA */}
+                                        <button
+                                            onClick={() => setOperationType('transferencia')}
+                                            className={cn(
+                                                "w-full rounded-xl border p-3 flex flex-col justify-between text-left transition-all",
+                                                operationType === 'transferencia'
+                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
+                                                    : "bg-background border-border hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className="mb-1">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className={cn(
+                                                            "flex items-center justify-center size-6 rounded-md transition-colors",
+                                                            operationType === 'transferencia' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
+                                                        )}>
+                                                            <ArrowRightLeft className="size-3.5" />
+                                                        </div>
+
+                                                    </div>
+
+                                                </div>
+                                                <div className="font-semibold text-sm mb-1 text-foreground">TRANSFERENCIA</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Envío de mercancía entre sucursales o depósitos internos.
+                                                </div>
+                                            </div>
+                                        </button>
+
+
                                     </div>
 
                                     {/* Quick Action: Público General */}
@@ -191,9 +253,9 @@ export function CartStepTwo() {
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-slate-500 tracking-tighter mb-2">Nota de Sistema</p>
                                             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                {operationType === 1 && "Las ventas reservan el inventario al instante de la venta."}
-                                                {operationType === 2 && "Las cotizaciones no reservan mercancía y tienen vigencia máxima de 15 días. Al aplicar una cotización, el cliente recibe un comprobante de precios validado para la fecha."}
-                                                {operationType === 3 && "Las transferencias requieren la validación de stock en la sucursal de origen antes de proceder al siguiente paso."}
+                                                {operationType === 'cotizacion' && "Las cotizaciones no reservan mercancía y tienen vigencia máxima de 15 días. Al aplicar una cotización, el cliente recibe un comprobante de precios validado para la fecha."}
+                                                {operationType === 'transferencia' && "Las transferencias requieren la validación de stock en la sucursal de origen antes de proceder al siguiente paso."}
+                                                {operationType === 'venta' && "Las ventas reservan el inventario al instante de la venta."}
                                             </p>
                                         </div>
                                     </div>

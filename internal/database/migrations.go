@@ -10,30 +10,29 @@ import (
 	_ "github.com/lib/pq"
 )
 
-
 func RunMigrations(db *gorm.DB) error {
 
-	
 	// Migrar el esquema (crea la tabla automáticamente)
 	db.AutoMigrate(
-		
+
 		// Inventarios
 		&models.Linea{},
 		&models.Marca{},
 		&models.Producto{},
 		&models.SucursalProducto{},
-	
+
 		// Ventas
 		&models.Cliente{},
+		&models.TipoPedido{},
 		&models.Pedido{},
 		&models.PedidoDetalle{},
-	
+
 		// SAT
 		&models.SATRegimenFiscal{},
 		&models.SATFormaPago{},
 		&models.SATMetodoPago{},
 		&models.SATUsoCFDI{},
-	
+
 		// Seguridad
 		&models.Perfil{},
 		&models.Usuario{},

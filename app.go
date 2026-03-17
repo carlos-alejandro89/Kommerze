@@ -1,10 +1,12 @@
 package main
 
 import (
+	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
 	"context"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -137,5 +139,16 @@ func (a *App) SyncSucursalProductos(parameters map[string]any) (string, error) {
 
 func (a *App) ServiceConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
 	result, err := a.services.Pos.ConsultaProductos(busqueda)
+	return result, err
+}
+
+func (a *App) ServiceObtenerTiposPedido() ([]models.TipoPedido, error) {
+	result, err := a.services.Pos.ObtenerTiposPedido()
+	//fmt.Println("result", result)
+	return result, err
+}
+
+func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]models.SucursalProducto, error) {
+	result, err := a.services.Pos.ConsultarExistenciaProductos(productosGuids)
 	return result, err
 }

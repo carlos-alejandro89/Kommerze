@@ -6,6 +6,14 @@ export function ServiceConsultaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultaProductos'](arg1);
 }
 
+export function ServiceConsultarExistenciaProductos(arg1) {
+  return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
+}
+
+export function ServiceObtenerTiposPedido() {
+  return window['go']['main']['App']['ServiceObtenerTiposPedido']();
+}
+
 export function SyncEmpaques() {
   return window['go']['main']['App']['SyncEmpaques']();
 }

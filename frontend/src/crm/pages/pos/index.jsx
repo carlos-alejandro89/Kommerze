@@ -344,7 +344,7 @@ export default function POSPage() {
                                 </div>
 
                                 {/* 2. Bottom Summary Section */}
-                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} />
+                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={0} />
                                 {/* 3. Services List */}
 
                             </div>

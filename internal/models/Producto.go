@@ -14,9 +14,9 @@ type Producto struct {
 	ObjetoImpuesto string `gorm:"type:text"`
 	Fraccionable   bool   `gorm:"default:false"`
 
-	InformacionProducto datatypes.JSON `gorm:"type:jsonb;index:,class:gin"`
-	Caracteristicas     datatypes.JSON `gorm:"type:jsonb;index:,class:gin"`
-	InstruccionesUso    datatypes.JSON `gorm:"type:jsonb;index:,class:gin"`
+	InformacionProducto datatypes.JSON `gorm:"type:jsonb;index"`
+	Caracteristicas     datatypes.JSON `gorm:"type:jsonb;index"`
+	InstruccionesUso    datatypes.JSON `gorm:"type:jsonb;index"`
 
 	LineaID *uint
 	Linea   Linea `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`

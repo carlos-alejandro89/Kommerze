@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"database/sql"
 
@@ -45,4 +46,22 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
 	}
 
 	return productos, err
+}
+
+func (r *PosRepository) ObtenerTiposPedido() ([]models.TipoPedido, error) {
+	var tipos []models.TipoPedido
+	err := r.db.Raw(`select * from tipos_pedido`).Scan(&tipos).Error
+	if err != nil {
+		return nil, err
+	}
+	return tipos, nil
+}
+
+func (r *PosRepository) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]models.SucursalProducto, error) {
+	var productos []models.SucursalProducto
+	err := r.db.Raw(`select * from sucursal_producto where guid in ?`, productosGuids).Scan(&productos).Error
+	if err != nil {
+		return nil, err
+	}
+	return productos, nil
 }

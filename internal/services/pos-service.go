@@ -1,9 +1,11 @@
 package services
 
 import (
+	"BitComercio/internal/models"
 	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -21,5 +23,15 @@ func NewPosService(db *gorm.DB) *PosService {
 
 func (s *PosService) ConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
 	response, err := s.posRepository.ConsultaProductos(busqueda)
+	return response, err
+}
+
+func (s *PosService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
+	response, err := s.posRepository.ObtenerTiposPedido()
+	return response, err
+}
+
+func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]models.SucursalProducto, error) {
+	response, err := s.posRepository.ConsultarExistenciaProductos(productosGuids)
 	return response, err
 }

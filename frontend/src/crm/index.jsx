@@ -11,6 +11,8 @@ import { StoreClientPage } from './pages/store-client/home/store-client-page'
 import { LoginPage } from './pages/auth/login-page'
 import { SyncPage } from './pages/sync/page'
 import POSPage from './pages/pos/index'
+import { CartStepTwo } from './pages/pos/cart-step-two'
+import { CartStepThree } from './pages/pos/cart-step-three'
 import { AuthGuard } from '@/components/auth-guard';
 
 export default function CrmModule() {
@@ -32,6 +34,8 @@ export default function CrmModule() {
         <Route path="deals/" element={<DealsPage />} />
         <Route path="sync/" element={<SyncPage />} />
         <Route path="pos/" element={<POSPage />} />
+        <Route path="pos/transaction" element={<CartStepTwo />} />
+        <Route path="pos/payment" element={<CartStepThree />} />
       </Route>
 
     </Routes>
