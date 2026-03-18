@@ -2,45 +2,20 @@
 
 import * as React from 'react';
 import {
-    Search,
-    Plus,
-    Minus,
-    Trash2,
-    ShoppingCart as IconShoppingCart,
-    LayoutGrid,
-    History,
     X,
-    ScanBarcode,
-    FileText,
-    ArrowRightLeft,
-    Package,
-    Info,
-    UserSearch,
-    Users,
-    Mail,
-    Phone,
-    Banknote,
-    CreditCard,
-    ArrowRight,
-    Printer,
-    Pencil
+    Info, LayoutGrid, History, Banknote
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
-import { cn } from '@/lib/utils';
 import { Steps } from './steps';
-
 import { ResumenCuenta } from './resumen';
-import { BtnFormaPago } from './components/btn-forma-pago';
 import { ModalFormaPago } from './modal-forma-pago';
 import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
+import { ItemPagos } from './components/item-pagos';
 // Mock data for initial items
 const shoppingCart = [
 
@@ -51,10 +26,12 @@ export function CartStepThree() {
     const navigate = useNavigate();
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
-    const [productId, setProductId] = React.useState(null);
+    //const [productId, setProductId] = React.useState(null);
     const [itemSelected, setItemSelected] = React.useState({});
     const [paymentMethod, setPaymentMethod] = React.useState('efectivo');
-    const [amountReceived, setAmountReceived] = React.useState('');
+    const [amountReceived, setAmountReceived] = React.useState(0);
+
+    const [pagosAplicados, setPagosAplicados] = React.useState([])
 
 
     const mockFormaPago = [
@@ -97,6 +74,14 @@ export function CartStepThree() {
         return sum + (valDescuento * item.quantity)
     }, 0);
 
+    const totalPagos = pagosAplicados.reduce((suma, item) => {
+        return suma + parseFloat(item.Monto)
+    }, 0);
+
+    React.useEffect(() => {
+        setAmountReceived(totalPagos)
+    }, [pagosAplicados])
+
 
     const total = subtotal - descuento;
 
@@ -116,6 +101,27 @@ export function CartStepThree() {
     const handleSelectPaymentMethod = (paymentMethod) => {
         setPaymentMethod(paymentMethod);
     }
+
+    const handleAddPayment = (paymentInfo) => {
+        const pagoExists = pagosAplicados.find(pago => pago.ID == paymentInfo.ID)
+        if (pagoExists) {
+            const pagos = pagosAplicados.map(p => p.ID == paymentInfo.ID ? paymentInfo : p)
+            setPagosAplicados(pagos)
+        } else {
+            setPagosAplicados([...pagosAplicados, paymentInfo])
+        }
+
+    }
+
+    const handleDeletePaymentItem = (paymentItem)=>{
+     setPagosAplicados( pagos => {
+        const payments = pagos.filter(p => p.ID !== paymentItem)
+        return payments;
+     })   
+    }
+
+
+
 
 
     return (
@@ -165,54 +171,33 @@ export function CartStepThree() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {/* Card: EFECTIVO */}
                                         {formaPago.map((formaPago) => (
-                                            <ModalFormaPago key={formaPago.ID} formaPago={formaPago} isActive={paymentMethod === formaPago.ID} onClick={handleSelectPaymentMethod} />
+                                            <ModalFormaPago key={formaPago.ID} formaPago={formaPago} isActive={paymentMethod === formaPago.ID} onClick={handleSelectPaymentMethod} handleAddPayment={handleAddPayment} />
                                         ))}
 
                                     </div>
 
                                     {/* Section Pagos aplicados */}
-                                    <div className="mt-4 bg-surface-container-lowest dark:bg-zinc-900 rounded-xl border border-border p-4 shadow-sm">
-                                        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                                            Pagos Aplicados
-                                        </h3>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-border/50">
-                                                <div className="flex items-center gap-3">
-                                                    <Banknote className="size-5 text-[#006e2a] dark:text-[#5cfd80]" />
-                                                    <span className="font-bold text-sm text-foreground">Efectivo</span>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="font-extrabold text-foreground text-lg">$3,000.00</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full text-muted-foreground hover:text-primary transition-colors">
-                                                            <Pencil className="size-3.5" />
-                                                        </button>
-                                                        <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full text-muted-foreground hover:text-red-500 transition-colors">
-                                                            <Trash2 className="size-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    {pagosAplicados.length === 0 ? (
+                                        <div className="mt-4 flex flex-col items-center justify-center py-6 px-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-transparent text-center">
+                                            <Banknote className="size-8 text-muted-foreground/30 mb-2" />
+                                            <span className="text-sm font-bold text-muted-foreground cursor-default">
+                                                Aún no se reciben pagos
+                                            </span>
+                                            <span className="text-xs font-medium text-muted-foreground/50 mt-1 cursor-default">
+                                                Selecciona un método de pago y agrega el pago
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4 bg-surface-container-lowest dark:bg-zinc-900 rounded-xl border border-border p-4 shadow-sm">
+                                            <label className="block text-sm font-bold text-muted-foreground mb-4 tracking-tight">Pagos Aplicados</label>
 
-                                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-border/50">
-                                                <div className="flex items-center gap-3">
-                                                    <CreditCard className="size-5 text-primary" />
-                                                    <span className="font-bold text-sm text-foreground">Tarjeta</span>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="font-extrabold text-foreground text-lg">$4,598.00</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full text-muted-foreground hover:text-primary transition-colors">
-                                                            <Pencil className="size-3.5" />
-                                                        </button>
-                                                        <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full text-muted-foreground hover:text-red-500 transition-colors">
-                                                            <Trash2 className="size-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                            <div className="space-y-2">
+                                                {pagosAplicados.map(pago => (
+                                                    <ItemPagos key={pago.ID} pago={pago} handleDeletePaymentItem={handleDeletePaymentItem} />
+                                                ))}
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Interactive Amount Input Section */}
                                     <div className="mt-4 w-full rounded-xl border p-6 bg-surface-container-lowest shadow-sm border-border">

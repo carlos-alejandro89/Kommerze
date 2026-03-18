@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogClose
 } from "@/components/ui/dialog"
 import { DollarSign, CreditCard, CheckCircle, MoreHorizontal, ArrowRightLeft, ChevronRight } from 'lucide-react';
 
@@ -23,8 +24,18 @@ const Icons = {
     'Otro': MoreHorizontal,
 }
 
-export function ModalFormaPago({ formaPago, isActive, onClick }) {
+export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment }) {
     const Icon = Icons[formaPago.Nombre];
+
+    const agregarPago = () => {
+        const data = {
+            ID: formaPago.ID,
+            Nombre: formaPago.Nombre,
+            Monto: amountReceived,
+            Referencia: 'Pago realizado en caja',
+        }
+        handleAddPayment(data);
+    }
 
     const [amountReceived, setAmountReceived] = useState('');
     return (
@@ -44,10 +55,10 @@ export function ModalFormaPago({ formaPago, isActive, onClick }) {
                 </DialogHeader>
 
                 {/* Contenido (form, inputs, etc) iría aquí, con padding interior */}
-                <div className="p-6">
+                <div className="px-6 py-1">
                     {/* Placeholder content so it's not totally empty */}
-                    <div className="text-sm   text-center py-4">
-                        <label className="block text-sm font-bold text-muted-foreground mb-4 tracking-tight">Monto Recibido</label>
+                    <div className="text-sm text-center">
+                        <label className="block text-lg font-bold text-muted-foreground mb-4 tracking-tight">Monto Recibido</label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">$</span>
                             <input
@@ -58,9 +69,10 @@ export function ModalFormaPago({ formaPago, isActive, onClick }) {
 
                             />
                         </div>
-                        <Button
-                            onClick={onClick}
-                            className="w-full h-11 mt-8 rounded-lg bg-gradient-to-r from-[#002366] to-[#001233] text-white hover:from-[#001233] hover:to-[#000b1a] border-none font-black text-xs shadow-[0_4px_14px_rgba(0,35,102,0.3)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10"
+                        <DialogClose asChild>
+                        <Button 
+                            onClick={agregarPago}
+                            className="w-full h-11 mt-8 mb-5 rounded-lg bg-gradient-to-r from-[#002366] to-[#001233] text-white hover:from-[#001233] hover:to-[#000b1a] border-none font-black text-xs shadow-[0_4px_14px_rgba(0,35,102,0.3)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10"
                         >
                             <div className="flex items-center gap-2 relative z-10 transition-transform group-hover:translate-x-1">
                                 <CheckCircle className="size-4" />
@@ -71,6 +83,7 @@ export function ModalFormaPago({ formaPago, isActive, onClick }) {
                             {/* Shimmer effect */}
                             <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-0" />
                         </Button>
+                        </DialogClose>
                     </div>
                 </div>
             </DialogContent>
