@@ -1,0 +1,81 @@
+# Analysis of DB Dependencies for Migrations
+
+The user wants to generate SQL migrations for the remaining models. To write the `up` and `down` split SQL files, we must respect the foreign keys constraint order. 
+
+Here are the remaining models: 
+
+*   `Auditoria`
+*   `AuditoriaProducto`
+*   `Caja`
+*   `Empresa`
+*   `Estatus`
+*   `Factura`
+*   `NivelEmpaque`
+*   `OperacionCajero`
+*   `OperacionSucursal`
+*   `Pago`
+*   `ReceptorFiscal`
+*   `SATProductos`
+*   `Sucursales`
+*   `Empaque`
+
+### Foreign Key Constraints found:
+1. `OperacionSucursal` -> `UsuarioApertura` (Usuario), `UsuarioCierre` (Usuario), `Sucursal` (Sucursales), `Estatus`
+2. `Pedido` -> `Estatus`, `Cliente`, `OperacionCajero`, `TipoPedido`, `Factura`
+3. `PedidoDetalle` -> `Pedido`, `NivelEmpaque`
+4. `Producto` -> `Linea`, `Marca`
+5. `ReceptorFiscal` -> `Regimen` (SATRegimenFiscal)
+6. `SucursalProducto` ->  `NivelEmpaque`
+7. `Sucursales` -> `Empresa`
+8. `Usuario` -> `Perfil`
+9. `Auditoria` -> ?
+10. `AuditoriaProducto` -> ?
+11. `Caja` -> ?
+12. `Empaque` -> ?
+13. `Empresa` -> ?
+14. `Estatus` -> ?
+15. `Factura` -> ?
+16. `NivelEmpaque` -> `Empaque`, `Producto`
+17. `OperacionCajero` -> `Caja`
+18. `Pago` -> `Pedido`, `Usuario`
+19. `SATProductos` -> ?
+
+### Ordered Sequence Requirements:
+1. **Zero Dependencies** (Must be created first):
+    - `Empresa`
+    - `Estatus`
+    - `Empaque`
+    - `Caja`
+    - `SATProductos` (if standalone)
+    - `Linea` (Done)
+    - `Marca` (Done)
+    - `SATRegimenFiscal` (Done)
+    - `SATFormaPago` (Done)
+    - `SATMetodoPago` (Done)
+    - `SATUsoCFDI` (Done)
+    - `Perfil` (Done)
+
+2. **Level 1 Dependencies**:
+    - `Sucursales` (needs Empresa)
+    - `Usuario` (needs Perfil - Done)
+    - `Producto` (needs Linea, Marca - Done)
+    - `ReceptorFiscal` (needs SATRegimenFiscal)
+    - `OperacionCajero` (needs Caja)
+    - `Factura` (needs ReceptorFiscal?)
+
+3. **Level 2 Dependencies**:
+    - `NivelEmpaque` (needs Producto, Empaque)
+    - `OperacionSucursal` (needs Usuario, Sucursales, Estatus)
+    - `Cliente` (Done)
+    - `TipoPedido` (Done)
+
+4. **Level 3 Dependencies**:
+    - `SucursalProducto` (needs NivelEmpaque)
+    - `Pedido` (needs Estatus, Cliente, OperacionCajero, TipoPedido, Factura)
+    
+5. **Level 4 Dependencies**:
+    - `PedidoDetalle` (needs Pedido, NivelEmpaque)
+    - `Pago` (needs Pedido, Usuario)
+    - `Auditoria` y `AuditoriaProducto` (needs ??)
+
+Let's read the unknown models to verify their dependencies.

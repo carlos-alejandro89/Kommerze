@@ -32,26 +32,33 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
             comparativoExistencias = comparativoExistencias.map(prev => {
                 const productoEncontrado = productos.find(producto => producto.Guid === prev.id)
-                return { ...prev, Existencia: productoEncontrado ? productoEncontrado.Existencia : 0 }
+                return {
+                    ...prev,
+
+                    GuidBase: productoEncontrado.GuidBase,
+                    Existencia: prev.fraccionable ? productoEncontrado.ExistenciaFraccion : productoEncontrado.Existencia,
+                    CantidadBase: prev.fraccionable ? prev.quantity * productoEncontrado.Contenido : prev.quantity
+                }
             })
-            console.log('Comparativo final:', comparativoExistencias)
-            localStorage.setItem('comparativoExistencias', JSON.stringify(comparativoExistencias))
+
+            console.log(comparativoExistencias)
+            localStorage.setItem('validCart', JSON.stringify(comparativoExistencias))
 
             const invalidItemsFound = []
 
             const isValid = productos.every(producto => {
                 const productoEncontrado = cart.find(item => item.id === producto.Guid)
-                if (producto.Existencia < productoEncontrado.quantity) {
+                const existencia = productoEncontrado.fraccionable ? producto.ExistenciaFraccion : producto.Existencia
+                if (existencia < productoEncontrado.quantity) {
                     invalidItemsFound.push({
                         ...productoEncontrado,
-                        Existencia: producto.Existencia
+                        Existencia: existencia
                     })
                     return false
                 }
                 return true
             })
 
-            console.log('Inventario válido:', isValid)
             if (!isValid) {
                 setInvalidItems(comparativoExistencias)
             }
@@ -72,19 +79,12 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             const rawOperationType = localStorage.getItem('operationType')
             const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
 
-            console.log('Tipo de operación (después de parsear):', operationType, 'tipo:', typeof operationType)
-
             if (operationType === 1 || operationType === 3) {
-                console.log('Cumple la condición para validar inventario. Llamando ConsultarExistencias...')
                 const inventarioValido = await ConsultarExistencias()
-                console.log('Resultado de la validación:', inventarioValido)
                 if (!inventarioValido) {
-                    console.log('Inventario no válido, abriendo modal.')
                     setIsModalOpen(true)
                     return
                 }
-            } else {
-                console.log('No requiere validación de inventario para esta operación.')
             }
         }
 

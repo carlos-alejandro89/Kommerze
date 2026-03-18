@@ -6,7 +6,7 @@ import {models} from '../models';
 
 export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;
 
-export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<models.SucursalProducto>>;
+export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 

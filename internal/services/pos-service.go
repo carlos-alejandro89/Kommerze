@@ -31,7 +31,7 @@ func (s *PosService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	return response, err
 }
 
-func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]models.SucursalProducto, error) {
+func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]dto.InventarioDto, error) {
 	response, err := s.posRepository.ConsultarExistenciaProductos(productosGuids)
 	return response, err
 }

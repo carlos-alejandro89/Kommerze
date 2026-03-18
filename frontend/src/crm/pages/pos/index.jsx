@@ -101,6 +101,8 @@ export default function POSPage() {
             quantity: 1,
             empaque: result[0].Empaque,
             discount: result[0].Descuento,
+            fraccionable: result[0].Fraccionable,
+            productoBaseGuid: result[0].ProductoBaseGuid,
             image: 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg',
             caracteristicas: result[0].Caracteristicas,
             instruccionesUso: result[0].InstruccionesUso,

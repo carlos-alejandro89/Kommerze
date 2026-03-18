@@ -20,6 +20,8 @@ type ProductoDto struct {
 	Descuento           float64
 	Existencia          decimal.Decimal
 	Guid                string
+	ProductoBaseGuid    string
+	ProductoGuid        string
 	InformacionProducto datatypes.JSON
 	Caracteristicas     datatypes.JSON
 	InstruccionesUso    datatypes.JSON

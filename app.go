@@ -148,7 +148,7 @@ func (a *App) ServiceObtenerTiposPedido() ([]models.TipoPedido, error) {
 	return result, err
 }
 
-func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]models.SucursalProducto, error) {
+func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([]dto.InventarioDto, error) {
 	result, err := a.services.Pos.ConsultarExistenciaProductos(productosGuids)
 	return result, err
 }
