@@ -38,6 +38,8 @@ import { cn } from '@/lib/utils';
 import { Steps } from './steps';
 
 import { ResumenCuenta } from './resumen';
+import { BtnFormaPago } from './components/btn-forma-pago';
+import { ModalFormaPago } from './modal-forma-pago';
 import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 // Mock data for initial items
 const shoppingCart = [
@@ -54,6 +56,36 @@ export function CartStepThree() {
     const [paymentMethod, setPaymentMethod] = React.useState('efectivo');
     const [amountReceived, setAmountReceived] = React.useState('');
 
+
+    const mockFormaPago = [
+        {
+            ID: 1,
+            Nombre: 'Efectivo',
+            Descripcion: 'Pago en efectivo',
+        },
+        {
+            ID: 2,
+            Nombre: 'Tarjeta',
+            Descripcion: 'Pago con tarjeta',
+        },
+        {
+            ID: 3,
+            Nombre: 'Transferencia',
+            Descripcion: 'Pago por transferencia',
+        },
+        {
+            ID: 4,
+            Nombre: 'Cheque',
+            Descripcion: 'Pago con cheque',
+        },
+        {
+            ID: 5,
+            Nombre: 'Otro',
+            Descripcion: 'Otro método de pago',
+        },
+    ]
+
+    const [formaPago, setFormaPago] = React.useState(mockFormaPago);
 
     const subtotal = cart.reduce((sum, item) => {
         const price = item.price;
@@ -80,6 +112,10 @@ export function CartStepThree() {
         setItemSelected(item);
         setOpen(true);
     };
+
+    const handleSelectPaymentMethod = (paymentMethod) => {
+        setPaymentMethod(paymentMethod);
+    }
 
 
     return (
@@ -128,79 +164,9 @@ export function CartStepThree() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {/* Card: EFECTIVO */}
-                                        <button
-                                            onClick={() => setPaymentMethod('efectivo')}
-                                            className={cn(
-                                                "w-full rounded-xl border p-4 flex flex-col justify-between text-left transition-all",
-                                                paymentMethod === 'efectivo'
-                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
-                                                    : "bg-background border-border hover:border-primary/50"
-                                            )}
-                                        >
-                                            <div className="mb-1">
-                                                <div className="flex items-center gap-1.5 mb-3">
-                                                    <div className={cn(
-                                                        "flex items-center justify-center size-10 rounded-xl transition-colors",
-                                                        paymentMethod === 'efectivo' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
-                                                    )}>
-                                                        <Banknote className="size-5" />
-                                                    </div>
-
-                                                </div>
-                                                <div className="font-bold text-sm mb-1 text-foreground">EFECTIVO</div>
-                                            </div>
-                                        </button>
-                                        {/* Card: TARJETA */}
-                                        <button
-                                            onClick={() => setPaymentMethod('tarjeta')}
-                                            className={cn(
-                                                "w-full rounded-xl border p-4 flex flex-col justify-between text-left transition-all",
-                                                paymentMethod === 'tarjeta'
-                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
-                                                    : "bg-background border-border hover:border-primary/50"
-                                            )}
-                                        >
-                                            <div className="mb-1">
-                                                <div className="flex items-center gap-1.5 mb-3">
-                                                    <div className={cn(
-                                                        "flex items-center justify-center size-10 rounded-xl transition-colors",
-                                                        paymentMethod === 'tarjeta' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
-                                                    )}>
-                                                        <CreditCard className="size-5" />
-                                                    </div>
-
-                                                </div>
-                                                <div className="font-bold text-sm mb-1 text-foreground">TARJETAS <span className="font-normal text-xs text-muted-foreground whitespace-nowrap ml-1">(Crédito/Débito)</span></div>
-                                            </div>
-                                        </button>
-
-                                        {/* Card: TRANSFERENCIA */}
-                                        <button
-                                            onClick={() => setPaymentMethod('transferencia')}
-                                            className={cn(
-                                                "w-full rounded-xl border p-4 flex flex-col justify-between text-left transition-all",
-                                                paymentMethod === 'transferencia'
-                                                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
-                                                    : "bg-background border-border hover:border-primary/50"
-                                            )}
-                                        >
-                                            <div className="mb-1">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className={cn(
-                                                            "flex items-center justify-center size-10 rounded-xl transition-colors",
-                                                            paymentMethod === 'transferencia' ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
-                                                        )}>
-                                                            <ArrowRightLeft className="size-5" />
-                                                        </div>
-
-                                                    </div>
-
-                                                </div>
-                                                <div className="font-bold text-sm mb-1 text-foreground">TRANSFERENCIA ELECTRÓNICA</div>
-                                            </div>
-                                        </button>
-
+                                        {formaPago.map((formaPago) => (
+                                            <ModalFormaPago key={formaPago.ID} formaPago={formaPago} isActive={paymentMethod === formaPago.ID} onClick={handleSelectPaymentMethod} />
+                                        ))}
 
                                     </div>
 
@@ -289,9 +255,9 @@ export function CartStepThree() {
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-slate-500 tracking-tighter mb-2">Nota de Sistema</p>
                                             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                {paymentMethod === 'efectivo' && "Asegúrese de verificar la autenticidad de los billetes de alta denominación antes de ingresarlos a la caja."}
-                                                {paymentMethod === 'tarjeta' && "Solicite al cliente que inserte o acerque su tarjeta a la terminal y espere la confirmación aprobada del banco."}
-                                                {paymentMethod === 'transferencia' && "Antes de entregar la mercancía, valide en su portal bancario o mediante la referencia que los fondos fueron acreditados exitosamente."}
+                                                {paymentMethod === 1 && "Asegúrese de verificar la autenticidad de los billetes de alta denominación antes de ingresarlos a la caja."}
+                                                {paymentMethod === 2 && "Solicite al cliente que inserte o acerque su tarjeta a la terminal y espere la confirmación aprobada del banco."}
+                                                {paymentMethod === 3 && "Antes de entregar la mercancía, valide en su portal bancario o mediante la referencia que los fondos fueron acreditados exitosamente."}
                                             </p>
                                         </div>
                                     </div>

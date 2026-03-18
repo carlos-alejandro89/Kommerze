@@ -232,89 +232,98 @@ export default function POSPage() {
                                             <NoProducts />
                                         ) : (
                                             cart.map((item) => (
-                                                <Card key={item.id} className="group relative border-transparent hover:border-border/50 bg-white dark:bg-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-md transition-all overflow-hidden rounded-2xl">
-                                                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/50 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    <CardContent className="p-3 flex flex-wrap items-center gap-4">
-                                                        {/* Left: Image */}
-                                                        <div className="relative h-16 w-16 md:h-20 md:w-20 rounded-xl overflow-hidden shrink-0 bg-slate-50 dark:bg-zinc-800 border border-slate-100 dark:border-zinc-800">
-                                                            <img
-                                                                src={item.image}
-                                                                className="h-full w-full object-cover mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
-                                                                alt={item.name}
-                                                            />
-                                                            {item.discount && (
-                                                                <div className="absolute top-0 right-0 bg-destructive text-destructive-foreground text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg z-10">
-                                                                    -{item.discount}%
+                                                <Card key={item.id} className="group border-slate-200 dark:border-white/5 hover:border-primary/30 transition-all shadow-none overflow-hidden bg-white dark:bg-zinc-950/50">
+                                                    <CardContent className="flex items-center flex-wrap justify-between gap-4 p-3 pe-4">
+                                                        {/* Left: Image and Info */}
+                                                        <div className="flex items-center gap-4 flex-1 min-w-[300px]">
+                                                            <div className="flex items-center justify-center bg-accent/20 dark:bg-accent/10 h-20 w-24 rounded-xl border border-border/50 overflow-hidden shrink-0 shadow-sm relative group-hover:scale-[1.02] transition-transform">
+                                                                <img
+                                                                    src={item.image}
+                                                                    className="h-full w-full object-cover transition-transform duration-500"
+                                                                    alt={item.name}
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex flex-col gap-1.5 flex-1 p-1">
+
+
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                                                        SKU: <span className="text-[11px] font-mono text-foreground/80">{item.sku}</span>
+                                                                    </span>
+                                                                    <span className="h-3 w-px bg-border/60" />
+                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                                        {item.category}
+                                                                    </span>
                                                                 </div>
-                                                            )}
+                                                                <div className="flex items-center gap-2 flex-wrap">
+
+
+                                                                    <p onClick={() => handleProductDetails(item.id)} className="text-sm text-link cursor-pointer font-bold text-foreground leading-tight tracking-tight">
+                                                                        {item.name}
+                                                                    </p>
+                                                                    {item.discount && (
+                                                                        <Badge variant="destructive" className="text-[9px] h-4.5 px-1.5 uppercase font-black tracking-wider">
+                                                                            -{item.discount}%
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
 
-                                                        {/* Center: Info */}
-                                                        <div className="flex flex-col flex-1 min-w-[200px] py-1">
-                                                            <div className="flex items-center gap-2 mb-1">
-
-                                                                <div className="text-[13px] font-bold font-mono truncate">
-                                                                    {item.sku}
-                                                                </div>
-                                                                <span className="text-[9px] font-black text-white bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-700 dark:to-slate-600 px-2 py-0.5 rounded-full flex items-center gap-1 uppercase shadow-sm">
+                                                        {/* Right: Quantity, Price, and Actions */}
+                                                        <div className="flex items-center gap-6">
+                                                            {/* Empaque Column */}
+                                                            <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                                                                <span className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
+                                                                    Presentación
+                                                                </span>
+                                                                <span className="text-sm font-black text-foreground/80">
                                                                     {item.empaque || 'PZA'}
                                                                 </span>
                                                             </div>
-                                                            <p
-                                                                onClick={() => handleProductDetails(item.id)}
-                                                                className="text-sm  text-foreground truncate cursor-pointer hover:text-primary transition-colors leading-tight"
-                                                            >
-                                                                {item.name}
-                                                            </p>
-                                                            <div className="flex items-center gap-2 mt-2">
 
-                                                                <Badge variant="outline" className="text-[9px] font-semibold px-1.5 py-0 rounded-md bg-slate-50 dark:bg-zinc-800 border-none text-slate-500 dark:text-slate-400 capitalize">
-                                                                    {item.category?.toLowerCase()} Lijas
-                                                                </Badge>
-                                                                <span className="text-[11px] font-semibold text-slate-400">
-                                                                    ${item.price.toFixed(2)} c/u
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Right: Controls & Price */}
-                                                        <div className="flex flex-wrap items-center gap-4 shrink-0 md:pl-4 md:border-l border-slate-100 dark:border-zinc-800/50">
-                                                            {/* Pill shaped quantity control */}
-                                                            <div className="flex items-center h-9 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-slate-200/60 dark:border-zinc-700/50 p-1">
-                                                                <button
+                                                            {/* Quantity Controls */}
+                                                            <div className="flex items-center gap-2.5">
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="secondary"
+                                                                    className="size-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary transition-colors border-none shadow-none"
                                                                     onClick={() => updateQuantity(item.id, -1)}
-                                                                    className="size-7 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-zinc-700 hover:shadow-sm text-slate-600 dark:text-slate-300 transition-all font-medium"
                                                                 >
-                                                                    <Minus className="size-3" />
-                                                                </button>
-                                                                <span className="w-8 flex items-center justify-center text-xs font-bold tabular-nums">
+                                                                    <Minus className="size-3.5" />
+                                                                </Button>
+                                                                <span className="w-6 text-center text-sm font-bold tabular-nums">
                                                                     {item.quantity}
                                                                 </span>
-                                                                <button
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="secondary"
+                                                                    className="size-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary transition-colors border-none shadow-none"
                                                                     onClick={() => updateQuantity(item.id, 1)}
-                                                                    className="size-7 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-zinc-700 hover:shadow-sm text-slate-600 dark:text-slate-300 transition-all font-medium"
                                                                 >
-                                                                    <Plus className="size-3" />
-                                                                </button>
+                                                                    <Plus className="size-3.5" />
+                                                                </Button>
                                                             </div>
 
-                                                            {/* Total Price */}
-                                                            <div className="flex flex-col items-end min-w-[80px]">
-                                                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Subtotal</span>
-                                                                <span className="text-base font-black text-foreground tabular-nums tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                                                            {/* Price Breakdown */}
+                                                            <div className="flex flex-col items-end gap-1 min-w-[100px]">
+                                                                <span className="text-[10px] font-bold text-muted-foreground/80 tabular-nums">
+                                                                    ${item.price.toFixed(2)} c/u
+                                                                </span>
+                                                                <span className="text-sm font-black text-primary tabular-nums">
                                                                     ${(item.price * item.quantity).toFixed(2)}
                                                                 </span>
                                                             </div>
 
-                                                            {/* Delete button */}
+                                                            {/* Delete Action */}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
+                                                                className="size-9 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all active:scale-90"
                                                                 onClick={() => removeItem(item.id)}
-                                                                className="size-8 rounded-full text-slate-300 dark:text-slate-600 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                                                                title="Eliminar"
                                                             >
-                                                                <Trash2 className="size-4" />
+                                                                <Trash2 className="size-4.5" />
                                                             </Button>
                                                         </div>
                                                     </CardContent>
@@ -349,36 +358,36 @@ export default function POSPage() {
 
                                 {/* 2. Bottom Summary Section */}
                                 <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={0} />
+                                {/* 3. Services List */}
 
-                                {/* 3. POS Actions (Relocated) */}
-                                <div className="grid grid-cols-2 gap-2 mt-4">
-                                    <Button
-                                        variant="outline"
-                                        className="h-10 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-zinc-900 border-slate-200 shadow-sm hover:shadow hover:text-primary transition-all flex items-center justify-center gap-2 w-full active:scale-95"
-                                    >
-                                        <LayoutGrid className="size-3.5" />
-                                        <span>Abrir Cajón</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-10 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-zinc-900 border-slate-200 shadow-sm hover:shadow hover:text-primary transition-all flex items-center justify-center gap-2 w-full active:scale-95"
-                                    >
-                                        <History className="size-3.5" />
-                                        <span>Historial</span>
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        className="col-span-2 h-10 rounded-xl text-[11px] font-bold text-destructive bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border-transparent transition-all flex items-center justify-center gap-2 w-full active:scale-95"
-                                        onClick={clearCart}
-                                    >
-                                        <X className="size-3.5" />
-                                        <span>Cancelar Orden</span>
-                                    </Button>
-                                </div>
-
-                                {/* 4. Services List */}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Full Width Secondary Actions Bar */}
+                    <div className="bg-background  p-2 flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-border/60 hover:bg-muted transition-all active:scale-[0.98]"
+                        >
+                            <LayoutGrid className="size-4 text-primary" />
+                            Abrir Cajón (F5)
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-border/60 hover:bg-muted transition-all active:scale-[0.98]"
+                        >
+                            <History className="size-4 text-primary" />
+                            Historial
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-destructive/20 text-destructive hover:bg-destructive/5 transition-all active:scale-[0.98]"
+                            onClick={clearCart}
+                        >
+                            <X className="size-4" />
+                            Cancelar (ESC)
+                        </Button>
                     </div>
                 </div>
             </Content>
