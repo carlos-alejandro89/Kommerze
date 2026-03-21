@@ -16,10 +16,9 @@ import { ResumenCuenta } from './resumen';
 import { ModalFormaPago } from './modal-forma-pago';
 import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 import { ItemPagos } from './components/item-pagos';
-// Mock data for initial items
-const shoppingCart = [
 
-];
+const shoppingCart = [];
+
 
 
 export function CartStepThree() {
@@ -30,8 +29,14 @@ export function CartStepThree() {
     const [itemSelected, setItemSelected] = React.useState({});
     const [paymentMethod, setPaymentMethod] = React.useState('efectivo');
     const [amountReceived, setAmountReceived] = React.useState(0);
-
-    const [pagosAplicados, setPagosAplicados] = React.useState([])
+    const [pagosAplicados, setPagosAplicados] = React.useState(() => {
+        try {
+            const stored = localStorage.getItem('pagosAplicados');
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            return [];
+        }
+    });
 
 
     const mockFormaPago = [
@@ -49,20 +54,18 @@ export function CartStepThree() {
             ID: 3,
             Nombre: 'Transferencia',
             Descripcion: 'Pago por transferencia',
-        },
-        {
-            ID: 4,
-            Nombre: 'Cheque',
-            Descripcion: 'Pago con cheque',
-        },
-        {
-            ID: 5,
-            Nombre: 'Otro',
-            Descripcion: 'Otro método de pago',
-        },
+        }
     ]
 
     const [formaPago, setFormaPago] = React.useState(mockFormaPago);
+
+    React.useEffect(() => {
+        const cartStorage = localStorage.getItem('cart')
+        if (cartStorage) {
+            setCart(JSON.parse(cartStorage))
+        }
+
+    }, [])
 
     const subtotal = cart.reduce((sum, item) => {
         const price = item.price;
@@ -80,17 +83,11 @@ export function CartStepThree() {
 
     React.useEffect(() => {
         setAmountReceived(totalPagos)
+        localStorage.setItem('pagosAplicados', JSON.stringify(pagosAplicados))
+
     }, [pagosAplicados])
 
-
     const total = subtotal - descuento;
-
-    React.useEffect(() => {
-        const cartStorage = localStorage.getItem('cart')
-        if (cartStorage) {
-            setCart(JSON.parse(cartStorage))
-        }
-    }, [])
 
     const handleProductDetails = (productId) => {
         const item = cart.find(item => item.id === productId);
@@ -113,11 +110,11 @@ export function CartStepThree() {
 
     }
 
-    const handleDeletePaymentItem = (paymentItem)=>{
-     setPagosAplicados( pagos => {
-        const payments = pagos.filter(p => p.ID !== paymentItem)
-        return payments;
-     })   
+    const handleDeletePaymentItem = (paymentItem) => {
+        setPagosAplicados(pagos => {
+            const payments = pagos.filter(p => p.ID !== paymentItem)
+            return payments;
+        })
     }
 
 
@@ -129,7 +126,7 @@ export function CartStepThree() {
         <div className="flex flex-col h-full w-full bg-slate-50/50 dark:bg-zinc-950/50 relative">
             <ContentHeader className="flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="w-full">
-                    <Steps currentStep={3} />
+                    <Steps currentStep={2} />
                 </div>
             </ContentHeader>
 
@@ -272,7 +269,7 @@ export function CartStepThree() {
                                 </div>
 
                                 {/* 2. Bottom Summary Section */}
-                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
+                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={2} />
                                 {/* 3. Services List */}
 
 

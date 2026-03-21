@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, ChevronRight } from 'lucide-react';
+import { ExternalLink, ChevronRight, FileCheck } from 'lucide-react';
 import { ServiceConsultarExistenciaProductos } from '../../../../wailsjs/go/main/App';
 import { ModalDetalleInventario } from './modal-detalle-inventario';
 
@@ -12,14 +12,11 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
     const urlLinks = {
         1: '/pos/transaction',
-        2: '/pos/transaction',
-        3: '/pos/payment',
-
+        2: '/pos/payment',
+        3: '/pos/order-placed'
     }
 
     const nextPage = currentStep + 1
-
-
 
     const ConsultarExistencias = async () => {
         try {
@@ -75,7 +72,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         if (currentStep === 0 && countItems === 0) {
             return
         }
-        if (currentStep === 2) {
+        if (currentStep === 1) {
             const rawOperationType = localStorage.getItem('operationType')
             const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
 
@@ -125,8 +122,10 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                     className="w-full h-11 rounded-lg bg-white text-[#002366] hover:bg-blue-50 hover:text-[#001233] border-none font-black text-xs shadow-[0_4px_14px_rgba(255,255,255,0.15)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10"
                 >
                     <div className="flex items-center gap-2 relative z-10 transition-transform group-hover:translate-x-1">
-                        <ExternalLink className="size-4" />
-                        <span className="uppercase tracking-wide">Siguiente</span>
+                        {nextPage === Object.keys(urlLinks).length ? <FileCheck className="size-4" /> : <ExternalLink className="size-4" />}
+                        <span className="uppercase tracking-wide">
+                            {nextPage === Object.keys(urlLinks).length ? 'Procesar transacción' : 'Siguiente'}
+                        </span>
                     </div>
                     <ChevronRight className="size-4 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
 

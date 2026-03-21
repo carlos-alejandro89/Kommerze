@@ -1,5 +1,5 @@
 import { Fragment } from 'react/jsx-runtime';
-import { Captions, User, CreditCard, ArrowLeftRight } from 'lucide-react';
+import { Captions, Check, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/common/container';
 
@@ -7,8 +7,8 @@ export function Steps({ currentStep }) {
     const steps = [
         { title: 'Capturar productos', icon: Captions },
         { title: 'Tipo de Transacción', icon: ArrowLeftRight },
-        { title: 'Cliente', icon: User },
         { title: 'Pago', icon: CreditCard },
+        { title: 'Pedido listo', icon: Check },
     ];
 
     return (

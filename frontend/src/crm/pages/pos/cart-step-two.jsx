@@ -223,7 +223,7 @@ export function CartStepTwo() {
                                 </div>
 
                                 {/* 2. Bottom Summary Section */}
-                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={2} />
+                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
                                 {/* 3. Services List */}
 
                             </div>
