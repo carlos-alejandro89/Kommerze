@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, ChevronRight, FileCheck } from 'lucide-react';
-import { ServiceConsultarExistenciaProductos } from '../../../../wailsjs/go/main/App';
+import { ServiceConsultarExistenciaProductos, ServiceConfirmarTransaccion } from '../../../../wailsjs/go/main/App';
 import { ModalDetalleInventario } from './modal-detalle-inventario';
+import { DialogAlert } from '@/components/common/dialog-alert';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
+    const [alertConfig, setAlertConfig] = useState({ open: false, title: '', description: '', type: 'warning' });
 
     const urlLinks = {
         1: '/pos/transaction',
@@ -38,7 +40,6 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 }
             })
 
-            console.log(comparativoExistencias)
             localStorage.setItem('validCart', JSON.stringify(comparativoExistencias))
 
             const invalidItemsFound = []
@@ -67,22 +68,91 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         }
     }
 
-    const goToNextPage = async () => {
+    const confirmarTransaccion = async () => {
+        const operationType = JSON.parse(localStorage.getItem('operationType'))
+        const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
+        const cart = JSON.parse(localStorage.getItem('validCart'))
 
-        if (currentStep === 0 && countItems === 0) {
-            return
+        try {
+            const result = await ServiceConfirmarTransaccion(operationType, pagosAplicados, cart);
+            return result.success;
+        } catch (error) {
+            console.error("Error en la transacción:", error);
+            setAlertConfig({
+                open: true,
+                title: 'Error en la transacción',
+                description: error,
+                type: 'error'
+            });
+            return false;
         }
-        if (currentStep === 1) {
-            const rawOperationType = localStorage.getItem('operationType')
-            const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
+    }
 
+
+    const validarPago = async () => {
+        const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
+
+        if (!pagosAplicados || pagosAplicados.length === 0) {
+            setAlertConfig({
+                open: true,
+                title: 'No hay pagos',
+                description: 'Debe aplicar al menos un método de pago para procesar la transacción.',
+                type: 'warning'
+            });
+            return false
+        }
+        const totalPagado = pagosAplicados.reduce((suma, item) => {
+            return suma + parseFloat(item.Monto || 0)
+        }, 0)
+
+        // Adding 0.01 tolerance for floating point JS bugs
+        if (totalPagado < total - 0.01) {
+            setAlertConfig({
+                open: true,
+                title: 'Monto Insuficiente',
+                description: 'El total pagado no cubre el importe del pedido. Faltan $' + (total - totalPagado).toFixed(2),
+                type: 'warning'
+            });
+
+            return false
+        }
+        return true
+    }
+
+    const stepValidation = {
+        0: () => countItems > 0,
+        1: async (operationType) => {
             if (operationType === 1 || operationType === 3) {
                 const inventarioValido = await ConsultarExistencias()
                 if (!inventarioValido) {
                     setIsModalOpen(true)
-                    return
+                    return false
                 }
             }
+            return true
+        },
+        2: async (operationType) => {
+            if (operationType === 1) {
+                const pagoValido = await validarPago()
+                if (!pagoValido) {
+                    return false
+                }
+            }
+
+            const transaccionValida = await confirmarTransaccion() // Se guarda la venta
+            console.log(transaccionValida)
+            return transaccionValida
+        }
+    }
+
+    const goToNextPage = async () => {
+        const rawOperationType = localStorage.getItem('operationType')
+        const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
+
+        const validatorForCurrentStep = stepValidation[currentStep];
+        if (validatorForCurrentStep) {
+            const canProceed = await validatorForCurrentStep(operationType);
+            if (!canProceed) return;
         }
 
         return navigate(urlLinks[nextPage] || '#')
@@ -138,6 +208,15 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 items={invalidItems}
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
+            />
+
+            <DialogAlert
+                open={alertConfig.open}
+                onOpenChange={(open) => setAlertConfig(prev => ({ ...prev, open }))}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                description={alertConfig.description}
+                onCancel={() => setAlertConfig(prev => ({ ...prev, open: false }))}
             />
         </div>
     );

@@ -4,6 +4,8 @@ import {dto} from '../models';
 import {uuid} from '../models';
 import {models} from '../models';
 
+export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>):Promise<dto.ResponseDto>;
+
 export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;

@@ -152,3 +152,8 @@ func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	result, err := a.services.Pos.ConsultarExistenciaProductos(productosGuids)
 	return result, err
 }
+
+func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto) (*dto.ResponseDto, error) {
+	result, err := a.services.Pos.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
+	return result, err
+}

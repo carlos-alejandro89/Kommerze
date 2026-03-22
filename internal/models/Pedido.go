@@ -13,8 +13,8 @@ type Pedido struct {
 	ClienteID *uint
 	Cliente   Cliente `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
-	OperacionCajeroID uint
-	OperacionCajero   OperacionCajero `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	OperacionCajeroID *uint
+	OperacionCajero   OperacionCajero `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	// Opcionales
 	TipoPedidoID *uint

@@ -35,3 +35,8 @@ func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	response, err := s.posRepository.ConsultarExistenciaProductos(productosGuids)
 	return response, err
 }
+
+func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto) (*dto.ResponseDto, error) {
+	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
+	return response, err
+}
