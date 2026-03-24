@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, ChevronRight, FileCheck } from 'lucide-react';
-import { ServiceConsultarExistenciaProductos, ServiceConfirmarTransaccion } from '../../../../wailsjs/go/main/App';
+import { ConsultarExistencias, confirmarTransaccion, validarPago } from './resumen-actions';
 import { ModalDetalleInventario } from './modal-detalle-inventario';
 import { DialogAlert } from '@/components/common/dialog-alert';
 
@@ -11,6 +11,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
     const [alertConfig, setAlertConfig] = useState({ open: false, title: '', description: '', type: 'warning' });
+    const [nextPage, setNextPage] = useState(currentStep + 1);
 
     const urlLinks = {
         1: '/pos/transaction',
@@ -18,129 +19,35 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         3: '/pos/order-placed'
     }
 
-    const nextPage = currentStep + 1
-
-    const ConsultarExistencias = async () => {
-        try {
-            const cartItems = localStorage.getItem('cart')
-            const cart = JSON.parse(cartItems)
-            let comparativoExistencias = JSON.parse(cartItems)
-            const productosGuids = cart.map(item => item.id)
-
-            const productos = await ServiceConsultarExistenciaProductos(productosGuids)
-
-            comparativoExistencias = comparativoExistencias.map(prev => {
-                const productoEncontrado = productos.find(producto => producto.Guid === prev.id)
-                return {
-                    ...prev,
-
-                    GuidBase: productoEncontrado.GuidBase,
-                    Existencia: prev.fraccionable ? productoEncontrado.ExistenciaFraccion : productoEncontrado.Existencia,
-                    CantidadBase: prev.fraccionable ? prev.quantity * productoEncontrado.Contenido : prev.quantity
-                }
-            })
-
-            localStorage.setItem('validCart', JSON.stringify(comparativoExistencias))
-
-            const invalidItemsFound = []
-
-            const isValid = productos.every(producto => {
-                const productoEncontrado = cart.find(item => item.id === producto.Guid)
-                const existencia = productoEncontrado.fraccionable ? producto.ExistenciaFraccion : producto.Existencia
-                if (existencia < productoEncontrado.quantity) {
-                    invalidItemsFound.push({
-                        ...productoEncontrado,
-                        Existencia: existencia
-                    })
-                    return false
-                }
-                return true
-            })
-
-            if (!isValid) {
-                setInvalidItems(comparativoExistencias)
-            }
-
-            return isValid
-        } catch (error) {
-            console.error('Error en ConsultarExistencias:', error)
-            return false
-        }
-    }
-
-    const confirmarTransaccion = async () => {
-        const operationType = JSON.parse(localStorage.getItem('operationType'))
-        const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
-        const cart = JSON.parse(localStorage.getItem('validCart'))
-
-        try {
-            const result = await ServiceConfirmarTransaccion(operationType, pagosAplicados, cart);
-            return result.success;
-        } catch (error) {
-            console.error("Error en la transacción:", error);
-            setAlertConfig({
-                open: true,
-                title: 'Error en la transacción',
-                description: error,
-                type: 'error'
-            });
-            return false;
-        }
-    }
-
-
-    const validarPago = async () => {
-        const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
-
-        if (!pagosAplicados || pagosAplicados.length === 0) {
-            setAlertConfig({
-                open: true,
-                title: 'No hay pagos',
-                description: 'Debe aplicar al menos un método de pago para procesar la transacción.',
-                type: 'warning'
-            });
-            return false
-        }
-        const totalPagado = pagosAplicados.reduce((suma, item) => {
-            return suma + parseFloat(item.Monto || 0)
-        }, 0)
-
-        // Adding 0.01 tolerance for floating point JS bugs
-        if (totalPagado < total - 0.01) {
-            setAlertConfig({
-                open: true,
-                title: 'Monto Insuficiente',
-                description: 'El total pagado no cubre el importe del pedido. Faltan $' + (total - totalPagado).toFixed(2),
-                type: 'warning'
-            });
-
-            return false
-        }
-        return true
-    }
-
     const stepValidation = {
         0: () => countItems > 0,
         1: async (operationType) => {
-            if (operationType === 1 || operationType === 3) {
-                const inventarioValido = await ConsultarExistencias()
-                if (!inventarioValido) {
-                    setIsModalOpen(true)
-                    return false
-                }
+
+            const inventarioValido = (operationType === 2) ? true : await ConsultarExistencias(setInvalidItems)
+            if (!inventarioValido) {
+                setIsModalOpen(true)
+                return false
             }
+
+
+            if (parseInt(operationType) === 2 || parseInt(operationType) === 3) {
+                const transaccionValida = await confirmarTransaccion(setAlertConfig) // Se guarda la cotizacion
+                setNextPage(currentStep + 2)
+                return transaccionValida
+            }
+
             return true
+
         },
         2: async (operationType) => {
             if (operationType === 1) {
-                const pagoValido = await validarPago()
+                const pagoValido = await validarPago(total, setAlertConfig)
                 if (!pagoValido) {
                     return false
                 }
             }
 
-            const transaccionValida = await confirmarTransaccion() // Se guarda la venta
-            console.log(transaccionValida)
+            const transaccionValida = await confirmarTransaccion(setAlertConfig) // Se guarda la venta
             return transaccionValida
         }
     }
@@ -149,13 +56,17 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         const rawOperationType = localStorage.getItem('operationType')
         const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
 
+        let calcNextPage = (operationType <= 1) ? currentStep + 1 : currentStep + 2
+        setNextPage(calcNextPage)
+        console.log('nextPage', calcNextPage)
+
         const validatorForCurrentStep = stepValidation[currentStep];
         if (validatorForCurrentStep) {
             const canProceed = await validatorForCurrentStep(operationType);
             if (!canProceed) return;
         }
 
-        return navigate(urlLinks[nextPage] || '#')
+        return navigate(urlLinks[calcNextPage] || '#')
     }
 
 

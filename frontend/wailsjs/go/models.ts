@@ -84,7 +84,8 @@ export namespace dto {
 	export class PagosAplicadosDto {
 	    ID: number;
 	    Nombre: string;
-	    Monto: string;
+	    // Go type: decimal
+	    Monto: any;
 	    Referencia: string;
 	
 	    static createFrom(source: any = {}) {
@@ -95,9 +96,27 @@ export namespace dto {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
 	        this.Nombre = source["Nombre"];
-	        this.Monto = source["Monto"];
+	        this.Monto = this.convertValues(source["Monto"], null);
 	        this.Referencia = source["Referencia"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class PedidoProductoDto {
 	    ID: string;

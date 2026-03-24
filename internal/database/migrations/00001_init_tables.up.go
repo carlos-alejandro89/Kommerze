@@ -22,5 +22,6 @@ func MigrateTables(db *gorm.DB) error {
 		&models.SATUsoCFDI{},
 		&models.Perfil{},
 		&models.Usuario{},
+		&models.Pago{},
 	)
 }

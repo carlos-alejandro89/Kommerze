@@ -64,6 +64,11 @@ export default function POSPage() {
         if (cartStorage) {
             setCart(JSON.parse(cartStorage))
         }
+
+        const operationType = localStorage.getItem('operationType')
+        if (operationType) {
+            localStorage.setItem('operationType', 1)
+        }
     }, [])
 
     const updateQuantity = (id, delta) => {

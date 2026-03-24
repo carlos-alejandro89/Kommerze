@@ -24,8 +24,17 @@ export function CartOrderPlaced() {
     const navigate = useNavigate();
 
     const [isPulsing, setIsPulsing] = React.useState(true);
+    const [folio, setFolio] = React.useState(() => {
+        try {
+            const stored = localStorage.getItem('folio');
+            return stored ? JSON.parse(stored) : '';
+        } catch (e) {
+            return '';
+        }
+    });
 
     React.useEffect(() => {
+
         const timer = setTimeout(() => {
             setIsPulsing(false);
         }, 4000);
@@ -35,6 +44,11 @@ export function CartOrderPlaced() {
     const [pagosAplicados, setPagosAplicados] = React.useState(() => {
         try {
             const stored = localStorage.getItem('pagosAplicados');
+
+            localStorage.removeItem('pagosAplicados')
+            localStorage.removeItem('operationType')
+            localStorage.removeItem('folio')
+
             return stored ? JSON.parse(stored) : [];
         } catch (e) {
             return [];
@@ -44,6 +58,8 @@ export function CartOrderPlaced() {
     const [cart, setCart] = React.useState(() => {
         try {
             const stored = localStorage.getItem('cart');
+            localStorage.removeItem('cart')
+            localStorage.removeItem('validCart')
             return stored ? JSON.parse(stored) : [];
         } catch (e) {
             return [];
@@ -88,7 +104,7 @@ export function CartOrderPlaced() {
 
                         <div className="bg-primary px-4 py-2 rounded-full mb-10 shadow-sm border border-primary/20">
                             <span className="text-primary-foreground font-mono text-sm tracking-widest font-bold">
-                                FOLIO: #POS-94232
+                                FOLIO: #POS-{String(folio).padStart(6, '0')}
                             </span>
                         </div>
 

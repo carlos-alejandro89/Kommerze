@@ -4,17 +4,17 @@ import "time"
 
 type Pago struct {
 	BaseModel
-	
-	FormaID  *uint
-	Forma SATFormaPago
 
-	PedidoID  *uint
-	Pedido Pedido 
+	FormaID uint
+	Forma   SATFormaPago
 
-	Fecha    *time.Time
-	Monto    float64
-	Saldo    float64
-	Sync bool
+	PedidoID uint
+	Pedido   Pedido
+
+	Fecha time.Time `gorm:"type:timestamp;not null;default:now();index"`
+	Monto float64
+	Saldo float64
+	Sync  bool
 }
 
 func (Pago) TableName() string {
