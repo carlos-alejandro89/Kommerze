@@ -2,21 +2,11 @@
 
 import * as React from 'react';
 import {
-    Search,
-    Plus,
-    Minus,
-    Trash2,
     ShoppingCart as IconShoppingCart,
     LayoutGrid,
     History,
     X,
-    ScanBarcode,
-    FileText,
-    ArrowRightLeft,
-    Package,
     Info,
-    UserSearch,
-    Users,
     Mail,
     Phone
 } from 'lucide-react';

@@ -23,11 +23,27 @@ import visa from '@/assets/visa.svg';
 export function CartOrderPlaced() {
     const navigate = useNavigate();
 
+    const prefixes = {
+        1: 'POS',
+        2: 'COT',
+        3: 'TRA'
+    }
+
     const [isPulsing, setIsPulsing] = React.useState(true);
     const [folio, setFolio] = React.useState(() => {
         try {
             const stored = localStorage.getItem('folio');
             return stored ? JSON.parse(stored) : '';
+        } catch (e) {
+            return '';
+        }
+    });
+
+    const [operationPrefix, setOperationPrefix] = React.useState(() => {
+        try {
+            const stored = localStorage.getItem('operationType');
+            localStorage.removeItem('operationType')
+            return stored ? prefixes[JSON.parse(stored)] : '';
         } catch (e) {
             return '';
         }
@@ -46,7 +62,7 @@ export function CartOrderPlaced() {
             const stored = localStorage.getItem('pagosAplicados');
 
             localStorage.removeItem('pagosAplicados')
-            localStorage.removeItem('operationType')
+
             localStorage.removeItem('folio')
 
             return stored ? JSON.parse(stored) : [];
@@ -104,7 +120,7 @@ export function CartOrderPlaced() {
 
                         <div className="bg-primary px-4 py-2 rounded-full mb-10 shadow-sm border border-primary/20">
                             <span className="text-primary-foreground font-mono text-sm tracking-widest font-bold">
-                                FOLIO: #POS-{String(folio).padStart(6, '0')}
+                                FOLIO: #{operationPrefix}-{String(folio).padStart(6, '0')}
                             </span>
                         </div>
 

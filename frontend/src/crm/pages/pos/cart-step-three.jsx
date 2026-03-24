@@ -16,7 +16,7 @@ import { ResumenCuenta } from './resumen';
 import { ModalFormaPago } from './modal-forma-pago';
 import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 import { ItemPagos } from './components/item-pagos';
-
+import { moneyFormat } from '@/lib/helpers';
 const shoppingCart = [];
 
 
@@ -53,7 +53,7 @@ export function CartStepThree() {
         {
             ID: 3,
             Nombre: 'Transferencia',
-            Descripcion: 'Pago por transferencia',
+            Descripcion: 'Pago electrónico SPEI',
         }
     ]
 
@@ -202,11 +202,10 @@ export function CartStepThree() {
                                             <div>
                                                 <label className="block text-sm font-bold text-muted-foreground mb-4 tracking-tight">Monto Recibido</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">$</span>
                                                     <input
                                                         type="text"
-                                                        value={amountReceived || ''}
-                                                        onChange={(e) => setAmountReceived(e.target.value)}
+                                                        value={moneyFormat(amountReceived) || ''}
+
                                                         className="w-full bg-slate-100 dark:bg-zinc-800/50 border-none rounded-xl py-6 pl-10 pr-6 text-4xl font-extrabold focus:ring-2 focus:ring-primary/20 dark:text-primary-foreground outline-none transition-all placeholder:text-muted-foreground/30"
                                                         placeholder={total.toFixed(2)}
                                                     />
@@ -219,9 +218,13 @@ export function CartStepThree() {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col justify-center md:border-l border-border/60 md:pl-12 pt-6 md:pt-0 border-t md:border-t-0">
-                                                <span className="text-sm font-bold text-muted-foreground mb-2 tracking-tight">Cambio a Entregar</span>
-                                                <div className="text-[#006e2a] dark:text-[#5cfd80] text-5xl font-extrabold tracking-tighter">
-                                                    $ {amountReceived && !isNaN(parseFloat(amountReceived)) ? Math.max(0, parseFloat(amountReceived) - total).toFixed(2) : '0.00'}
+                                                <span className="text-sm font-bold text-muted-foreground mb-2 tracking-tight">
+                                                    {(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total) ? 'Por Pagar' : 'Cambio a Entregar'}
+                                                </span>
+                                                <div className={`text-5xl font-extrabold tracking-tighter ${(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total) ? 'text-red-500 dark:text-red-500' : 'text-[#006e2a] dark:text-[#5cfd80]'}`}>
+                                                    $ {amountReceived && !isNaN(parseFloat(amountReceived))
+                                                        ? Math.abs(parseFloat(amountReceived) - total).toFixed(2)
+                                                        : total.toFixed(2)}
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-4 text-blue-600 dark:text-blue-400">
                                                     <Info className="size-4" />
