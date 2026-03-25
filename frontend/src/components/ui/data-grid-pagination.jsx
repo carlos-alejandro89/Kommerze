@@ -16,12 +16,12 @@ function DataGridPagination(props) {
 
   const defaultProps = {
     sizes: [5, 10, 25, 50, 100],
-    sizesLabel: 'Show',
-    sizesDescription: 'per page',
+    sizesLabel: 'Mostrar',
+    sizesDescription: 'por página',
     sizesSkeleton: <Skeleton className="h-8 w-44" />,
     moreLimit: 5,
     more: false,
-    info: '{from} - {to} of {count}',
+    info: '{from} - {to} de {count}',
     infoSkeleton: <Skeleton className="h-8 w-60" />,
   };
 
@@ -41,7 +41,7 @@ function DataGridPagination(props) {
         .replace('{from}', from.toString())
         .replace('{to}', to.toString())
         .replace('{count}', recordCount.toString())
-    : `${from} - ${to} of ${recordCount}`;
+    : `${from} - ${to} de ${recordCount}`;
 
   // Pagination limit logic
   const paginationMoreLimit = mergedProps?.moreLimit || 5;
@@ -129,7 +129,7 @@ function DataGridPagination(props) {
           mergedProps?.sizesSkeleton
         ) : (
           <>
-            <div className="text-sm text-muted-foreground">Rows per page</div>
+            <div className="text-sm text-muted-foreground">Filas por página</div>
             <Select
               value={`${pageSize}`}
               indicatorPosition="right"
@@ -170,7 +170,7 @@ function DataGridPagination(props) {
                   onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
                 >
-                  <span className="sr-only">Go to previous page</span>
+                  <span className="sr-only">Ir a la página anterior</span>
                   <ChevronLeftIcon className="size-4" />
                 </Button>
 
@@ -188,7 +188,7 @@ function DataGridPagination(props) {
                   onClick={() => table.nextPage()}
                   disabled={!table.getCanNextPage()}
                 >
-                  <span className="sr-only">Go to next page</span>
+                  <span className="sr-only">Ir a la página siguiente</span>
                   <ChevronRightIcon className="size-4" />
                 </Button>
               </div>

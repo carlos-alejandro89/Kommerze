@@ -88,7 +88,7 @@ func (r *PosRepository) ConsultaProductosOld(busqueda string) ([]dto.ProductoDto
 
 func (r *PosRepository) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var tipos []models.TipoPedido
-	err := r.db.Raw(`select * from tipos_pedido`).Scan(&tipos).Error
+	err := r.db.Raw(`select * from tipos_pedido order by id`).Scan(&tipos).Error
 	if err != nil {
 		return nil, err
 	}

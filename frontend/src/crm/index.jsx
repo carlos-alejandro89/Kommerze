@@ -15,6 +15,7 @@ import { CartStepTwo } from './pages/pos/cart-step-two'
 import { CartStepThree } from './pages/pos/cart-step-three'
 import { AuthGuard } from '@/components/auth-guard';
 import { CartOrderPlaced } from './pages/pos/cart-order-placed';
+import { HistoryPage } from './pages/history/page';
 
 export default function CrmModule() {
   return (
@@ -38,6 +39,7 @@ export default function CrmModule() {
         <Route path="pos/transaction" element={<CartStepTwo />} />
         <Route path="pos/payment" element={<CartStepThree />} />
         <Route path="pos/order-placed" element={<CartOrderPlaced />} />
+        <Route path="history/" element={<HistoryPage />} />
       </Route>
 
     </Routes>

@@ -7,16 +7,11 @@ import {
   Home,
   RefreshCw,
   ShoppingCart,
-  Users,
+  History,
 } from 'lucide-react';
 
 export const MAIN_NAV = [
-  {
-    title: 'Ventas',
-    icon: ShoppingCart,
-    path: '/pos',
-    id: 'pos',
-  },
+
   {
     title: 'Inicio',
     icon: Home,
@@ -24,16 +19,18 @@ export const MAIN_NAV = [
     id: 'dashboard',
   },
   {
-    icon: Users,
-    title: 'Clientes',
-    path: '/contacts',
+    title: 'Ventas',
+    icon: ShoppingCart,
+    path: '/pos',
+    id: 'pos',
+  },
+  {
+    icon: History,
+    title: 'Historial',
+    path: '/history',
     pinnable: true,
     pinned: true,
-    id: 'clients',
-    new: {
-      tooltip: 'New Contact',
-      path: '/contacts',
-    },
+    id: 'history',
   },
   {
     icon: CheckSquare,

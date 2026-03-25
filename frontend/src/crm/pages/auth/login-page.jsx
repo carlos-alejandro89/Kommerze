@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+
 import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,21 +9,24 @@ import { Label } from '@/components/ui/label';
 import logo from '@/assets/Softi.png';
 import heavyMachineryImg from '@/assets/login-home.jpg';
 
+
 export function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        username: '',
-        password: '',
+        username: 'carlos.alejandro89@outlook.com',
+        password: 'passwordSegura#1',
     });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         const result = await login(formData.username, formData.password);
-        toast.success('Sesión iniciada correctamente');
+        console.log("Login result: ", result);
+        setLoading(false);
+
         navigate('/dashboard', { replace: true });
         return;
     }

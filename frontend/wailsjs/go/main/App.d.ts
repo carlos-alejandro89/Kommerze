@@ -10,7 +10,11 @@ export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.Producto
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
+export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
+
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
+
+export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function SyncEmpaques():Promise<string>;
 

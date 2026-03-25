@@ -157,3 +157,13 @@ func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 	result, err := a.services.Pos.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
 	return result, err
 }
+
+func (a *App) ServiceLogin(username, password string) (*models.Usuario, error) {
+	result, err := a.services.Auth.LoginService(username, password)
+	return result, err
+}
+
+func (a *App) ServiceResetPassword(username, password string) (*models.Usuario, error) {
+	result, err := a.services.Auth.ResetPassword(username, password)
+	return result, err
+}

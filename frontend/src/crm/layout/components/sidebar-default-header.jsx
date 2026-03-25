@@ -33,13 +33,13 @@ const mockWorkspaces = [
     state: 'bg-emerald-500',
     isCurrent: true,
   },
-  
+
 ];
 
 export function SidebarDefaultHeader() {
   const { sidebarCollapse, setSidebarCollapse } = useLayout();
   const { theme, setTheme } = useTheme();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="group flex justify-between items-center gap-2.5 border-b border-border h-11 lg:h-(--sidebar-header-height) shrink-0 px-2.5">
@@ -77,7 +77,7 @@ export function SidebarDefaultHeader() {
                 <Settings className="size-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-          
+
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="size-4" />
                 <span>Cerrar sesión</span>
@@ -112,9 +112,9 @@ export function SidebarDefaultHeader() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              
+
             </DropdownMenuGroup>
-    
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

@@ -7,8 +7,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useLayout } from './layout-context';
+import { useAuth } from '@/providers/auth-provider';
 
 function DefaultContent() {
+  const { user, logout } = useAuth();
   return (
     <div className="shrink-0 border-t border-border flex items-center justify-between h-(--sidebar-footer-height) gap-(--sidebar-space-x) px-(--sidebar-space-x) overflow-hidden transition-all duration-1000 ease-in-out">
       <Button
@@ -16,21 +18,15 @@ function DefaultContent() {
         className="grow shrink-0 transition-all duration-200 ease-in-out"
       >
         <UserRoundPlus />
-        <span>Invite</span>
+        <span>{user.Nombre}</span>
       </Button>
-      <Separator orientation="vertical" />
-      <Button
-        variant="ghost"
-        className="grow shrink-0 transition-all duration-200 ease-in-out"
-      >
-        <CircleHelp />
-        <span>Help</span>
-      </Button>
+
     </div>
   );
 }
 
 function CollapsedContent() {
+  const { user } = useAuth();
   return (
     <div className="shrink-0 border-t border-border flex flex-col items-center justify-center gap-(--sidebar-space-x) h-(--sidebar-footer-collapsed-height)">
       <Tooltip delayDuration={500}>
@@ -40,19 +36,10 @@ function CollapsedContent() {
           </Button>
         </TooltipTrigger>
         <TooltipContent align="center" side="right" sideOffset={20}>
-          Invite your connections and earn rewards
+          {user.Nombre}
         </TooltipContent>
       </Tooltip>
-      <Tooltip delayDuration={500}>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-7 shrink-0">
-            <CircleHelp />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent align="center" side="right" sideOffset={20}>
-          Get Help from Support
-        </TooltipContent>
-      </Tooltip>
+
     </div>
   );
 }
