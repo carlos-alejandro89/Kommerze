@@ -2,7 +2,7 @@ import { Content } from '@/crm/layout/components/content';
 import { HistoryList } from "./history";
 import { PageHeader } from './page-header';
 import { ResumenVentas } from './resumen-ventas';
-import { PagosAplicados } from './pagos-aplicados';
+
 
 const mockPagos = [
     { ID: 1, Nombre: 'Tarjeta de Crédito', Referencia: 'Terminación 4567', Monto: 2300.00 },

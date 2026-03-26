@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     try {
       const result = await ServiceLogin(username, password);
-
       setUser(result);
       toast.success('Sesión iniciada correctamente');
     } catch (error) {

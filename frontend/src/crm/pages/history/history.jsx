@@ -12,6 +12,8 @@ import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 
+import { ModalDetalleTransaccion } from './modal-detalle-transaccion';
+
 import { getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table';
 
 import { moneyFormat } from '@/lib/helpers';
@@ -34,6 +36,15 @@ export function HistoryList() {
         'Completado': { variant: 'success', icon: CheckCircle },
         'Pendiente': { variant: 'warning', icon: Target },
         'Cancelado': { variant: 'destructive', icon: CircleMinus },
+    };
+
+    const [open, setOpen] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+    const handleViewDetails = (transaction) => {
+        setSelectedTransaction(transaction);
+
+        setOpen(true);
     };
 
     const tipoOperacionConfig = {
@@ -159,7 +170,7 @@ export function HistoryList() {
             cell: ({ row }) => {
                 return (
                     <Button variant="ghost" size="icon" className="size-7 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
-                        <ExternalLink className="size-4 text-muted-foreground" />
+                        <ExternalLink onClick={() => handleViewDetails(row.original)} className="size-4 text-muted-foreground" />
                     </Button>
                 );
             },
@@ -185,67 +196,75 @@ export function HistoryList() {
     });
 
     return (
-        <DataGrid
-            table={table}
-            recordCount={filterHistory.length}
-            tableLayout={{
-                dense: true,
-                columnsPinnable: true,
-                columnsResizable: true,
-                columnsMovable: true,
-                columnsVisibility: true,
-            }}
-        >
-            <Card className="shadow-sm border-border/60 rounded-xl overflow-hidden">
-                <CardHeader className="px-5 py-3.5">
-                    <CardHeading>
-                        <div className="flex items-center flex-wrap gap-3 justify-between w-full">
-                            <div className="flex items-center gap-3">
-                                {/* Search */}
-                                <div className="relative">
-                                    <Search className="size-4 text-muted-foreground absolute start-3 top-1/2 -translate-y-1/2" />
-                                    <Input
-                                        variant="sm"
-                                        placeholder="Buscar..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="ps-9 w-56 rounded-lg"
-                                    />
+        <>
+            <DataGrid
+                table={table}
+                recordCount={filterHistory.length}
+                tableLayout={{
+                    dense: true,
+                    columnsPinnable: true,
+                    columnsResizable: true,
+                    columnsMovable: true,
+                    columnsVisibility: true,
+                }}
+            >
+                <Card className="shadow-sm border-border/60 rounded-xl overflow-hidden">
+                    <CardHeader className="px-5 py-3.5">
+                        <CardHeading>
+                            <div className="flex items-center flex-wrap gap-3 justify-between w-full">
+                                <div className="flex items-center gap-3">
+                                    {/* Search */}
+                                    <div className="relative">
+                                        <Search className="size-4 text-muted-foreground absolute start-3 top-1/2 -translate-y-1/2" />
+                                        <Input
+                                            variant="sm"
+                                            placeholder="Buscar..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="ps-9 w-56 rounded-lg"
+                                        />
 
-                                    {searchQuery.length > 0 && (
-                                        <Button
-                                            mode="icon"
-                                            variant="ghost"
-                                            className="absolute end-1.5 top-1/2 -translate-y-1/2 h-6 w-6"
-                                            onClick={() => setSearchQuery('')}
-                                        >
-                                            <X />
-                                        </Button>
-                                    )}
+                                        {searchQuery.length > 0 && (
+                                            <Button
+                                                mode="icon"
+                                                variant="ghost"
+                                                className="absolute end-1.5 top-1/2 -translate-y-1/2 h-6 w-6"
+                                                onClick={() => setSearchQuery('')}
+                                            >
+                                                <X />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {filterHistory.length}{' '}
+                                        {filterHistory.length === 1 ? 'registro' : 'registros'}
+                                    </span>
                                 </div>
-
-                                <span className="text-xs text-muted-foreground tabular-nums">
-                                    {filterHistory.length}{' '}
-                                    {filterHistory.length === 1 ? 'registro' : 'registros'}
-                                </span>
                             </div>
-                        </div>
-                    </CardHeading>
-                    <CardToolbar>
-                    </CardToolbar>
-                </CardHeader>
+                        </CardHeading>
+                        <CardToolbar>
+                        </CardToolbar>
+                    </CardHeader>
 
-                <CardTable className="gap-4">
-                    <ScrollArea>
-                        <DataGridTable />
-                        <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                </CardTable>
+                    <CardTable className="gap-4">
+                        <ScrollArea>
+                            <DataGridTable />
+                            <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+                    </CardTable>
 
-                <CardFooter className="px-5 py-2 border-t border-border/40">
-                    <DataGridPagination className="py-1" />
-                </CardFooter>
-            </Card>
-        </DataGrid>
+                    <CardFooter className="px-5 py-2 border-t border-border/40">
+                        <DataGridPagination className="py-1" />
+                    </CardFooter>
+                </Card>
+            </DataGrid>
+
+            <ModalDetalleTransaccion
+                open={open}
+                onOpenChange={setOpen}
+                transaction={selectedTransaction}
+            />
+        </>
     );
 }

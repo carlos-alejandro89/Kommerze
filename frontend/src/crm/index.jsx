@@ -17,11 +17,13 @@ import { AuthGuard } from '@/components/auth-guard';
 import { CartOrderPlaced } from './pages/pos/cart-order-placed';
 import { HistoryPage } from './pages/history/page';
 
+
 export default function CrmModule() {
   return (
 
     <Routes>
       <Route path="login" element={<LoginPage />} />
+
       <Route element={<AuthGuard><DefaultLayout /></AuthGuard>}>
         <Route index element={<Navigate to="dashboard" replace />} />
 
