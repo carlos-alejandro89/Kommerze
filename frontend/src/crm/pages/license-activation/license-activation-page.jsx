@@ -8,47 +8,47 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import logo from '@/assets/Softi.png';
 import heavyMachineryImg from '@/assets/login-home.jpg';
-import { ServiceVerifyLicense } from '../../../../wailsjs/go/main/App';
+import { ServiceGetMachineID, ServiceActivateLicense } from '../../../../wailsjs/go/main/App';
 
-export function LoginPage() {
+export function LicenseActivationPage() {
     const navigate = useNavigate();
-    const { login } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        username: 'carlos.alejandro89@outlook.com',
-        password: 'passwordSegura#1',
+        licenseKey: 'KMZ-STD-23DK-320A',
+        deviceName: '',
+        machineId: '',
     });
 
-    const verifyLicense = async () => {
+    const getMachineID = async () => {
         try {
-            const result = await ServiceVerifyLicense();
-            console.log('Valid license: ', result);
-            if (!result) {
-                navigate('/license/activate', { replace: true });
-                return;
-            }
+            const result = await ServiceGetMachineID();
+            setFormData(prev => ({ ...prev, machineId: result }));
         } catch (error) {
-            console.log("Error al cargar licencia")
-            console.log("License error: ", error);
-            navigate('/license/activate', { replace: true });
+            console.log("Error al obtener ID de maquina")
+            console.log("Machine ID error: ", error);
             return;
 
         }
     }
 
     useEffect(() => {
-        verifyLicense();
+        getMachineID();
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const result = await login(formData.username, formData.password);
-        setLoading(false);
-
-        navigate('/dashboard', { replace: true });
-        return;
+        try {
+            const result = await ServiceActivateLicense(formData);
+            console.log("Result: ", result);
+            navigate('/dashboard', { replace: true });
+        } catch (error) {
+            console.error("Error al activar:", error);
+            alert("No se pudo activar la licencia: " + error);
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -74,30 +74,43 @@ export function LoginPage() {
                         <form onSubmit={handleSubmit}>
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="username">Colaborador ID</Label>
+                                    <Label htmlFor="licenseKey">Licencia</Label>
                                     <Input
-                                        id="username"
+                                        id="licenseKey"
                                         placeholder="admin@softi.digital"
                                         type="text"
                                         autoCapitalize="none"
                                         autoCorrect="off"
                                         disabled={loading}
-                                        value={formData.username}
-                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                        value={formData.licenseKey}
+                                        onChange={(e) => setFormData({ ...formData, licenseKey: e.target.value })}
                                         className="bg-white/50 dark:bg-zinc-900/50"
                                     />
                                 </div>
                                 <div className="grid gap-2">
                                     <div className="flex items-center">
-                                        <Label htmlFor="password">PIN / Password</Label>
+                                        <Label htmlFor="password">Nombre del dispositivo</Label>
                                     </div>
                                     <Input
-                                        id="password"
-                                        placeholder="••••••••"
-                                        type="password"
+                                        id="deviceName"
+                                        placeholder="Caja 1"
+                                        type="text"
                                         disabled={loading}
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        value={formData.deviceName}
+                                        onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
+                                        className="bg-white/50 dark:bg-zinc-900/50"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <div className="flex items-center">
+                                        <Label htmlFor="password">Equipo ID</Label>
+                                    </div>
+                                    <Input
+                                        id="machineId"
+                                        placeholder="••••••••"
+                                        type="text"
+                                        disabled={loading}
+                                        value={formData.machineId}
                                         className="bg-white/50 dark:bg-zinc-900/50"
                                     />
                                 </div>
@@ -105,10 +118,10 @@ export function LoginPage() {
                                     {loading ? (
                                         <div className="flex items-center gap-2">
                                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
-                                            <span>Autenticando...</span>
+                                            <span>Activando...</span>
                                         </div>
                                     ) : (
-                                        'Acceder al Sistema'
+                                        'Activar Licencia'
                                     )}
                                 </Button>
                             </div>

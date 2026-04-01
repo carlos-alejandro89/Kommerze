@@ -16,6 +16,7 @@ import { CartStepThree } from './pages/pos/cart-step-three'
 import { AuthGuard } from '@/components/auth-guard';
 import { CartOrderPlaced } from './pages/pos/cart-order-placed';
 import { HistoryPage } from './pages/history/page';
+import { LicenseActivationPage } from './pages/license-activation/license-activation-page';
 
 
 export default function CrmModule() {
@@ -23,6 +24,7 @@ export default function CrmModule() {
 
     <Routes>
       <Route path="login" element={<LoginPage />} />
+      <Route path="license/activate" element={<LicenseActivationPage />} />
 
       <Route element={<AuthGuard><DefaultLayout /></AuthGuard>}>
         <Route index element={<Navigate to="dashboard" replace />} />

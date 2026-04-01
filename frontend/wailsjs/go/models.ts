@@ -411,3 +411,24 @@ export namespace models {
 
 }
 
+export namespace requestdto {
+	
+	export class ActivateLicenseRequest {
+	    licenseKey: string;
+	    deviceName: string;
+	    machineId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ActivateLicenseRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.licenseKey = source["licenseKey"];
+	        this.deviceName = source["deviceName"];
+	        this.machineId = source["machineId"];
+	    }
+	}
+
+}
+

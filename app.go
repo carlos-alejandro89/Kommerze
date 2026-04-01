@@ -4,6 +4,7 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
+	requestdto "BitComercio/internal/services/requestDto"
 	"context"
 
 	"github.com/google/uuid"
@@ -166,4 +167,21 @@ func (a *App) ServiceLogin(username, password string) (*models.Usuario, error) {
 func (a *App) ServiceResetPassword(username, password string) (*models.Usuario, error) {
 	result, err := a.services.Auth.ResetPassword(username, password)
 	return result, err
+}
+
+func (a *App) ServiceGetMachineID() (string, error) {
+	machineID, err := services.GetMachineID()
+	if err != nil {
+		return "", err
+	}
+	return machineID, nil
+}
+
+func (a *App) ServiceActivateLicense(licenseKey requestdto.ActivateLicenseRequest) (any, error) {
+	result, err := a.services.License.ActivateLicense(licenseKey)
+	return result, err
+}
+
+func (a *App) ServiceVerifyLicense() (bool, error) {
+	return services.VerifyLicense()
 }

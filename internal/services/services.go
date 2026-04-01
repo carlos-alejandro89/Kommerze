@@ -8,9 +8,10 @@ import (
 )
 
 type Services struct {
-	Sync *SyncService
-	Pos  *PosService
-	Auth *AuthService
+	Sync    *SyncService
+	Pos     *PosService
+	Auth    *AuthService
+	License *LicenseService
 }
 
 func NewServices(db *gorm.DB) *Services {
@@ -20,8 +21,9 @@ func NewServices(db *gorm.DB) *Services {
 	apiURL := os.Getenv("API_BASE_URL")
 
 	return &Services{
-		Sync: NewSyncService(db, repo, repoPrecios, apiURL),
-		Pos:  NewPosService(db),
-		Auth: NewAuthService(repoUsuarios),
+		Sync:    NewSyncService(db, repo, repoPrecios, apiURL),
+		Pos:     NewPosService(db),
+		Auth:    NewAuthService(repoUsuarios),
+		License: NewLicenseService(apiURL),
 	}
 }
