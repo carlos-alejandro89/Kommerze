@@ -26,6 +26,10 @@ export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
 }
 
+export function ServiceObtenerOperacionSucursal(arg1) {
+  return window['go']['main']['App']['ServiceObtenerOperacionSucursal'](arg1);
+}
+
 export function ServiceObtenerTiposPedido() {
   return window['go']['main']['App']['ServiceObtenerTiposPedido']();
 }

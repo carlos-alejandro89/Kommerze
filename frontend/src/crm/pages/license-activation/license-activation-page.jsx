@@ -41,10 +41,8 @@ export function LicenseActivationPage() {
         setLoading(true);
         try {
             const result = await ServiceActivateLicense(formData);
-            console.log("Result: ", result);
             navigate('/dashboard', { replace: true });
         } catch (error) {
-            console.error("Error al activar:", error);
             alert("No se pudo activar la licencia: " + error);
         } finally {
             setLoading(false);

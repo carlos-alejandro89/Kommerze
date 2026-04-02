@@ -3,16 +3,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/providers/auth-provider';
+import { useActivation } from '@/providers/activation-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import logo from '@/assets/Softi.png';
 import heavyMachineryImg from '@/assets/login-home.jpg';
-import { ServiceVerifyLicense } from '../../../../wailsjs/go/main/App';
 
 export function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
+    const { verifyLicense, storeStatus, isStoreOpen } = useActivation();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -20,25 +21,31 @@ export function LoginPage() {
         password: 'passwordSegura#1',
     });
 
-    const verifyLicense = async () => {
+
+
+    const handleVerifyLicense = async () => {
         try {
-            const result = await ServiceVerifyLicense();
-            console.log('Valid license: ', result);
-            if (!result) {
+            const success = await verifyLicense();
+            if (!success) {
                 navigate('/license/activate', { replace: true });
-                return;
             }
         } catch (error) {
-            console.log("Error al cargar licencia")
-            console.log("License error: ", error);
             navigate('/license/activate', { replace: true });
-            return;
+        }
+    }
 
+    const handleStoreStatus = async () => {
+        try {
+            const success = await storeStatus();
+            console.log("Store Status", success);
+        } catch (error) {
+            console.error("Error al obtener el estado de la sucursal", error);
         }
     }
 
     useEffect(() => {
-        verifyLicense();
+        handleVerifyLicense();
+        handleStoreStatus();
     }, []);
 
     const handleSubmit = async (e) => {

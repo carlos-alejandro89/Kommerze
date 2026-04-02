@@ -7,10 +7,13 @@ import { Sidebar } from './sidebar';
 import { Footer } from './footer';
 import { DialogOpenShop } from './dialog-open-shop';
 
+import { useActivation } from '@/providers/activation-provider';
+
 export function Layout() {
   const { sidebarCollapse } = useLayout();
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(true);
+  const { isStoreOpen } = useActivation();
+  const [open, setOpen] = useState(!isStoreOpen);
 
   const handleOpenChange = (value) => {
     setOpen(value);

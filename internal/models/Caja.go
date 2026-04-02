@@ -4,14 +4,14 @@ type Caja struct {
 	BaseModel
 
 	// 🏷 Identificación
-	Nombre string `gorm:"size:100;not null"`        // Caja 1
-	Clave  string `gorm:"size:20;uniqueIndex"`     // CAJA-01
+	Clave    string `gorm:"size:200;uniqueIndex"` // CAJA-01
+	Nombre   string `gorm:"size:100;not null"`    // Caja 1
+	Licencia string
 
 	// ⚙ Configuración
-	Activa         bool `gorm:"default:true"`
-	PermiteVentas  bool `gorm:"default:true"`
-	EsPrincipal    bool `gorm:"default:false"`
-
+	Activa        bool `gorm:"default:true"`
+	PermiteVentas bool `gorm:"default:true"`
+	EsPrincipal   bool `gorm:"default:false"`
 }
 
 func (Caja) TableName() string {

@@ -182,6 +182,10 @@ func (a *App) ServiceActivateLicense(licenseKey requestdto.ActivateLicenseReques
 	return result, err
 }
 
-func (a *App) ServiceVerifyLicense() (bool, error) {
+func (a *App) ServiceVerifyLicense() *dto.ResponseDto {
 	return services.VerifyLicense()
+}
+
+func (a *App) ServiceObtenerOperacionSucursal(licencia string) *dto.ResponseDto {
+	return a.services.OperacionesSucursal.ObtenerOperacionSucursal(licencia)
 }

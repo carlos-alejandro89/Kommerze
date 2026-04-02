@@ -5,6 +5,7 @@ import { LoadingBarContainer } from 'react-top-loading-bar';
 import { Toaster } from '@/components/ui/sonner';
 import { ModulesProvider } from './providers/modules-provider';
 import { AuthProvider } from './providers/auth-provider';
+import { ActivationProvider } from './providers/activation-provider';
 
 const { BASE_URL } = import.meta.env;
 
@@ -23,7 +24,9 @@ export function App() {
           <BrowserRouter basename={BASE_URL}>
             <Toaster />
             <AuthProvider>
-              <ModulesProvider />
+              <ActivationProvider>
+                <ModulesProvider />
+              </ActivationProvider>
             </AuthProvider>
           </BrowserRouter>
         </LoadingBarContainer>

@@ -17,11 +17,13 @@ export function ServiceGetMachineID():Promise<string>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
+export function ServiceObtenerOperacionSucursal(arg1:string):Promise<dto.ResponseDto>;
+
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
-export function ServiceVerifyLicense():Promise<boolean>;
+export function ServiceVerifyLicense():Promise<dto.ResponseDto>;
 
 export function SyncEmpaques():Promise<string>;
 

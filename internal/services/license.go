@@ -1,10 +1,15 @@
 package services
 
 import (
+	"BitComercio/internal/models"
+	"BitComercio/internal/repository"
+	"BitComercio/internal/repository/dto"
 	requestdto "BitComercio/internal/services/requestDto"
 	"bytes"
 	"encoding/json"
 	"io"
+
+	gorm "gorm.io/gorm"
 
 	"crypto/ed25519"
 	"encoding/base64"
@@ -19,11 +24,14 @@ import (
 
 type LicenseService struct {
 	apiBaseURL string
+	cajaRepo   *repository.CajasRepository
 }
 
-func NewLicenseService(apiBaseURL string) *LicenseService {
+func NewLicenseService(db *gorm.DB, apiBaseURL string) *LicenseService {
+	repoCajas := repository.NewCajasRepository(db)
 	return &LicenseService{
 		apiBaseURL: apiBaseURL,
+		cajaRepo:   repoCajas,
 	}
 }
 
@@ -84,42 +92,47 @@ func GetMachineID() (string, error) {
 	return id, nil
 }
 
-func VerifyLicense() (bool, error) {
+func VerifyLicense() *dto.ResponseDto {
 	loadLicense, err := LoadLicense()
 	if err != nil {
-		return false, err
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	machineID, err := GetMachineID()
+	if err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	if loadLicense.MachineID != machineID {
+		return dto.NewResponseDto(false, "Licencia no corresponde a este equipo", nil, []string{"Licencia no corresponde a este equipo"})
 	}
 
 	publicKeyHex := os.Getenv("PUBLIC_KEY")
 	// 1. Convertir la llave pública de Hex a Bytes
 	pubKeyBytes, err := hex.DecodeString(publicKeyHex)
 	if err != nil {
-		return false, fmt.Errorf("error en llave pública: %v", err)
+		return dto.NewResponseDto(false, fmt.Errorf("error en llave pública: %v", err).Error(), nil, []string{err.Error()})
 	}
 	pubKey := ed25519.PublicKey(pubKeyBytes)
 
 	// 2. Reconstruir el "payload" EXACTAMENTE como lo hizo el servidor C#
-	// Formato: machine_id|license_key|expires_at
-	// string payload = $"{machineId}|{licenseKey}|{expiration.ToString("yyyy-MM-ddTHH:mm:ss")}";
 	payload := fmt.Sprintf("%s|%s|%s", loadLicense.MachineID, loadLicense.LicenseKey, loadLicense.ExpirationDate)
 	message := []byte(payload)
-
-	fmt.Println("MachineID: ", loadLicense.MachineID)
-	fmt.Println("LicenseKey: ", loadLicense.LicenseKey)
-	fmt.Println("ExpirationDate: ", loadLicense.ExpirationDate)
-	fmt.Println("Signature: ", loadLicense.Signature)
-	fmt.Println("Payload: ", payload)
 
 	// 3. Decodificar la firma de Base64 (que envió el servidor)
 	sig, err := base64.StdEncoding.DecodeString(loadLicense.Signature)
 	if err != nil {
-		return false, fmt.Errorf("firma inválida: %v", err)
+		return dto.NewResponseDto(false, fmt.Errorf("firma inválida: %v", err).Error(), nil, []string{err.Error()})
 	}
 
 	// 4. Verificación Criptográfica
 	isValid := ed25519.Verify(pubKey, message, sig)
 
-	return isValid, nil
+	if !isValid {
+		return dto.NewResponseDto(false, "Firma inválida", nil, []string{"Firma inválida"})
+	}
+
+	return dto.NewResponseDto(true, "Licencia válida", loadLicense, nil)
 }
 
 func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRequest) (any, error) {
@@ -162,6 +175,18 @@ func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRe
 	}
 
 	os.WriteFile(path, jsonData, 0644)
+
+	model := models.Caja{
+		Clave:    licenseKey.MachineId,
+		Nombre:   licenseKey.DeviceName,
+		Activa:   true,
+		Licencia: licenseKey.LicenseKey,
+	}
+
+	err = l.cajaRepo.ActivarCaja(model)
+	if err != nil {
+		return nil, err
+	}
 
 	return result.Data, nil
 }
