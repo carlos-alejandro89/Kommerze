@@ -4,6 +4,9 @@ import { ServiceVerifyLicense, ServiceActivateLicense, ServiceObtenerOperacionSu
 
 export const ActivationProvider = ({ children }) => {
     const [license, setLicense] = useState(null);
+    const [store, setStore] = useState(null);
+    const [empresa, setEmpresa] = useState(null);
+    const [operation, setOperation] = useState(null);
     const [isValid, setIsValid] = useState(false);
     const [isStoreOpen, setIsStoreOpen] = useState(false);
 
@@ -33,11 +36,15 @@ export const ActivationProvider = ({ children }) => {
 
     const storeStatus = async () => {
         try {
-            const result = await ServiceObtenerOperacionSucursal(license.licencia);
-            console.log("StoreStatus", result);
-            setIsStoreOpen(result.data.length > 0);
-            return result.success;
+            console.log("iniciando servicio de estatus de tienda");
+            const result = await ServiceObtenerOperacionSucursal(license.LicenseKey);
+            setEmpresa(result.data.empresa);
+            setIsStoreOpen(result.data.operaciones.length > 0);
+            setOperation(result.data.operaciones[0]);
+            setStore(result.data.sucursal);
+            return result.data.operaciones.length > 0;
         } catch (error) {
+            console.error("Error al obtener el estado de la sucursal", error);
             setIsStoreOpen(false);
             return false;
         }
@@ -45,6 +52,9 @@ export const ActivationProvider = ({ children }) => {
 
     const value = {
         license,
+        empresa,
+        store,
+        operation,
         verifyLicense,
         isValid,
         isStoreOpen,

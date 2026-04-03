@@ -4,32 +4,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toAbsoluteUrl } from "@/lib/helpers";
 
 import {
     Building2,
     IdCard,
-    User,
     Store,
     Package,
     TrendingUp,
     Wallet,
-    Banknote,
     Info,
     Check,
     ArrowRight,
-    Mail,
-    Phone
+    Mail
 } from "lucide-react";
 
 import { useAuth } from '@/providers/auth-provider';
+import { useActivation } from '@/providers/activation-provider';
 
 export function DialogOpenShop({ open, onOpenChange }) {
     const { user, logout } = useAuth();
+    const { license, store, empresa, operation } = useActivation();
+    const isLoading = false;
+
     const note = {
-        title: "Sayer Tamulté",
-        org: "M. Valencia",
-        content: "ID: 44291",
+        storeName: store.NombreSucursal,
+        org: empresa.RazonSocial,
+        content: "ID: " + store.Guid,
         logo: "https://images.unsplash.com/photo-1511485977113-f34c92461ad9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
     }
 
@@ -51,15 +53,15 @@ export function DialogOpenShop({ open, onOpenChange }) {
                             <div className="flex flex-wrap gap-4 ">
                                 <div className="border bg-background p-2.5 flex flex-col justify-between bg-muted/30 p-4 rounded-md min-w-[140px] border border-slate-200 ">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Terminal</p>
-                                    <p className="font-bold text-foreground text-sm">TERM-0442</p>
+                                    {isLoading ? <Skeleton className="h-4 w-[80px]" /> : <p className="font-bold text-foreground text-sm">TERM-0442</p>}
                                 </div>
                                 <div className="border bg-background p-2.5 flex flex-col justify-between bg-muted/30 p-4 rounded-md min-w-[140px] border border-slate-200">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Fecha</p>
-                                    <p className="font-bold text-foreground text-sm">24 Oct, 2023</p>
+                                    {isLoading ? <Skeleton className="h-4 w-[80px]" /> : <p className="font-bold text-foreground text-sm">{new Date().toLocaleDateString()}</p>}
                                 </div>
                                 <div className="border bg-background p-2.5 flex flex-col justify-between bg-muted/30 p-4 rounded-md min-w-[140px] border border-slate-200">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Sucursal</p>
-                                    <p className="font-bold text-foreground text-sm">{note.title}</p>
+                                    {isLoading ? <Skeleton className="h-4 w-[120px]" /> : <p className="font-bold text-foreground text-sm">{note.storeName}</p>}
                                 </div>
                             </div>
                         </div>
@@ -77,15 +79,15 @@ export function DialogOpenShop({ open, onOpenChange }) {
                                     <div className="space-y-5">
                                         <div>
                                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Razón Social</p>
-                                            <p className="text-foreground font-semibold text-sm">Admiral Commerce S.A. de C.V.</p>
+                                            {isLoading ? <Skeleton className="h-4 w-[250px]" /> : <p className="text-foreground font-semibold text-sm">{empresa?.RazonSocial}</p>}
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">RFC</p>
-                                            <p className="text-foreground font-medium font-mono text-sm">ACM123456ABC</p>
+                                            {isLoading ? <Skeleton className="h-4 w-[150px]" /> : <p className="text-foreground font-medium font-mono text-sm">{empresa?.RFC}</p>}
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Dirección Fiscal</p>
-                                            <p className="text-foreground text-xs leading-relaxed">Av. Paseo de Desarrollo 404, Piso 8, Centro, CDMX</p>
+                                            {isLoading ? <div className="space-y-1 mt-1"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-[200px]" /></div> : <p className="text-foreground text-xs leading-relaxed">{empresa?.Calle} {empresa?.Exterior} {empresa?.Interior} {empresa?.Colonia} {empresa?.Ciudad} {empresa?.Estado} {empresa?.CodigoPostal}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -99,35 +101,40 @@ export function DialogOpenShop({ open, onOpenChange }) {
                                     {/**Responsable */}
                                     <div className="space-y-4">
                                         <div className="space-y-1.5 focus-within:text-primary transition-colors">
-                                            <div className="flex items-center gap-4 w-full">
-                                                <Avatar className="size-16 rounded-xl shrink-0 bg-transparent">
-                                                    <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
-                                                    <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl font-bold">CM</AvatarFallback>
-                                                </Avatar>
-
-                                                <div className="flex flex-col w-full justify-center">
-
-
-                                                    <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">{user?.Nombre}</h4>
-
-                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Mail className="size-3.5 opacity-70" />
-                                                            <span>{user?.CorreoElectronico}</span>
-                                                        </div>
-
-
+                                            {isLoading ? (
+                                                <div className="flex items-center gap-4 w-full">
+                                                    <Skeleton className="h-16 w-16 rounded-xl shrink-0" />
+                                                    <div className="flex flex-col space-y-2 w-full justify-center mt-1">
+                                                        <Skeleton className="h-4 w-[200px]" />
+                                                        <Skeleton className="h-3 w-[140px]" />
                                                     </div>
-
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="flex items-center gap-4 w-full">
+                                                    <Avatar className="size-16 rounded-xl shrink-0 bg-transparent">
+                                                        <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
+                                                        <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl font-bold">CM</AvatarFallback>
+                                                    </Avatar>
+
+                                                    <div className="flex flex-col w-full justify-center">
+                                                        <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">{user?.Nombre}</h4>
+
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Mail className="size-3.5 opacity-70" />
+                                                                <span>{user?.CorreoElectronico}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                         {/**ID Sucursal */}
                                         <div className="space-y-1.5 focus-within:text-primary transition-colors">
                                             <Label className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">ID de Sucursal</Label>
                                             <div className="flex items-center bg-muted/50 rounded-lg p-2.5 border border-transparent focus-within:border-primary/50 transition-all">
                                                 <Store className="text-muted-foreground size-4 mr-3" />
-                                                <Input className="bg-transparent border-0 h-auto p-0 focus-visible:ring-0 text-foreground font-medium text-sm shadow-none" readOnly value="SUC-NORTE-882" />
+                                                {isLoading ? <Skeleton className="h-5 w-[140px]" /> : <Input className="bg-transparent border-0 h-auto p-0 focus-visible:ring-0 text-foreground font-medium text-sm shadow-none" readOnly value={store.Guid} />}
                                             </div>
                                         </div>
                                     </div>
@@ -158,11 +165,20 @@ export function DialogOpenShop({ open, onOpenChange }) {
                                                     <Package className="text-white size-5" />
                                                 </div>
                                             </div>
-                                            <div className="mb-6">
-                                                <p className="text-4xl font-black text-white tracking-tighter drop-shadow-sm">$1,485,200.00</p>
-                                                <p className="text-[10px] text-blue-200/70 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
-                                                    <TrendingUp className="size-3.5" /> Actualizado hace 2 min
-                                                </p>
+                                            <div className="mb-6 h-[56px] flex flex-col justify-end">
+                                                {isLoading ? (
+                                                    <div className="space-y-2">
+                                                        <Skeleton className="h-9 w-[200px] bg-white/20" />
+                                                        <Skeleton className="h-3 w-[150px] bg-white/20" />
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <p className="text-4xl font-black text-white tracking-tighter drop-shadow-sm">$1,485,200.00</p>
+                                                        <p className="text-[10px] text-blue-200/70 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                                                            <TrendingUp className="size-3.5" /> Actualizado hace 2 min
+                                                        </p>
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="mt-auto">
                                                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-md">
@@ -196,11 +212,20 @@ export function DialogOpenShop({ open, onOpenChange }) {
                                                 <Wallet className="text-primary size-5" />
                                             </div>
                                         </div>
-                                        <div className="mb-6">
-                                            <p className="text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight">$7,500.00</p>
-                                            <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
-                                                <Check className="size-3.5" /> Monto Autorizado
-                                            </p>
+                                        <div className="mb-6 h-[56px] flex flex-col justify-end">
+                                            {isLoading ? (
+                                                <div className="space-y-2">
+                                                    <Skeleton className="h-9 w-[180px]" />
+                                                    <Skeleton className="h-3 w-[120px]" />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <p className="text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight">$7,500.00</p>
+                                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                                                        <Check className="size-3.5" /> Monto Autorizado
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
                                         <div className="mt-auto space-y-2">
                                             <div className="flex justify-between items-center p-2.5 bg-muted/50 rounded-md">
@@ -223,7 +248,7 @@ export function DialogOpenShop({ open, onOpenChange }) {
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Listo para Apertura</span>
                                         </div>
                                         <p className="text-muted-foreground text-xs leading-relaxed">
-                                            Al confirmar, se registrará el inicio de la jornada operativa para la sucursal <strong className="text-foreground">SUC-NORTE-882</strong> bajo la responsabilidad de <strong className="text-foreground">{user?.Nombre}</strong>.
+                                            Al confirmar, se registrará el inicio de la jornada operativa para la sucursal <strong className="text-foreground">{store?.NombreSucursal}</strong> bajo la responsabilidad de <strong className="text-foreground">{user?.Nombre}</strong>.
                                         </p>
                                     </div>
                                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">

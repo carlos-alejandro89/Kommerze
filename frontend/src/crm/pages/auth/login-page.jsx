@@ -13,7 +13,7 @@ import heavyMachineryImg from '@/assets/login-home.jpg';
 export function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
-    const { verifyLicense, storeStatus, isStoreOpen } = useActivation();
+    const { verifyLicense, storeStatus, empresa, isStoreOpen } = useActivation();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -37,7 +37,7 @@ export function LoginPage() {
     const handleStoreStatus = async () => {
         try {
             const success = await storeStatus();
-            console.log("Store Status", success);
+
         } catch (error) {
             console.error("Error al obtener el estado de la sucursal", error);
         }
@@ -45,12 +45,13 @@ export function LoginPage() {
 
     useEffect(() => {
         handleVerifyLicense();
-        handleStoreStatus();
+
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        if (empresa === null) handleStoreStatus();
         const result = await login(formData.username, formData.password);
         setLoading(false);
 

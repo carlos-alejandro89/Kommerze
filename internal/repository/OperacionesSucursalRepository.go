@@ -23,10 +23,28 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursal(licencia string
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
-	var operaciones []models.OperacionSucursal
-	err = o.db.Where("sucursal_id = ?", sucursal.ID).Where("estatus_id = ?", 1).Find(&operaciones).Error
+	type data struct {
+		Empresa     models.Empresa             `json:"empresa"`
+		Sucursal    models.Sucursal            `json:"sucursal"`
+		Operaciones []models.OperacionSucursal `json:"operaciones"`
+	}
+
+	var empresa models.Empresa
+	err = o.db.Where("id = ?", sucursal.EmpresaID).First(&empresa).Error
 	if err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
-	return dto.NewResponseDto(true, "Operaciones obtenidas correctamente", operaciones, nil)
+
+	var response data
+	response.Sucursal = sucursal
+	response.Empresa = empresa
+
+	var operaciones []models.OperacionSucursal
+	err = o.db.Where("sucursal_id = ?", sucursal.ID).Where("estatus_id = ?", 1).Find(&operaciones).Error
+	if err != nil {
+		return dto.NewResponseDto(false, err.Error(), response, []string{err.Error()})
+	}
+
+	response.Operaciones = operaciones
+	return dto.NewResponseDto(true, "Operaciones obtenidas correctamente", response, nil)
 }
