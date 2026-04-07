@@ -258,6 +258,26 @@ export namespace dto {
 	        this.errors = source["errors"];
 	    }
 	}
+	export class SucursalInicioOperacionesDto {
+	    Usuario: number;
+	    Sucursal: number;
+	    FechaInicio: string;
+	    ValorInventarioInicial: number;
+	    FondoCaja: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SucursalInicioOperacionesDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Usuario = source["Usuario"];
+	        this.Sucursal = source["Sucursal"];
+	        this.FechaInicio = source["FechaInicio"];
+	        this.ValorInventarioInicial = source["ValorInventarioInicial"];
+	        this.FondoCaja = source["FondoCaja"];
+	    }
+	}
 
 }
 

@@ -21,7 +21,11 @@ export function ServiceObtenerOperacionSucursal(arg1:string):Promise<dto.Respons
 
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
+export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
+
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
+
+export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
 
 export function ServiceVerifyLicense():Promise<dto.ResponseDto>;
 

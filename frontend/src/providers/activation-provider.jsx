@@ -1,6 +1,6 @@
 import { useState, createContext, useContext } from "react";
 import { ActivationContext } from "./activation-context";
-import { ServiceVerifyLicense, ServiceActivateLicense, ServiceObtenerOperacionSucursal } from '../../wailsjs/go/main/App';
+import { ServiceVerifyLicense, ServiceActivateLicense, ServiceObtenerOperacionSucursal, ServiceObtenerValorInventario } from '../../wailsjs/go/main/App';
 
 export const ActivationProvider = ({ children }) => {
     const [license, setLicense] = useState(null);
@@ -9,6 +9,7 @@ export const ActivationProvider = ({ children }) => {
     const [operation, setOperation] = useState(null);
     const [isValid, setIsValid] = useState(false);
     const [isStoreOpen, setIsStoreOpen] = useState(false);
+    const [valorInventario, setValorInventario] = useState(0);
 
     const verifyLicense = async () => {
         try {
@@ -50,6 +51,18 @@ export const ActivationProvider = ({ children }) => {
         }
     }
 
+    const getInventoryValue = async () => {
+        try {
+            const result = await ServiceObtenerValorInventario();
+            console.log("valor del inventario", result.data);
+            setValorInventario(result.data);
+            return result.data.valorInventario;
+        } catch (error) {
+            console.error("Error al obtener el valor del inventario", error);
+            return 0;
+        }
+    }
+
     const value = {
         license,
         empresa,
@@ -59,6 +72,8 @@ export const ActivationProvider = ({ children }) => {
         isValid,
         isStoreOpen,
         storeStatus,
+        valorInventario,
+        getInventoryValue,
     };
 
     return (

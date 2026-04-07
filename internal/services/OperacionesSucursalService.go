@@ -20,3 +20,11 @@ func NewOperacionesSucursalService(db *gorm.DB) *OperacionesSucursalService {
 func (o *OperacionesSucursalService) ObtenerOperacionSucursal(sucursalID string) *dto.ResponseDto {
 	return o.operacionesSucursalRepo.ObtenerOperacionSucursal(sucursalID)
 }
+
+func (o *OperacionesSucursalService) ObtenerValorInventario() *dto.ResponseDto {
+	return o.operacionesSucursalRepo.ObtenerValorInventario()
+}
+
+func (o *OperacionesSucursalService) SucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
+	return o.operacionesSucursalRepo.SucursalInicioOperacion(datos)
+}

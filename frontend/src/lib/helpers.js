@@ -132,8 +132,9 @@ export function moneyFormat(moneyValue) {
 }
 
 export function reverseMoneyFormat(formatValue) {
-  var valorLimpio = formatValue.replace(/[\$,]/g, '');
-  return valorLimpio;
+  if (formatValue == null) return '';
+  var valorLimpio = String(formatValue).replace(/[\$, ]/g, '');
+  return parseFloat(valorLimpio);
 }
 
 

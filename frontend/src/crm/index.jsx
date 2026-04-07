@@ -6,7 +6,8 @@ import ContactsPage from './pages/contacts/page';
 import { Dashboard } from './pages/dashboard/page';
 import { DealsPage } from './pages/deals/page';
 import { NotesPage } from './pages/notes/page';
-import { TasksPage } from './pages/tasks/page';
+import { ProductsPage } from './pages/products/page';
+import { CreateProductPage } from './pages/products/create-page';
 import { StoreClientPage } from './pages/store-client/home/store-client-page'
 import { LoginPage } from './pages/auth/login-page'
 import { SyncPage } from './pages/sync/page'
@@ -30,7 +31,8 @@ export default function CrmModule() {
         <Route index element={<Navigate to="dashboard" replace />} />
 
         <Route path="dashboard" element={<StoreClientPage />} />
-        <Route path="tasks/" element={<TasksPage />} />
+        <Route path="products/" element={<ProductsPage />} />
+        <Route path="products/new" element={<CreateProductPage />} />
         <Route path="notes/" element={<NotesPage />} />
         <Route path="companies/" element={<CompaniesListPage />} />
         <Route path="company/" element={<CompanyPage />} />

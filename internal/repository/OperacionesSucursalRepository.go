@@ -3,6 +3,9 @@ package repository
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	"time"
+
+	"github.com/shopspring/decimal"
 
 	gorm "gorm.io/gorm"
 )
@@ -47,4 +50,34 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursal(licencia string
 
 	response.Operaciones = operaciones
 	return dto.NewResponseDto(true, "Operaciones obtenidas correctamente", response, nil)
+}
+
+func (o *OperacionesSucursalRepository) ObtenerValorInventario() *dto.ResponseDto {
+	var inventario models.SucursalProducto
+	var valorInventario float64
+
+	err := o.db.Model(&inventario).Select("SUM (precio_venta*existencia) as ValorInventario").Scan(&valorInventario).Error
+	if err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+	return dto.NewResponseDto(true, "Inventario obtenido correctamente", valorInventario, nil)
+}
+
+func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
+
+	var estatus = uint(1)
+	var usuario = uint(datos.Usuario)
+	var sucursal = uint(datos.Sucursal)
+
+	var operacion = models.OperacionSucursal{
+		UsuarioAperturaID:      &usuario,
+		EstatusID:              &estatus,
+		SucursalID:             sucursal,
+		FechaInicio:            time.Now(),
+		ValorInicialInventario: decimal.NewFromFloat(datos.ValorInventarioInicial),
+	}
+
+	o.db.Create(&operacion)
+
+	return dto.NewResponseDto(true, "Operación iniciada correctamente", nil, nil)
 }

@@ -13,7 +13,7 @@ import heavyMachineryImg from '@/assets/login-home.jpg';
 export function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
-    const { verifyLicense, storeStatus, empresa, isStoreOpen } = useActivation();
+    const { verifyLicense, storeStatus, empresa, isStoreOpen, getInventoryValue } = useActivation();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -37,6 +37,7 @@ export function LoginPage() {
     const handleStoreStatus = async () => {
         try {
             const success = await storeStatus();
+            const inventoryValue = await getInventoryValue();
 
         } catch (error) {
             console.error("Error al obtener el estado de la sucursal", error);

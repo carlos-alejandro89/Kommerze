@@ -1,7 +1,7 @@
 import {
   BriefcaseBusiness,
   Building2,
-  CheckSquare,
+  Box,
   CircleEllipsis,
   GalleryVerticalEnd,
   Home,
@@ -33,17 +33,17 @@ export const MAIN_NAV = [
     id: 'history',
   },
   {
-    icon: CheckSquare,
-    title: 'Tasks',
-    path: '/tasks',
+    icon: Box,
+    title: 'Productos',
+    path: '/products',
     pinnable: true,
     pinned: true,
     badge: '3',
-    id: 'tasks',
+    id: 'products',
     more: true,
     new: {
-      tooltip: 'New Task',
-      path: '/tasks/new',
+      tooltip: 'Crear Producto',
+      path: '/products/new',
     },
   },
   {

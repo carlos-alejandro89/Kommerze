@@ -189,3 +189,11 @@ func (a *App) ServiceVerifyLicense() *dto.ResponseDto {
 func (a *App) ServiceObtenerOperacionSucursal(licencia string) *dto.ResponseDto {
 	return a.services.OperacionesSucursal.ObtenerOperacionSucursal(licencia)
 }
+
+func (a *App) ServiceObtenerValorInventario() *dto.ResponseDto {
+	return a.services.OperacionesSucursal.ObtenerValorInventario()
+}
+
+func (a *App) ServiceSucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
+	return a.services.OperacionesSucursal.SucursalInicioOperacion(datos)
+}

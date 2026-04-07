@@ -34,8 +34,16 @@ export function ServiceObtenerTiposPedido() {
   return window['go']['main']['App']['ServiceObtenerTiposPedido']();
 }
 
+export function ServiceObtenerValorInventario() {
+  return window['go']['main']['App']['ServiceObtenerValorInventario']();
+}
+
 export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
+}
+
+export function ServiceSucursalInicioOperacion(arg1) {
+  return window['go']['main']['App']['ServiceSucursalInicioOperacion'](arg1);
 }
 
 export function ServiceVerifyLicense() {
