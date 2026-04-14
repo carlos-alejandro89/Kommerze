@@ -42,9 +42,11 @@ func main() {
 
 	// 4️⃣ Correr Wails
 	err = wails.Run(&options.App{
-		Title:  "Kommerze",
-		Width:  1532,
-		Height: 768,
+		Title:         "Kommerze",
+		Width:         1532,
+		Height:        768,
+		DisableResize: false,
+		Fullscreen:    true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

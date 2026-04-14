@@ -197,3 +197,39 @@ func (a *App) ServiceObtenerValorInventario() *dto.ResponseDto {
 func (a *App) ServiceSucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
 	return a.services.OperacionesSucursal.SucursalInicioOperacion(datos)
 }
+
+func (a *App) ServiceGetEmpaques() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetEmpaques()
+}
+
+func (a *App) ServiceGetMarcas() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetMarcas()
+}
+
+func (a *App) ServiceGetLineas() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetLineas()
+}
+
+func (a *App) ServiceGetSatProductos() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSatProductos()
+}
+
+func (a *App) ServiceGetSatFormasPago() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSatFormasPago()
+}
+
+func (a *App) ServiceGetSatMetodosPago() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSatMetodosPago()
+}
+
+func (a *App) ServiceGetSatRegimenFiscal() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSatRegimenFiscal()
+}
+
+func (a *App) ServiceGetSatUsosCFDI() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSatUsosCFDI()
+}
+
+func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
+	return a.services.Catalogos.GetSucursales()
+}

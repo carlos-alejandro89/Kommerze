@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BitComercio/internal/models"
+	"BitComercio/internal/repository/dto"
 	"fmt"
 	"strconv"
 
@@ -16,6 +17,14 @@ type CatalogosRepository struct {
 
 func NewCatalogosRepository(db *gorm.DB) *CatalogosRepository {
 	return &CatalogosRepository{db: db}
+}
+
+func (c *CatalogosRepository) GetEmpaques() (*dto.ResponseDto, error) {
+	var empaques []models.Empaque
+	if err := c.db.Find(&empaques).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener empaques", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Empaques obtenidos correctamente", empaques, nil), nil
 }
 
 func (c *CatalogosRepository) SaveEmpaques(data []any) error {
@@ -46,6 +55,14 @@ func (c *CatalogosRepository) SaveEmpaques(data []any) error {
 	return nil
 }
 
+func (c *CatalogosRepository) GetMarcas() (*dto.ResponseDto, error) {
+	var marcas []models.Marca
+	if err := c.db.Find(&marcas).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener marcas", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Marcas obtenidas correctamente", marcas, nil), nil
+}
+
 func (c *CatalogosRepository) SaveMarcas(data []any) error {
 	for _, fila := range data {
 		fMap, ok := fila.(map[string]any)
@@ -68,6 +85,14 @@ func (c *CatalogosRepository) SaveMarcas(data []any) error {
 	return nil
 }
 
+func (c *CatalogosRepository) GetLineas() (*dto.ResponseDto, error) {
+	var lineas []models.Linea
+	if err := c.db.Find(&lineas).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener lineas", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Lineas obtenidas correctamente", lineas, nil), nil
+}
+
 func (c *CatalogosRepository) SaveLineas(data []any) error {
 	for _, fila := range data {
 		fMap, ok := fila.(map[string]any)
@@ -88,6 +113,14 @@ func (c *CatalogosRepository) SaveLineas(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) GetSatProductos() (*dto.ResponseDto, error) {
+	var satProductos []models.SATProducto
+	if err := c.db.Find(&satProductos).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener productos SAT", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Productos SAT obtenidos correctamente", satProductos, nil), nil
 }
 
 func (c *CatalogosRepository) SaveSatProductos(data []any) error {
@@ -251,6 +284,14 @@ func (c *CatalogosRepository) SaveNivelesEmpaque(data []any) error {
 	return nil
 }
 
+func (c *CatalogosRepository) GetSatFormasPago() (*dto.ResponseDto, error) {
+	var satFormasPago []models.SATFormaPago
+	if err := c.db.Find(&satFormasPago).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener formas de pago", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Formas de pago obtenidas correctamente", satFormasPago, nil), nil
+}
+
 func (c *CatalogosRepository) SaveSatFormasPago(data []any) error {
 	for _, fila := range data {
 		fMap, ok := fila.(map[string]any)
@@ -277,6 +318,14 @@ func (c *CatalogosRepository) SaveSatFormasPago(data []any) error {
 	return nil
 }
 
+func (c *CatalogosRepository) GetSatMetodosPago() (*dto.ResponseDto, error) {
+	var satMetodosPago []models.SATMetodoPago
+	if err := c.db.Find(&satMetodosPago).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener metodos de pago", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Metodos de pago obtenidos correctamente", satMetodosPago, nil), nil
+}
+
 func (c *CatalogosRepository) SaveSatMetodosPago(data []any) error {
 	for _, fila := range data {
 		fMap, ok := fila.(map[string]any)
@@ -298,6 +347,14 @@ func (c *CatalogosRepository) SaveSatMetodosPago(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) GetSatUsosCFDI() (*dto.ResponseDto, error) {
+	var satUsosCFDI []models.SATUsoCFDI
+	if err := c.db.Find(&satUsosCFDI).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener usos de CFDI", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Usos de CFDI obtenidos correctamente", satUsosCFDI, nil), nil
 }
 
 func (c *CatalogosRepository) SaveSatUsosCFDI(data []any) error {
@@ -324,6 +381,14 @@ func (c *CatalogosRepository) SaveSatUsosCFDI(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) GetSatRegimenFiscal() (*dto.ResponseDto, error) {
+	var satRegimenFiscal []models.SATRegimenFiscal
+	if err := c.db.Find(&satRegimenFiscal).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener regimenes fiscales", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Regimenes fiscales obtenidos correctamente", satRegimenFiscal, nil), nil
 }
 
 func (c *CatalogosRepository) SaveSatRegimenFiscal(data []any) error {
@@ -383,6 +448,14 @@ func (c *CatalogosRepository) SaveEmpresas(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) GetSucursales() (*dto.ResponseDto, error) {
+	var sucursales []models.Sucursal
+	if err := c.db.Find(&sucursales).Error; err != nil {
+		return dto.NewResponseDto(false, "Error al obtener sucursales", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Sucursales obtenidas correctamente", sucursales, nil), nil
 }
 
 func (c *CatalogosRepository) SaveSucursales(data []any) error {

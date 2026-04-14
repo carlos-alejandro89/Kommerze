@@ -32,6 +32,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 
+
 // Zod Schema for Validation
 const FormSchema = z.object({
   prefijo: z.string().optional(),
@@ -50,32 +51,19 @@ const mockObjetoImpuesto = [
   { value: '03', label: '03 - Sí objeto del impuesto y no obligado al desglose' },
 ];
 
-const mockLineas = [
-  { value: 'l1', label: 'Línea de Electrónicos' },
-  { value: 'l2', label: 'Línea Blanca' },
-];
 
-const mockMarcas = [
-  { value: 'm1', label: 'Marca Genérica' },
-  { value: 'm2', label: 'Marca Premium' },
-];
+export function TabGeneral({ onValid, product, marcas, lineas, productosSat }) {
 
-const mockProductoSAT = [
-  { value: '01010101', label: '01010101 - No existe en el catálogo' },
-  { value: '43211500', label: '43211500 - Computadoras' },
-];
-
-export function TabGeneral() {
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      prefijo: '',
-      descripcion: '',
-      objetoImpuesto: '',
-      fraccionable: false,
-      linea: '',
-      marca: '',
-      productoSAT: '',
+      prefijo: product?.prefijo || '',
+      descripcion: product?.descripcion || '',
+      objetoImpuesto: product?.objetoImpuesto || '',
+      fraccionable: product?.fraccionable || false,
+      linea: product?.linea || '',
+      marca: product?.marca || '',
+      productoSAT: product?.productoSAT || '',
     },
   });
 
@@ -86,16 +74,16 @@ export function TabGeneral() {
   const [openSAT, setOpenSAT] = useState(false);
 
   const onSubmit = (data) => {
-    console.log('Form Submitted Data:', data);
-    // Add toast or API submission logic here
+    localStorage.setItem('product', JSON.stringify(data));
+    if (onValid) onValid();
   };
 
   return (
     <div className="py-4 max-w-4xl mx-auto pb-12">
       <Form {...form}>
-        <form id="product-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form id="form-general" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            
+
             {/* Prefijo */}
             <FormField
               control={form.control}
@@ -104,7 +92,7 @@ export function TabGeneral() {
                 <FormItem>
                   <FormLabel>Prefijo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej. PRD" {...field} />
+                    <Input placeholder="Ej. VF-001" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -132,8 +120,8 @@ export function TabGeneral() {
                           <span className="truncate pr-2">
                             {field.value
                               ? mockObjetoImpuesto.find(
-                                  (item) => item.value === field.value
-                                )?.label
+                                (item) => item.value === field.value
+                              )?.label
                               : "Seleccionar objeto..."}
                           </span>
                           <ButtonArrow />
@@ -177,10 +165,10 @@ export function TabGeneral() {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Descripción del producto" 
-                      className="resize-none" 
-                      {...field} 
+                    <Textarea
+                      placeholder="Descripción del producto"
+                      className="resize-none"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -230,9 +218,9 @@ export function TabGeneral() {
                         >
                           <span className="truncate pr-2">
                             {field.value
-                              ? mockLineas.find(
-                                  (item) => item.value === field.value
-                                )?.label
+                              ? lineas.find(
+                                (item) => item.Guid === field.value
+                              )?.NombreLinea
                               : "Seleccionar línea..."}
                           </span>
                           <ButtonArrow />
@@ -245,17 +233,17 @@ export function TabGeneral() {
                         <CommandList>
                           <CommandEmpty>No se encontró la línea.</CommandEmpty>
                           <CommandGroup>
-                            {mockLineas.map((item) => (
+                            {lineas.map((item) => (
                               <CommandItem
-                                value={item.label}
-                                key={item.value}
+                                value={item.NombreLinea}
+                                key={item.Guid}
                                 onSelect={() => {
-                                  form.setValue("linea", item.value);
+                                  form.setValue("linea", item.Guid);
                                   setOpenLinea(false);
                                 }}
                               >
-                                {item.label}
-                                {item.value === field.value && <CommandCheck className="ml-auto" />}
+                                {item.NombreLinea}
+                                {item.Guid === field.value && <CommandCheck className="ml-auto" />}
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -287,10 +275,10 @@ export function TabGeneral() {
                           )}
                         >
                           <span className="truncate pr-2">
-                             {field.value
-                              ? mockMarcas.find(
-                                  (item) => item.value === field.value
-                                )?.label
+                            {field.value
+                              ? marcas.find(
+                                (item) => item.Guid === field.value
+                              )?.NombreMarca
                               : "Seleccionar marca..."}
                           </span>
                           <ButtonArrow />
@@ -303,17 +291,17 @@ export function TabGeneral() {
                         <CommandList>
                           <CommandEmpty>No se encontró la marca.</CommandEmpty>
                           <CommandGroup>
-                            {mockMarcas.map((item) => (
+                            {marcas.map((item) => (
                               <CommandItem
-                                value={item.label}
-                                key={item.value}
+                                value={item.NombreMarca}
+                                key={item.Guid}
                                 onSelect={() => {
-                                  form.setValue("marca", item.value);
+                                  form.setValue("marca", item.Guid);
                                   setOpenMarca(false);
                                 }}
                               >
-                                {item.label}
-                                {item.value === field.value && <CommandCheck className="ml-auto" />}
+                                {item.NombreMarca}
+                                {item.Guid === field.value && <CommandCheck className="ml-auto" />}
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -345,11 +333,7 @@ export function TabGeneral() {
                           )}
                         >
                           <span className="truncate pr-2">
-                            {field.value
-                              ? mockProductoSAT.find(
-                                  (item) => item.value === field.value
-                                )?.label
-                              : "Seleccionar producto SAT..."}
+                            {field.value ? productosSat.find((item) => item.Guid === field.value)?.Clave + " - " + productosSat.find((item) => item.Guid === field.value)?.Descripcion : "Seleccionar producto SAT..."}
                           </span>
                           <ButtonArrow />
                         </Button>
@@ -361,17 +345,17 @@ export function TabGeneral() {
                         <CommandList>
                           <CommandEmpty>No se encontró el producto.</CommandEmpty>
                           <CommandGroup>
-                            {mockProductoSAT.map((item) => (
+                            {productosSat.map((item) => (
                               <CommandItem
-                                value={item.label}
-                                key={item.value}
+                                value={`${item.Clave} - ${item.Descripcion}`}
+                                key={item.Guid}
                                 onSelect={() => {
-                                  form.setValue("productoSAT", item.value);
+                                  form.setValue("productoSAT", item.Guid);
                                   setOpenSAT(false);
                                 }}
                               >
-                                {item.label}
-                                {item.value === field.value && <CommandCheck className="ml-auto" />}
+                                {item.Clave} - {item.Descripcion}
+                                {item.Guid === field.value && <CommandCheck className="ml-auto" />}
                               </CommandItem>
                             ))}
                           </CommandGroup>

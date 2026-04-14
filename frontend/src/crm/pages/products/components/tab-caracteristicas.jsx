@@ -26,7 +26,7 @@ const CaracteristicasSchema = z.object({
   ),
 });
 
-export function TabCaracteristicas() {
+export function TabCaracteristicas({ onValid }) {
   const form = useForm({
     resolver: zodResolver(CaracteristicasSchema),
     defaultValues: {
@@ -45,13 +45,14 @@ export function TabCaracteristicas() {
 
   const onSubmit = (data) => {
     console.log('Características JSON guardadas:', data);
+    if (onValid) onValid();
   };
 
   return (
     <div className="py-4 max-w-4xl mx-auto pb-12">
       <section className="bg-card rounded-xl p-8 border shadow-sm">
         <Form {...form}>
-          <form id="product-form-caracteristicas" onSubmit={form.handleSubmit(onSubmit)}>
+          <form id="form-caracteristicas" onSubmit={form.handleSubmit(onSubmit)}>
             
             {/* Cabecera */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">

@@ -18,8 +18,44 @@ export function ServiceConsultarExistenciaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
 }
 
+export function ServiceGetEmpaques() {
+  return window['go']['main']['App']['ServiceGetEmpaques']();
+}
+
+export function ServiceGetLineas() {
+  return window['go']['main']['App']['ServiceGetLineas']();
+}
+
 export function ServiceGetMachineID() {
   return window['go']['main']['App']['ServiceGetMachineID']();
+}
+
+export function ServiceGetMarcas() {
+  return window['go']['main']['App']['ServiceGetMarcas']();
+}
+
+export function ServiceGetSatFormasPago() {
+  return window['go']['main']['App']['ServiceGetSatFormasPago']();
+}
+
+export function ServiceGetSatMetodosPago() {
+  return window['go']['main']['App']['ServiceGetSatMetodosPago']();
+}
+
+export function ServiceGetSatProductos() {
+  return window['go']['main']['App']['ServiceGetSatProductos']();
+}
+
+export function ServiceGetSatRegimenFiscal() {
+  return window['go']['main']['App']['ServiceGetSatRegimenFiscal']();
+}
+
+export function ServiceGetSatUsosCFDI() {
+  return window['go']['main']['App']['ServiceGetSatUsosCFDI']();
+}
+
+export function ServiceGetSucursales() {
+  return window['go']['main']['App']['ServiceGetSucursales']();
 }
 
 export function ServiceLogin(arg1, arg2) {

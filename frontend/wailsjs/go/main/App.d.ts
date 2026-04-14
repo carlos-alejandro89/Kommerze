@@ -13,7 +13,25 @@ export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.Producto
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
+export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
+
+export function ServiceGetLineas():Promise<dto.ResponseDto>;
+
 export function ServiceGetMachineID():Promise<string>;
+
+export function ServiceGetMarcas():Promise<dto.ResponseDto>;
+
+export function ServiceGetSatFormasPago():Promise<dto.ResponseDto>;
+
+export function ServiceGetSatMetodosPago():Promise<dto.ResponseDto>;
+
+export function ServiceGetSatProductos():Promise<dto.ResponseDto>;
+
+export function ServiceGetSatRegimenFiscal():Promise<dto.ResponseDto>;
+
+export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
+
+export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 

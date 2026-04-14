@@ -46,7 +46,8 @@ const mockTiposEmpaque = [
   { value: 'pallet', label: 'Pallet' },
 ];
 
-export function TabNiveles() {
+export function TabNiveles({ empaques }) {
+  console.log("Empaques: ", empaques);
   const form = useForm({
     resolver: zodResolver(NivelSchema),
     defaultValues: {
@@ -66,14 +67,14 @@ export function TabNiveles() {
   return (
     <div className="py-4 max-w-6xl mx-auto pb-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* Left Side: Form */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-card p-6 rounded-xl border shadow-sm">
             <h3 className="text-lg font-bold mb-5">Añadir Nivel</h3>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                
+
                 <FormField
                   control={form.control}
                   name="tipoEmpaque"
@@ -90,7 +91,7 @@ export function TabNiveles() {
                             >
                               <span className="truncate pr-2">
                                 {field.value
-                                  ? mockTiposEmpaque.find((item) => item.value === field.value)?.label
+                                  ? empaques.find((item) => item.Guid === field.value)?.NombreEmpaque
                                   : "Seleccionar tipo..."}
                               </span>
                               <ButtonArrow />
@@ -103,17 +104,17 @@ export function TabNiveles() {
                             <CommandList>
                               <CommandEmpty>No se encontró el tipo.</CommandEmpty>
                               <CommandGroup>
-                                {mockTiposEmpaque.map((item) => (
+                                {empaques.map((item) => (
                                   <CommandItem
-                                    value={item.label}
-                                    key={item.value}
+                                    value={item.NombreEmpaque}
+                                    key={item.Guid}
                                     onSelect={() => {
-                                      form.setValue("tipoEmpaque", item.value);
+                                      form.setValue("tipoEmpaque", item.Guid);
                                       setOpenTipo(false);
                                     }}
                                   >
-                                    {item.label}
-                                    {item.value === field.value && <CommandCheck className="ml-auto" />}
+                                    {item.NombreEmpaque}
+                                    {item.Guid === field.value && <CommandCheck className="ml-auto" />}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -196,20 +197,20 @@ export function TabNiveles() {
         {/* Right Side: Grid */}
         <div className="lg:col-span-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
+
             {/* Pieza */}
             <div className="w-full rounded-xl border border-primary ring-1 ring-primary/10 bg-background p-2.5 flex flex-col justify-between transition-all hover:shadow-md">
               <div className="mb-1">
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                       <div className="bg-primary/10 w-full h-full"></div>
+                      <div className="bg-primary/10 w-full h-full"></div>
                     </div>
                     <div className="font-semibold text-sm">Pieza Individual</div>
                   </div>
                   <Switch defaultChecked className="scale-75 origin-right" />
                 </div>
-                
+
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full uppercase tracking-tighter">
                     Unidad Base
@@ -247,13 +248,13 @@ export function TabNiveles() {
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                       <div className="bg-sky-500/10 w-full h-full"></div>
+                      <div className="bg-sky-500/10 w-full h-full"></div>
                     </div>
                     <div className="font-semibold text-sm">Caja Display</div>
                   </div>
                   <Switch defaultChecked className="scale-75 origin-right" />
                 </div>
-                
+
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[10px] font-bold text-sky-500 px-2 py-0.5 bg-sky-500/10 rounded-full uppercase tracking-tighter">
                     Nivel Medio
@@ -291,13 +292,13 @@ export function TabNiveles() {
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                       <div className="bg-muted-foreground/10 w-full h-full"></div>
+                      <div className="bg-muted-foreground/10 w-full h-full"></div>
                     </div>
                     <div className="font-semibold text-sm text-muted-foreground">Master Case</div>
                   </div>
                   <Switch className="scale-75 origin-right" />
                 </div>
-                
+
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[10px] font-bold text-muted-foreground px-2 py-0.5 bg-muted rounded-full uppercase tracking-tighter">
                     Inactivo

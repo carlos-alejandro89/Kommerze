@@ -56,8 +56,21 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 			Descuento:    decimal.NewFromFloat(porcentajeDescuento),
 			Sync:         true,
 		}
-		if err := r.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&sucursalProducto).Error; err != nil {
+		/*if err := r.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&sucursalProducto).Error; err != nil {
 			return fmt.Errorf("error insertando sucursal_producto: %w", err)
+		}*/
+		if err := r.db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "guid"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"precio_compra",
+				"precio_venta",
+				"precio_venta2",
+				"precio_venta3",
+				"descuento",
+				"sync",
+			}),
+		}).Create(&sucursalProducto).Error; err != nil {
+			return err
 		}
 	}
 	return nil
