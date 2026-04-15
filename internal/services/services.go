@@ -14,6 +14,7 @@ type Services struct {
 	License             *LicenseService
 	OperacionesSucursal *OperacionesSucursalService
 	Catalogos           *CatalogosService
+	Cloud               *ApiCloudService
 }
 
 func NewServices(db *gorm.DB) *Services {
@@ -29,5 +30,6 @@ func NewServices(db *gorm.DB) *Services {
 		License:             NewLicenseService(db, apiURL),
 		OperacionesSucursal: NewOperacionesSucursalService(db),
 		Catalogos:           NewCatalogosService(repo),
+		Cloud:               NewApiCloudService(apiURL),
 	}
 }

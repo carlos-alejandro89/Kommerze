@@ -33,7 +33,7 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Funcion que se expone para interactuar con el frontend
+// Funciones que se expone para interactuar con el frontend
 func (a *App) SyncLineas() (string, error) {
 	_, err := a.services.Sync.SyncLinea()
 	if err != nil {
@@ -232,4 +232,8 @@ func (a *App) ServiceGetSatUsosCFDI() (*dto.ResponseDto, error) {
 
 func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 	return a.services.Catalogos.GetSucursales()
+}
+
+func (a *App) ServiceApiCrearProducto(producto requestdto.ProductoCreate) (*dto.ResponseDto, error) {
+	return a.services.Cloud.ApiCreateProducto(producto), nil
 }

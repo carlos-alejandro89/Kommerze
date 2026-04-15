@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
-import { Barcode, PlusCircle, Info, Edit2, Trash2, PlusSquare } from 'lucide-react';
+import { Barcode, PlusCircle, Info, Edit2, Trash2, PlusSquare, Image as ImageIcon } from 'lucide-react';
+import { CardNivel } from './card-nivel';
 
 import { Button, ButtonArrow } from '@/components/ui/button';
 import {
@@ -36,18 +37,15 @@ const NivelSchema = z.object({
   tipoEmpaque: z.string().min(1, 'Seleccione un tipo'),
   codigoBarras: z.string().optional(),
   skuNivel: z.string().min(1, 'El SKU es requerido'),
-  unidades: z.preprocess((a) => parseInt(z.string().parse(a), 10), z.number().min(1, 'Debe ser al menos 1')),
+  unidades: z.coerce.number().min(1, 'Debe ser al menos 1'),
 });
 
-const mockTiposEmpaque = [
-  { value: 'pieza', label: 'Pieza' },
-  { value: 'caja', label: 'Caja' },
-  { value: 'master', label: 'Master' },
-  { value: 'pallet', label: 'Pallet' },
-];
-
 export function TabNiveles({ empaques }) {
-  console.log("Empaques: ", empaques);
+
+  const [itemNiveles, setItemNiveles] = useState(() =>
+    localStorage.getItem("niveles") ? JSON.parse(localStorage.getItem("niveles")) : []
+  );
+
   const form = useForm({
     resolver: zodResolver(NivelSchema),
     defaultValues: {
@@ -58,10 +56,37 @@ export function TabNiveles({ empaques }) {
     },
   });
 
+  useEffect(() => {
+    localStorage.setItem("niveles", JSON.stringify(itemNiveles));
+  }, [itemNiveles]);
+
   const [openTipo, setOpenTipo] = useState(false);
 
   const onSubmit = (data) => {
-    console.log('Nivel added:', data);
+    // console.log('Nivel added:', data);
+    const empaque = empaques.find(item => item.Guid === data.tipoEmpaque);
+    const nuevoItem = {
+      EmpaqueGuid: data.tipoEmpaque,
+      title: empaque.NombreEmpaque,
+      codigo: data.skuNivel,
+      codigoBarras: data.codigoBarras,
+      contenido: data.unidades,
+      badgeLabel: "Unidad Base",
+      badgeColorClass: "text-success",
+      isActive: true
+    }
+
+    setItemNiveles(prev => {
+      const item = prev.find(item => item.EmpaqueGuid === data.tipoEmpaque)
+      if (item) {
+        return prev.map(item => item.EmpaqueGuid === data.tipoEmpaque ? nuevoItem : item);
+      }
+      return [...prev, nuevoItem];
+    });
+
+    //localStorage.setItem("niveles", JSON.stringify(itemNiveles));
+
+    form.reset();
   };
 
   return (
@@ -196,150 +221,38 @@ export function TabNiveles({ empaques }) {
 
         {/* Right Side: Grid */}
         <div className="lg:col-span-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {/* Pieza */}
-            <div className="w-full rounded-xl border border-primary ring-1 ring-primary/10 bg-background p-2.5 flex flex-col justify-between transition-all hover:shadow-md">
-              <div className="mb-1">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                      <div className="bg-primary/10 w-full h-full"></div>
-                    </div>
-                    <div className="font-semibold text-sm">Pieza Individual</div>
-                  </div>
-                  <Switch defaultChecked className="scale-75 origin-right" />
-                </div>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full uppercase tracking-tighter">
-                    Unidad Base
-                  </span>
-                </div>
-
-                <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/50">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">EmpaqueID</div>
-                    <div className="font-medium text-foreground">EMP-001-PZ</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">Código Barras</div>
-                    <div className="font-medium text-foreground">750102394851</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-1 mt-auto pt-2 text-xs border-t border-border/50 text-muted-foreground">
-                <div className="flex gap-1">
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground hover:border-primary">
-                    <Edit2 className="size-3.5" />
-                  </button>
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-destructive hover:text-destructive-foreground transition-colors text-muted-foreground hover:border-destructive">
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-                <span className="shrink-0 text-xs">Contenido: <strong className="text-foreground">1 u.</strong></span>
-              </div>
+          {itemNiveles && itemNiveles.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {itemNiveles.map((item, index) => (
+                <CardNivel
+                  key={index}
+                  id={item.Guid}
+                  title={item.title}
+                  codigo={item.codigo}
+                  codigoBarras={item.codigoBarras}
+                  contenido={item.contenido}
+                  badgeLabel={item.badgeLabel}
+                  badgeColorClass={item.badgeColorClass}
+                  image="https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg"
+                  isActive={item.isActive}
+                  onImageUpload={() => console.log('Upload Pieza')}
+                  onEdit={() => console.log('Edit Pieza')}
+                  onDelete={() => console.log('Delete Pieza')}
+                  onToggleActive={() => console.log('Toggle Pieza')}
+                />
+              ))}
             </div>
-
-            {/* Caja */}
-            <div className="w-full rounded-xl border border-primary ring-1 ring-primary/10 bg-background p-2.5 flex flex-col justify-between transition-all hover:shadow-md">
-              <div className="mb-1">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                      <div className="bg-sky-500/10 w-full h-full"></div>
-                    </div>
-                    <div className="font-semibold text-sm">Caja Display</div>
-                  </div>
-                  <Switch defaultChecked className="scale-75 origin-right" />
-                </div>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-bold text-sky-500 px-2 py-0.5 bg-sky-500/10 rounded-full uppercase tracking-tighter">
-                    Nivel Medio
-                  </span>
-                </div>
-
-                <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/50">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">EmpaqueID</div>
-                    <div className="font-medium text-foreground">EMP-001-CJ</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">Código Barras</div>
-                    <div className="font-medium text-foreground">750102394860</div>
-                  </div>
-                </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 h-full min-h-[350px] border-2 border-dashed border-border/60 rounded-xl bg-muted/20">
+              <div className="size-16 rounded-full bg-background border shadow-sm flex items-center justify-center mb-5 text-muted-foreground">
+                <PlusSquare className="size-6 opacity-70" />
               </div>
-
-              <div className="flex items-center justify-between gap-1 mt-auto pt-2 text-xs border-t border-border/50 text-muted-foreground">
-                <div className="flex gap-1">
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground">
-                    <Edit2 className="size-3.5" />
-                  </button>
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-destructive hover:text-destructive-foreground transition-colors text-muted-foreground">
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-                <span className="shrink-0 text-xs">Contenido: <strong className="text-foreground">12 u.</strong></span>
-              </div>
+              <h3 className="font-bold text-lg text-foreground mb-2">No se han agregado niveles</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
+                Añade unidades, cajas o pallets usando el formulario lateral para configurar la jerarquía de tus productos.
+              </p>
             </div>
-
-            {/* Master */}
-            <div className="w-full rounded-xl border border-dashed border-border bg-background/40 p-2.5 flex flex-col justify-between transition-all opacity-70 hover:opacity-100 group">
-              <div className="mb-1">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="size-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                      <div className="bg-muted-foreground/10 w-full h-full"></div>
-                    </div>
-                    <div className="font-semibold text-sm text-muted-foreground">Master Case</div>
-                  </div>
-                  <Switch className="scale-75 origin-right" />
-                </div>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-bold text-muted-foreground px-2 py-0.5 bg-muted rounded-full uppercase tracking-tighter">
-                    Inactivo
-                  </span>
-                </div>
-
-                <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/50">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">EmpaqueID</div>
-                    <div className="font-medium text-muted-foreground">EMP-001-MS</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-0.5">Código Barras</div>
-                    <div className="font-medium text-muted-foreground">750102394899</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-1 mt-auto pt-2 text-xs border-t border-border/50 text-muted-foreground">
-                <div className="flex gap-1">
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground">
-                    <Edit2 className="size-3.5" />
-                  </button>
-                  <button className="flex items-center justify-center size-6 rounded hover:bg-destructive hover:text-destructive-foreground transition-colors text-muted-foreground">
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-                <span className="shrink-0 text-xs">Contenido: <strong className="text-muted-foreground">48 u.</strong></span>
-              </div>
-            </div>
-
-            {/* Add Level Quick Button */}
-            <div className="w-full rounded-xl border border-dashed bg-background p-2.5 flex flex-col items-center justify-center min-h-[175px] text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all cursor-pointer group">
-              <div className="size-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all mb-2">
-                <PlusSquare className="size-4" />
-              </div>
-              <p className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">Nuevo Nivel de Empaque</p>
-              <p className="text-[10px] uppercase font-bold tracking-widest opacity-60 mt-1">Configuración Rápida</p>
-            </div>
-
-          </div>
+          )}
         </div>
       </div>
     </div>

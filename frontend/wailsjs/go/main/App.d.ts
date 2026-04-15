@@ -7,6 +7,8 @@ import {models} from '../models';
 
 export function ServiceActivateLicense(arg1:requestdto.ActivateLicenseRequest):Promise<any>;
 
+export function ServiceApiCrearProducto(arg1:requestdto.ProductoCreate):Promise<dto.ResponseDto>;
+
 export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>):Promise<dto.ResponseDto>;
 
 export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;

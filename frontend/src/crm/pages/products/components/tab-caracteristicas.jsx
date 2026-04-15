@@ -44,8 +44,52 @@ export function TabCaracteristicas({ onValid }) {
   });
 
   const onSubmit = (data) => {
-    console.log('Características JSON guardadas:', data);
-    if (onValid) onValid();
+    localStorage.setItem("caracteristicas", JSON.stringify(data));
+    var nivelesEmpaque = JSON.parse(localStorage.getItem("niveles"));
+    var product = JSON.parse(localStorage.getItem("product"));
+
+    var nivelesRequest = nivelesEmpaque.map(i => {
+      const r = { EmpaqueGuid: i.EmpaqueGuid, Codigo: i.codigo, CodigoBarras: i.codigoBarras, imagen: "" }
+      return r;
+    })
+
+    /**
+     *{
+  "marcaGuid": "string",
+  "lineaGuid": "string",
+  "productoSatGuid": "string",
+  "prefijo": "string",
+  "descripcion": "string",
+  "objetoImpuesto": "string",
+  "fraccionable": true,
+  "nivelesEmpaque": [
+    {
+      
+      "empaqueGuid": "string",
+      "codigo": "string",
+      "codigoBarras": "string",
+      "imagen": "string"
+    }
+  ]
+}
+     */
+
+    var request = {
+      MarcaGuid: product.marca,
+      LineaGuid: product.linea,
+      ProductoSatGuid: product.productoSAT,
+      Prefijo: product.prefijo,
+      Descripcion: product.descripcion,
+      ObjetoImpuesto: product.objetoImpuesto,
+      Fraccionable: product.fraccionable,
+      NivelesEmpaque: nivelesRequest,
+      Atributos: data.atributos,
+    }
+
+
+    console.log(request);
+
+    if (onValid) onValid(request);
   };
 
   return (
@@ -53,7 +97,7 @@ export function TabCaracteristicas({ onValid }) {
       <section className="bg-card rounded-xl p-8 border shadow-sm">
         <Form {...form}>
           <form id="form-caracteristicas" onSubmit={form.handleSubmit(onSubmit)}>
-            
+
             {/* Cabecera */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
               <div className="flex items-center gap-3">
@@ -62,9 +106,9 @@ export function TabCaracteristicas({ onValid }) {
                 </div>
                 <h2 className="text-xl font-bold text-foreground font-headline">Información Producto</h2>
               </div>
-              <Button 
-                type="button" 
-                variant="ghost" 
+              <Button
+                type="button"
+                variant="ghost"
                 className="text-primary hover:text-primary hover:bg-primary/10 font-bold"
                 onClick={() => append({ clave: '', valor: '' })}
               >
@@ -77,7 +121,7 @@ export function TabCaracteristicas({ onValid }) {
             <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-4 items-start group">
-                  
+
                   {/* Clave */}
                   <div className="col-span-12 sm:col-span-4">
                     <FormField
@@ -137,7 +181,7 @@ export function TabCaracteristicas({ onValid }) {
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  
+
                 </div>
               ))}
 
@@ -145,9 +189,9 @@ export function TabCaracteristicas({ onValid }) {
               {fields.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
                   <p className="text-sm">No existen atributos personalizados.</p>
-                  <Button 
-                    type="button" 
-                    variant="link" 
+                  <Button
+                    type="button"
+                    variant="link"
                     onClick={() => append({ clave: '', valor: '' })}
                   >
                     Agregar el primer campo
@@ -155,7 +199,7 @@ export function TabCaracteristicas({ onValid }) {
                 </div>
               )}
             </div>
-            
+
           </form>
         </Form>
       </section>

@@ -449,6 +449,88 @@ export namespace requestdto {
 	        this.machineId = source["machineId"];
 	    }
 	}
+	export class Atributo {
+	    clave: string;
+	    valor: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Atributo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.clave = source["clave"];
+	        this.valor = source["valor"];
+	    }
+	}
+	export class NivelEmpaque {
+	    empaqueGuid: string;
+	    Codigo: string;
+	    CodigoBarras: string;
+	    contenido: number;
+	    Imagen: string;
+	    sync: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NivelEmpaque(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.empaqueGuid = source["empaqueGuid"];
+	        this.Codigo = source["Codigo"];
+	        this.CodigoBarras = source["CodigoBarras"];
+	        this.contenido = source["contenido"];
+	        this.Imagen = source["Imagen"];
+	        this.sync = source["sync"];
+	    }
+	}
+	export class ProductoCreate {
+	    marcaGuid: string;
+	    lineaGuid: string;
+	    productoSatGuid: string;
+	    prefijo: string;
+	    descripcion: string;
+	    objetoImpuesto: string;
+	    fraccionable: boolean;
+	    nivelesEmpaque: NivelEmpaque[];
+	    atributos: Atributo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProductoCreate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.marcaGuid = source["marcaGuid"];
+	        this.lineaGuid = source["lineaGuid"];
+	        this.productoSatGuid = source["productoSatGuid"];
+	        this.prefijo = source["prefijo"];
+	        this.descripcion = source["descripcion"];
+	        this.objetoImpuesto = source["objetoImpuesto"];
+	        this.fraccionable = source["fraccionable"];
+	        this.nivelesEmpaque = this.convertValues(source["nivelesEmpaque"], NivelEmpaque);
+	        this.atributos = this.convertValues(source["atributos"], Atributo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 

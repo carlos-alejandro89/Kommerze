@@ -6,6 +6,10 @@ export function ServiceActivateLicense(arg1) {
   return window['go']['main']['App']['ServiceActivateLicense'](arg1);
 }
 
+export function ServiceApiCrearProducto(arg1) {
+  return window['go']['main']['App']['ServiceApiCrearProducto'](arg1);
+}
+
 export function ServiceConfirmarTransaccion(arg1, arg2, arg3) {
   return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3);
 }

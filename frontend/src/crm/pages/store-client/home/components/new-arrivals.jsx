@@ -27,7 +27,7 @@ export function NewArrivals() {
       logo: 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg',
       title: 'Velocity Boost Xtreme High  Shock Absorbers',
       total: '110.00',
-      star: '4.9',
+      star: '34.9',
     },
   ];
 

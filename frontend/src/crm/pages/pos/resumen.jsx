@@ -58,7 +58,6 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
         let calcNextPage = (operationType <= 1) ? currentStep + 1 : currentStep + 2
         setNextPage(calcNextPage)
-        console.log('nextPage', calcNextPage)
 
         const validatorForCurrentStep = stepValidation[currentStep];
         if (validatorForCurrentStep) {

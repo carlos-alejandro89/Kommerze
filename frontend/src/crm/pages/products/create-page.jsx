@@ -9,7 +9,7 @@ import { TabGeneral } from './components/tab-general';
 import { TabNiveles } from './components/tab-niveles';
 import { TabCaracteristicas } from './components/tab-caracteristicas';
 
-import { ServiceGetMarcas, ServiceGetEmpaques, ServiceGetLineas, ServiceGetSatProductos } from '../../../../wailsjs/go/main/App';
+import { ServiceGetMarcas, ServiceGetEmpaques, ServiceGetLineas, ServiceGetSatProductos, ServiceApiCrearProducto } from '../../../../wailsjs/go/main/App';
 
 export function CreateProductPage() {
     const [activeTab, setActiveTab] = useState('general');
@@ -85,6 +85,18 @@ export function CreateProductPage() {
         }
     };
 
+    const handleSave = async (product) => {
+        console.log("Producto:", product)
+        const result = await ServiceApiCrearProducto(product);
+        console.log(result)
+        // toast.success(result.mensaje);
+        if (result.success) {
+            //   localStorage.removeItem('product');
+            // localStorage.removeItem("niveles")
+
+        }
+    };
+
     return (
         <>
             <PageHeader />
@@ -116,7 +128,7 @@ export function CreateProductPage() {
                                 <TabNiveles empaques={empaques} />
                             </TabsContent>
                             <TabsContent value="caracteristicas" className="px-5 mt-0">
-                                <TabCaracteristicas />
+                                <TabCaracteristicas onValid={handleSave} />
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>
