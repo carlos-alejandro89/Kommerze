@@ -12,7 +12,7 @@ export function ScreenLoader() {
       />
 
       <div className="text-muted-foreground font-medium text-sm">
-        Loading...
+        Iniciando...
       </div>
     </div>
   );

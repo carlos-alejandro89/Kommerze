@@ -8,7 +8,8 @@ import {
     X,
     Info,
     Mail,
-    Phone
+    Phone,
+    Store
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,10 +22,11 @@ import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { cn } from '@/lib/utils';
 import { Steps } from './steps';
+import { DialogSucursales } from './components/dialog-sucursales';
 
 import { ResumenCuenta } from './resumen';
 import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
-import { ServiceObtenerTiposPedido } from '../../../../wailsjs/go/main/App';
+import { ServiceObtenerTiposPedido, ServiceGetSucursales } from '../../../../wailsjs/go/main/App';
 // Mock data for initial items
 const shoppingCart = [
 
@@ -38,6 +40,8 @@ export function CartStepTwo() {
     const [itemSelected, setItemSelected] = React.useState({});
     const [operationType, setOperationType] = React.useState(1);
     const [tiposPedido, setTiposPedido] = React.useState([]);
+    const [sucursales, setSucursales] = React.useState([]);
+    const [sucursalSeleccionada, setSucursalSeleccionada] = React.useState(null);
 
     const ObtenerTiposPedido = async () => {
         try {
@@ -48,9 +52,28 @@ export function CartStepTwo() {
         }
     }
 
+    const ObtenerSucursales = async () => {
+        try {
+            const res = await ServiceGetSucursales();
+            setSucursales(res.data || []);
+        } catch (error) {
+            console.error('Error al llamar a ServiceGetSucursales:', error);
+        }
+    }
+
     React.useEffect(() => {
-        ObtenerTiposPedido()
-        localStorage.setItem('operationType', JSON.stringify(operationType))
+        ObtenerTiposPedido();
+        ObtenerSucursales();
+        localStorage.setItem('operationType', JSON.stringify(operationType));
+        
+        const storedSucursal = localStorage.getItem('sucursal');
+        if (storedSucursal) {
+            try {
+                setSucursalSeleccionada(JSON.parse(storedSucursal));
+            } catch (e) {
+                console.error("Error parsing stored sucursal", e);
+            }
+        }
     }, [])
 
     const handeSetOperationType = (operationType) => {
@@ -83,6 +106,11 @@ export function CartStepTwo() {
         setItemSelected(item);
         setOpen(true);
     };
+
+    const handleSelectSucursal = (sucursal) => {
+        setSucursalSeleccionada(sucursal);
+        localStorage.setItem('sucursal', JSON.stringify(sucursal));
+    }
 
 
     return (
@@ -136,44 +164,92 @@ export function CartStepTwo() {
                                         ))}
                                     </div>
 
-                                    {/* Quick Action: Público General */}
-                                    <div className="mt-4 w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)] dark:bg-primary/10 dark:border-primary/20">
-                                        <div className="flex items-start gap-4 w-full">
-                                            <Avatar className="size-16 rounded-xl mt-0.5 shrink-0 bg-transparent">
-                                                <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
-                                                <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl font-bold">CM</AvatarFallback>
-                                            </Avatar>
-
-                                            <div className="flex flex-col w-full">
-                                                <div className="flex items-start justify-between w-full mb-1">
-                                                    <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Cliente Actual</span>
-                                                    <Button
-                                                        variant="link"
-                                                        className="h-auto p-0 text-[10px] font-bold uppercase text-primary hover:text-primary/80 shrink-0"
-                                                    >
-                                                        Cambiar cliente
-                                                    </Button>
+                                    {/* Quick Action: Público General o Sucursal Destino */}
+                                    {operationType === 3 ? (
+                                        <div className={cn("mt-4 w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all", sucursalSeleccionada ? "bg-emerald-500/5 border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.2)] dark:bg-emerald-500/10 dark:border-emerald-500/20" : "border-dashed border-muted-foreground/30 bg-muted/10")}>
+                                            <div className="flex items-start gap-4 w-full">
+                                                <div className={cn("flex size-16 rounded-full mt-0.5 shrink-0 items-center justify-center shadow-sm transition-all", sucursalSeleccionada ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-dashed border-muted-foreground/30")}>
+                                                    <Store className="size-8 stroke-[1.5]" />
                                                 </div>
 
-                                                <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">CLIENTE MOSTRADOR</h4>
+                                                <div className="flex flex-col w-full">
+                                                    <div className="flex items-start justify-between w-full mb-1">
+                                                        <span className="font-bold text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Sucursal Destino</span>
+                                                        <DialogSucursales sucursales={sucursales} handleSelectSucursal={handleSelectSucursal} />
+                                                    </div>
 
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Mail className="size-3.5 opacity-70" />
-                                                        <span>no-reply@propos.com</span>
-                                                    </div>
-                                                    <div className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Phone className="size-3.5 opacity-70" />
-                                                        <span>+502 0000-0000</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-[11px] text-muted-foreground leading-tight">
-                                                    Venta al público general sin datos fiscales específicos.
+                                                    {sucursalSeleccionada ? (
+                                                        <>
+                                                            <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">{sucursalSeleccionada.NombreSucursal}</h4>
+
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Mail className="size-3.5 opacity-70" />
+                                                                    <span>{sucursalSeleccionada.Correo === "<nil>" || !sucursalSeleccionada.Correo ? "Sin correo" : sucursalSeleccionada.Correo}</span>
+                                                                </div>
+                                                                <div className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Phone className="size-3.5 opacity-70" />
+                                                                    <span>{sucursalSeleccionada.Telefono || "Sin teléfono"}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[11px] text-muted-foreground leading-tight">
+                                                                {[
+                                                                    sucursalSeleccionada.Calle, 
+                                                                    sucursalSeleccionada.Exterior ? "#" + sucursalSeleccionada.Exterior : "", 
+                                                                    sucursalSeleccionada.Colonia ? "Col. " + sucursalSeleccionada.Colonia : "", 
+                                                                    sucursalSeleccionada.Ciudad, 
+                                                                    sucursalSeleccionada.Estado
+                                                                ].filter(Boolean).join(", ")}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex items-center h-full text-sm text-emerald-600/70 dark:text-emerald-400/70 font-medium py-3">
+                                                            Seleccione una sucursal destino para continuar...
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="mt-4 w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)] dark:bg-primary/10 dark:border-primary/20">
+                                            <div className="flex items-start gap-4 w-full">
+                                                <Avatar className="size-16 rounded-xl mt-0.5 shrink-0 bg-transparent">
+                                                    <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
+                                                    <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl font-bold">CM</AvatarFallback>
+                                                </Avatar>
+
+                                                <div className="flex flex-col w-full">
+                                                    <div className="flex items-start justify-between w-full mb-1">
+                                                        <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Cliente Actual</span>
+                                                        <Button
+                                                            variant="link"
+                                                            className="h-auto p-0 text-[10px] font-bold uppercase text-primary hover:text-primary/80 shrink-0"
+                                                        >
+                                                            Cambiar cliente
+                                                        </Button>
+                                                    </div>
+
+                                                    <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">CLIENTE MOSTRADOR</h4>
+
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Mail className="size-3.5 opacity-70" />
+                                                            <span>no-reply@propos.com</span>
+                                                        </div>
+                                                        <div className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Phone className="size-3.5 opacity-70" />
+                                                            <span>+502 0000-0000</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[11px] text-muted-foreground leading-tight">
+                                                        Venta al público general sin datos fiscales específicos.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Additional Context/Notes */}
                                     <div className="mt-auto p-5 bg-gradient-to-br from-slate-200 via-slate-50 to-slate-300 rounded-2xl shadow-sm border border-white/50 flex items-start gap-3">

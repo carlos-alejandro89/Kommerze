@@ -91,7 +91,7 @@ export function HistoryList() {
             accessorKey: 'Folio',
             header: 'Folio',
             size: 120,
-            cell: ({ row }) => <div className="font-mono text-xs">{row.original.Folio || '-'}</div>,
+            cell: ({ row }) => <div className="font-mono text-xs">{row.original.Folio.padStart(7, '0') || '-'}</div>,
             enableSorting: true,
         },
         {

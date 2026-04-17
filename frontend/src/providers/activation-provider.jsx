@@ -58,6 +58,7 @@ export const ActivationProvider = ({ children }) => {
             setValorInventario(result.data);
             return result.data.valorInventario;
         } catch (error) {
+            setValorInventario(0);
             console.error("Error al obtener el valor del inventario", error);
             return 0;
         }
