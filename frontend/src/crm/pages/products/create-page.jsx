@@ -8,7 +8,7 @@ import { PageHeader } from './page-header';
 import { TabGeneral } from './components/tab-general';
 import { TabNiveles } from './components/tab-niveles';
 import { TabCaracteristicas } from './components/tab-caracteristicas';
-
+import { DialogAlert } from '../../../components/common/dialog-alert';
 import { ServiceGetMarcas, ServiceGetEmpaques, ServiceGetLineas, ServiceGetSatProductos, ServiceApiCrearProducto } from '../../../../wailsjs/go/main/App';
 
 export function CreateProductPage() {
@@ -22,6 +22,8 @@ export function CreateProductPage() {
     const [empaques, setEmpaques] = useState([]);
     const [productosSat, setProductosSat] = useState([]);
     const [lineas, setLineas] = useState([]);
+    const [showAlert, setShowAlert] = useState(false);
+    const [response, setResponse] = useState(null);
 
     const [product, setProduct] = useState(null);
 
@@ -85,20 +87,42 @@ export function CreateProductPage() {
         }
     };
 
+    const setLocalStorage = () => {
+        localStorage.removeItem('product');
+        localStorage.removeItem("niveles")
+    }
+
+    const updateResponse = async (response) => {
+        setResponse(response);
+
+    }
+
     const handleSave = async (product) => {
-        console.log("Producto:", product)
         const result = await ServiceApiCrearProducto(product);
         console.log(result)
+        await updateResponse(result);
         // toast.success(result.mensaje);
         if (result.success) {
-            //   localStorage.removeItem('product');
-            // localStorage.removeItem("niveles")
+            localStorage.removeItem('product');
+            localStorage.removeItem("niveles")
+            setActiveTab("general");
+            setProduct(null);
 
         }
+        setShowAlert(true);
     };
 
     return (
         <>
+            <DialogAlert open={showAlert}
+                title={response?.success ? "Producto creado" : "Error al crear producto"}
+                description={response?.message}
+                onOpenChange={setShowAlert}
+                onConfirm={() => setShowAlert(false)}
+                type={response?.success ? 'success' : 'warning'}
+
+            />
+
             <PageHeader />
             <Content className="flex flex-col pt-4 pb-0 h-full overflow-hidden">
                 <h1 className="text-sm font-semibold ps-5 mb-2 shrink-0">Crear Producto</h1>
@@ -121,14 +145,20 @@ export function CreateProductPage() {
                             </TabsTrigger>
                         </TabsList>
                         <ScrollArea className="flex-1 w-full">
-                            <TabsContent value="general" className="mt-0 px-5">
-                                <TabGeneral onValid={handleNext} product={product} marcas={marcas} lineas={lineas} productosSat={productosSat} />
+                            <TabsContent value="general" className="mt-0 px-5" forceMount>
+                                {activeTab === 'general' && (
+                                    <TabGeneral onValid={handleNext} product={product} marcas={marcas} lineas={lineas} productosSat={productosSat} />
+                                )}
                             </TabsContent>
-                            <TabsContent value="niveles" className="px-5 mt-0">
-                                <TabNiveles empaques={empaques} />
+                            <TabsContent value="niveles" className="px-5 mt-0" forceMount>
+                                {activeTab === 'niveles' && (
+                                    <TabNiveles empaques={empaques} />
+                                )}
                             </TabsContent>
-                            <TabsContent value="caracteristicas" className="px-5 mt-0">
-                                <TabCaracteristicas onValid={handleSave} />
+                            <TabsContent value="caracteristicas" className="px-5 mt-0" forceMount>
+                                {activeTab === 'caracteristicas' && (
+                                    <TabCaracteristicas onValid={handleSave} />
+                                )}
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>

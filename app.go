@@ -237,3 +237,7 @@ func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 func (a *App) ServiceApiCrearProducto(producto requestdto.ProductoCreate) (*dto.ResponseDto, error) {
 	return a.services.Cloud.ApiCreateProducto(producto), nil
 }
+
+func (a *App) ServiceConsultaTransacciones() (*dto.ResponseDto, error) {
+	return a.services.Pos.ConsultaTransacciones()
+}

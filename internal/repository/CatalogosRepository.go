@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -279,6 +281,34 @@ func (c *CatalogosRepository) SaveNivelesEmpaque(data []any) error {
 
 		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&nivel).Error; err != nil {
 			return fmt.Errorf("error insertando nivel_empaque: %w", err)
+		}
+
+		sucursalProducto := models.SucursalProducto{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+
+			NivelID:      nivel.ID,
+			PrecioCompra: decimal.Zero,
+			PrecioVenta:  decimal.Zero,
+			PrecioVenta2: decimal.Zero,
+			PrecioVenta3: decimal.Zero,
+			Descuento:    decimal.Zero,
+			Sync:         true,
+		}
+
+		if err := c.db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "guid"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"precio_compra",
+				"precio_venta",
+				"precio_venta2",
+				"precio_venta3",
+				"descuento",
+				"sync",
+			}),
+		}).Create(&sucursalProducto).Error; err != nil {
+			return fmt.Errorf("error insertando sucursal_producto: %w", err)
 		}
 	}
 	return nil

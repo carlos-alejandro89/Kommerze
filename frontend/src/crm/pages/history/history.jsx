@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import { Card, CardFooter, CardHeader, CardTable, CardHeading, CardToolbar } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -15,7 +15,7 @@ import { DataGridTable } from '@/components/ui/data-grid-table';
 import { ModalDetalleTransaccion } from './modal-detalle-transaccion';
 
 import { getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table';
-
+import { ServiceConsultaTransacciones } from '../../../../wailsjs/go/main/App';
 import { moneyFormat } from '@/lib/helpers';
 
 const mockData = [
@@ -27,19 +27,28 @@ const mockData = [
 ];
 
 export function HistoryList() {
+
     const [searchQuery, setSearchQuery] = useState('');
     const [sorting, setSorting] = useState([]);
     const [columnFilters, setColumnFilters] = useState([]);
     const [columnVisibility, setColumnVisibility] = useState({});
+    const [transactions, setTransactions] = useState([]);
 
     const estadoConfig = {
-        'Completado': { variant: 'success', icon: CheckCircle },
+        'Aceptado': { variant: 'success', icon: CheckCircle },
         'Pendiente': { variant: 'warning', icon: Target },
         'Cancelado': { variant: 'destructive', icon: CircleMinus },
     };
 
     const [open, setOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+    useEffect(() => {
+        ServiceConsultaTransacciones().then((response) => {
+            console.log(response.data);
+            setTransactions(response.data);
+        });
+    }, []);
 
     const handleViewDetails = (transaction) => {
         setSelectedTransaction(transaction);
@@ -53,7 +62,7 @@ export function HistoryList() {
             dotClass: 'text-emerald-500',
             badgeClass: 'border-emerald-500/30 text-emerald-700 dark:text-emerald-400 dark:border-emerald-400/30'
         },
-        'Cotización': {
+        'Cotizacion': {
             variant: 'outline',
             dotClass: 'text-amber-500',
             badgeClass: 'border-amber-500/30 text-amber-700 dark:text-amber-400 dark:border-amber-400/30'
@@ -61,55 +70,55 @@ export function HistoryList() {
     };
 
     const filterHistory = useMemo(() => {
-        let items = mockData;
+        let items = transactions;
 
         // Aplicar filtro por búsqueda
         if (searchQuery) {
             items = items.filter(
                 (item) =>
-                    item.folio.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.cliente.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.estatus.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.tipoOperacion.toLowerCase().includes(searchQuery.toLowerCase())
+                    item.Folio.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.RazonSocial.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.Estatus.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.TipoOperacion.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
         return items;
-    }, [searchQuery]);
+    }, [searchQuery, transactions]);
 
     const columns = [
         {
-            accessorKey: 'folio',
+            accessorKey: 'Folio',
             header: 'Folio',
             size: 120,
-            cell: ({ row }) => <div className="font-mono text-xs">{row.original.folio || '-'}</div>,
+            cell: ({ row }) => <div className="font-mono text-xs">{row.original.Folio || '-'}</div>,
             enableSorting: true,
         },
         {
-            accessorKey: 'fecha',
+            accessorKey: 'Fecha',
             header: 'Fecha',
             size: 120,
-            cell: ({ row }) => <div className="font-mono text-xs">{row.original.fecha || '-'}</div>,
+            cell: ({ row }) => <div className="font-mono text-xs">{row.original.Fecha || '-'}</div>,
             enableSorting: true,
         },
         {
-            accessorKey: 'cliente',
+            accessorKey: 'RazonSocial',
             header: 'Cliente',
             size: 240,
             cell: ({ row }) => (
                 <div className="flex items-center gap-2.5 py-1">
                     <Avatar className="size-7 rounded-full">
-                        <AvatarImage src={row.original.avatar} alt={row.original.cliente} className="rounded-full" />
+                        <AvatarImage src={row.original.avatar} alt={row.original.RazonSocial} className="rounded-full" />
                         <AvatarFallback className="rounded-full bg-primary/10 text-primary font-bold text-[10px]">
-                            {row.original.cliente.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()}
+                            {row.original.RazonSocial.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                         <span className="font-semibold text-foreground text-xs hover:text-primary cursor-pointer transition-colors leading-none mb-1">
-                            {row.original.cliente}
+                            {row.original.RazonSocial}
                         </span>
                         <span className="text-[10px] text-muted-foreground leading-none">
-                            {row.original.email}
+                            {row.original.Correo}
                         </span>
                     </div>
                 </div>
@@ -117,11 +126,11 @@ export function HistoryList() {
             enableSorting: true,
         },
         {
-            accessorKey: 'tipoOperacion',
+            accessorKey: 'TipoOperacion',
             header: 'Tipo',
             size: 105,
             cell: ({ row }) => {
-                const tipo = row.original.tipoOperacion;
+                const tipo = row.original.TipoOperacion;
                 const config = tipoOperacionConfig[tipo] || { variant: 'outline', dotClass: 'text-slate-500', badgeClass: 'border-slate-500/30 text-slate-700 dark:text-slate-400 dark:border-slate-400/30' };
                 return (
                     <Badge variant={config.variant} className={`whitespace-nowrap px-2.5 py-0.5 gap-1.5 h-6 font-medium rounded-full ${config.badgeClass}`}>
@@ -133,11 +142,11 @@ export function HistoryList() {
             enableSorting: true,
         },
         {
-            accessorKey: 'estatus',
+            accessorKey: 'Estatus',
             header: 'Estatus',
             size: 120,
             cell: ({ row }) => {
-                const status = row.original.estatus;
+                const status = row.original.Estatus;
                 const config = estadoConfig[status] || { variant: 'secondary', icon: Target };
                 const StatusIcon = config.icon;
                 return (
@@ -150,12 +159,12 @@ export function HistoryList() {
             enableSorting: true,
         },
         {
-            accessorKey: 'totalVenta',
+            accessorKey: 'MontoTransaccion',
             header: 'Total Venta',
             size: 120,
             cell: ({ row }) =>
                 <div className="font-mono text-xs">
-                    {moneyFormat(row.original.totalVenta)}
+                    {moneyFormat(row.original.MontoTransaccion)}
                 </div>,
             enableSorting: true,
             meta: {

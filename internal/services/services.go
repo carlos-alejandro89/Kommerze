@@ -30,6 +30,6 @@ func NewServices(db *gorm.DB) *Services {
 		License:             NewLicenseService(db, apiURL),
 		OperacionesSucursal: NewOperacionesSucursalService(db),
 		Catalogos:           NewCatalogosService(repo),
-		Cloud:               NewApiCloudService(apiURL),
+		Cloud:               NewApiCloudService(apiURL, repo),
 	}
 }

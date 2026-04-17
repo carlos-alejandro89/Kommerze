@@ -40,3 +40,8 @@ func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
 	return response, err
 }
+
+func (s *PosService) ConsultaTransacciones() (*dto.ResponseDto, error) {
+	response, err := s.posRepository.ConsultaTransacciones()
+	return response, err
+}

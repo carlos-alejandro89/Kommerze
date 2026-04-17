@@ -18,6 +18,10 @@ export function ServiceConsultaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultaProductos'](arg1);
 }
 
+export function ServiceConsultaTransacciones() {
+  return window['go']['main']['App']['ServiceConsultaTransacciones']();
+}
+
 export function ServiceConsultarExistenciaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
 }

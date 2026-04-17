@@ -55,35 +55,25 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
 	return productos, err
 }
 
-func (r *PosRepository) ConsultaProductosOld(busqueda string) ([]dto.ProductoDto, error) {
-	var productos []dto.ProductoDto
+func (r *PosRepository) ConsultaTransacciones() (*dto.ResponseDto, error) {
+	var transacciones []dto.TransaccionDto
 
-	guid, err := uuid.Parse(busqueda)
-	if err != nil {
-		guid = uuid.New()
-	}
-
-	err = r.db.Raw(`select nv.codigo,p.descripcion,e.empaque ,e.contenido ,
-	                 p.fraccionable ,nv.codigo_barra ,nv.img_referencia , nivel_id,
-					 precio_compra,precio_venta, descuento ,existencia ,
-	                 p.informacion_producto,p.caracteristicas,p.instrucciones_uso,nv.guid
-					 from sucursal_producto sp
-					 join nivel_empaque nv on sp.nivel_id  = nv.id
-					 join empaques e on nv.empaque_id = e.id
-					 join productos p on nv.producto_id  = p.id 
-					 where p.descripcion like @busqueda 
-					 or codigo like @busqueda 
-					 or codigo_barra = @buscar
-					 or nv.guid = @guid`,
-		sql.Named("busqueda", "%"+busqueda+"%"),
-		sql.Named("buscar", busqueda),
-		sql.Named("guid", guid)).Scan(&productos).Error
+	err := r.db.Raw(`select p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,
+	                tp.nombre as tipo_operacion, e.nombre as estatus,
+					sum(cantidad*precio_venta) - sum(descuento) as monto_transaccion
+					from pedidos p, tipos_pedido tp, clientes c, estatuses e, pedido_detalle pd
+					where p.tipo_pedido_id = tp.id and
+						p.cliente_id = c.id and
+						p.estatus_id = e.id and
+						pd.pedido_id = p.id
+					group by p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,tp.nombre, e.nombre
+					order by tp.nombre, folio`).Scan(&transacciones).Error
 
 	if err != nil {
-		return nil, err
+		return dto.NewResponseDto(false, "Error al consultar transacciones", nil, []string{err.Error()}), err
 	}
 
-	return productos, err
+	return dto.NewResponseDto(true, "Transacciones consultadas correctamente", transacciones, nil), nil
 }
 
 func (r *PosRepository) ObtenerTiposPedido() ([]models.TipoPedido, error) {

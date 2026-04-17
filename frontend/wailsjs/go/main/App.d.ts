@@ -13,6 +13,8 @@ export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicad
 
 export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;
 
+export function ServiceConsultaTransacciones():Promise<dto.ResponseDto>;
+
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 	requestdto "BitComercio/internal/services/requestDto"
 	"bytes"
@@ -11,6 +12,7 @@ import (
 
 type ApiCloudService struct {
 	apiBaseURL string
+	repo       *repository.CatalogosRepository
 }
 type ApiCloudResponse struct {
 	Success  bool        `json:"success"`
@@ -19,8 +21,8 @@ type ApiCloudResponse struct {
 	Data     interface{} `json:"data"`
 }
 
-func NewApiCloudService(apiBaseURL string) *ApiCloudService {
-	return &ApiCloudService{apiBaseURL: apiBaseURL}
+func NewApiCloudService(apiBaseURL string, repo *repository.CatalogosRepository) *ApiCloudService {
+	return &ApiCloudService{apiBaseURL: apiBaseURL, repo: repo}
 }
 
 func (a *ApiCloudService) ApiCreateProducto(producto requestdto.ProductoCreate) *dto.ResponseDto {
@@ -42,5 +44,13 @@ func (a *ApiCloudService) ApiCreateProducto(producto requestdto.ProductoCreate) 
 		return dto.NewResponseDto(false, "Error al decodificar", nil, []string{err.Error()})
 	}
 	defer resp.Body.Close()
+
+	if result.Success {
+		var response = result.Data.(map[string]any)
+
+		a.repo.SaveProductos([]any{response["producto"]})
+		a.repo.SaveNivelesEmpaque(response["nivelEmpaque"].([]any))
+	}
+
 	return dto.NewResponseDto(result.Success, result.Mensaje, result.Data, nil)
 }

@@ -89,6 +89,10 @@ export function TabNiveles({ empaques }) {
     form.reset();
   };
 
+  const DeleteItem = (item) => {
+    setItemNiveles(prev => prev.filter(i => i.EmpaqueGuid !== item.EmpaqueGuid));
+  }
+
   return (
     <div className="py-4 max-w-6xl mx-auto pb-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -237,7 +241,7 @@ export function TabNiveles({ empaques }) {
                   isActive={item.isActive}
                   onImageUpload={() => console.log('Upload Pieza')}
                   onEdit={() => console.log('Edit Pieza')}
-                  onDelete={() => console.log('Delete Pieza')}
+                  onDelete={() => DeleteItem(item)}
                   onToggleActive={() => console.log('Toggle Pieza')}
                 />
               ))}
