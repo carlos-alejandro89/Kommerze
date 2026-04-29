@@ -4,6 +4,7 @@ import {
 } from '../../../../wailsjs/go/main/App';
 
 export const ConsultarExistencias = async (setInvalidItems) => {
+
     try {
         const cartItems = localStorage.getItem('cart')
         const cart = JSON.parse(cartItems)
@@ -51,14 +52,15 @@ export const ConsultarExistencias = async (setInvalidItems) => {
     }
 }
 
-export const confirmarTransaccion = async (setAlertConfig) => {
+export const confirmarTransaccion = async (setAlertConfig, store) => {
     const operationType = JSON.parse(localStorage.getItem('operationType'))
     const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
     const cart = JSON.parse(localStorage.getItem('validCart'))
+    const sucursalTraspaso = JSON.parse(localStorage.getItem('sucursal'))
 
     try {
-        const result = await ServiceConfirmarTransaccion(operationType, pagosAplicados, cart);
-        console.log('result', result)
+        const result = await ServiceConfirmarTransaccion(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null);
+
         localStorage.setItem('folio', result.data.Folio)
         return result.success;
     } catch (error) {

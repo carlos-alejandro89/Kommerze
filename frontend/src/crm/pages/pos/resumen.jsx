@@ -5,8 +5,10 @@ import { ExternalLink, ChevronRight, FileCheck } from 'lucide-react';
 import { ConsultarExistencias, confirmarTransaccion, validarPago } from './resumen-actions';
 import { ModalDetalleInventario } from './modal-detalle-inventario';
 import { DialogAlert } from '@/components/common/dialog-alert';
+import { useActivation } from '@/providers/activation-provider';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
+    const { store } = useActivation();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
@@ -31,7 +33,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
 
             if (parseInt(operationType) === 2 || parseInt(operationType) === 3) {
-                const transaccionValida = await confirmarTransaccion(setAlertConfig) // Se guarda la cotizacion
+                const transaccionValida = await confirmarTransaccion(setAlertConfig, store) // Se guarda la cotizacion
                 setNextPage(currentStep + 2)
                 return transaccionValida
             }
@@ -47,7 +49,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 }
             }
 
-            const transaccionValida = await confirmarTransaccion(setAlertConfig) // Se guarda la venta
+            const transaccionValida = await confirmarTransaccion(setAlertConfig, store) // Se guarda la venta
             return transaccionValida
         }
     }

@@ -4,6 +4,7 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
+	"context"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -14,10 +15,14 @@ type PosService struct {
 	posRepository *repository.PosRepository
 }
 
-func NewPosService(db *gorm.DB) *PosService {
+func (s *PosService) SetContext(ctx context.Context) {
+	s.posRepository.SetContext(ctx)
+}
+
+func NewPosService(db *gorm.DB, ctx context.Context) *PosService {
 	return &PosService{
 		db:            db,
-		posRepository: repository.NewPosRepository(db),
+		posRepository: repository.NewPosRepository(db, ctx),
 	}
 }
 
@@ -36,8 +41,8 @@ func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	return response, err
 }
 
-func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto) (*dto.ResponseDto, error) {
-	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
+func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint) (*dto.ResponseDto, error) {
+	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino)
 	return response, err
 }
 

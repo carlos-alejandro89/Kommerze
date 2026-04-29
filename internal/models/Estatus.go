@@ -5,3 +5,7 @@ type Estatus struct {
 
 	Nombre string `gorm:"size:50;not null;uniqueIndex"`
 }
+
+func (Estatus) TableName() string {
+	return "estatus"
+}

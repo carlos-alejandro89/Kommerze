@@ -13,7 +13,7 @@ type Traspaso struct {
 	EstatusID         uint
 	Estatus           Estatus `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	FechaEnvio        time.Time
-	FechaRecepcion    time.Time
+	FechaRecepcion    *time.Time
 	Sync              bool
 }
 

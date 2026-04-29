@@ -3,11 +3,16 @@ package repository
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	"bytes"
+	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -15,11 +20,15 @@ import (
 )
 
 type PosRepository struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx context.Context
 }
 
-func NewPosRepository(db *gorm.DB) *PosRepository {
-	return &PosRepository{db: db}
+func NewPosRepository(db *gorm.DB, ctx context.Context) *PosRepository {
+	return &PosRepository{db: db, ctx: ctx}
+}
+func (r *PosRepository) SetContext(ctx context.Context) {
+	r.ctx = ctx
 }
 
 func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
@@ -154,7 +163,31 @@ func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, p
 	return nil
 }
 
-func (r *PosRepository) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto) (*dto.ResponseDto, error) {
+func (r *PosRepository) RegistrarTraspaso(tx *gorm.DB, pedido *models.Pedido, sucursalOrigen *uint, sucursalDestino *uint) error {
+
+	var tr models.Traspaso
+
+	tr.PedidoID = pedido.ID
+	tr.SucursalOrigenID = *sucursalOrigen
+	tr.SucursalDestinoID = *sucursalDestino
+	tr.FechaEnvio = time.Now()
+	tr.EstatusID = 1
+	tr.Sync = false
+
+	if err := tx.Create(&tr).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *PosRepository) ConfirmarTransaccion(
+	tipoOperacion *uint,
+	pagosAplicados []dto.PagosAplicadosDto,
+	itemsPedido []dto.PedidoProductoDto,
+	sucursalOrigen *uint,
+	sucursalDestino *uint,
+) (*dto.ResponseDto, error) {
 
 	var pedido models.Pedido
 
@@ -235,6 +268,13 @@ func (r *PosRepository) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados
 			}
 		}
 
+		//Registrar Traspaso
+		if *tipoOperacion == 3 && sucursalDestino != nil && sucursalOrigen != nil {
+			if err := r.RegistrarTraspaso(tx, &pedido, sucursalOrigen, sucursalDestino); err != nil {
+				return err
+			}
+		}
+
 		return nil // ✅ COMMIT
 	})
 
@@ -242,5 +282,105 @@ func (r *PosRepository) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados
 		return dto.NewResponseDto(false, "Error al confirmar transacción", nil, []string{err.Error()}), err
 	}
 
+	go r.CloudSync(&pedido, sucursalOrigen, sucursalDestino)
 	return dto.NewResponseDto(true, "Transacción confirmada exitosamente", pedido, nil), nil
+}
+
+func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, sucursalDestino *uint) {
+	// Cargar las relaciones del pedido para obtener sus Guids correspondientes
+	r.db.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").First(pedido, pedido.ID)
+
+	var detalles []models.PedidoDetalle
+	r.db.Preload("Nivel").Where("pedido_id = ?", pedido.ID).Find(&detalles)
+
+	var pedidoDetalleDto []dto.PedidoDetalleRequestDto
+	for _, d := range detalles {
+		pedidoDetalleDto = append(pedidoDetalleDto, dto.PedidoDetalleRequestDto{
+			NivelGuid:     d.Nivel.Guid.String(),
+			Cantidad:      d.Cantidad.InexactFloat64(),
+			PrecioCompra:  d.PrecioCompra.InexactFloat64(),
+			PrecioVenta:   d.PrecioVenta.InexactFloat64(),
+			Descuento:     d.Descuento.InexactFloat64(),
+			TrasladoIVA:   d.TrasladoIVA.InexactFloat64(),
+			TasaIVA:       d.TasaIVA.InexactFloat64(),
+			RetencionISR:  d.RetencionISR.InexactFloat64(),
+			TasaISR:       d.TasaISR.InexactFloat64(),
+			InfoAdicional: d.InfoAdicional,
+		})
+	}
+
+	var tr models.Traspaso
+	r.db.Preload("SucursalOrigen").Preload("SucursalDestino").Preload("Estatus").Where("pedido_id = ?", pedido.ID).First(&tr)
+
+	var traspasoDto *dto.TraspasoRequestDto
+	var sucursalOrigenGuid string
+
+	if tr.ID != 0 && *sucursalOrigen != 0 && *sucursalDestino != 0 {
+		var fechaRecepcion time.Time
+		if tr.FechaRecepcion != nil {
+			fechaRecepcion = *tr.FechaRecepcion
+		}
+
+		traspasoDto = &dto.TraspasoRequestDto{
+			SucursalOrigenGuid:  tr.SucursalOrigen.Guid.String(),
+			SucursalDestinoGuid: tr.SucursalDestino.Guid.String(),
+			EstatusGuid:         tr.Estatus.Guid.String(),
+			FechaEnvio:          tr.FechaEnvio,
+			FechaRecepcion:      fechaRecepcion,
+			Sync:                tr.Sync,
+		}
+
+		sucursalOrigenGuid = tr.SucursalOrigen.Guid.String()
+	}
+
+	pedidoRequestDto := dto.PedidoRequestDto{
+		SucursalOrigenGuid: sucursalOrigenGuid,
+		PedidoGuid:         pedido.Guid.String(),
+		EstatusGuid:        pedido.Estatus.Guid.String(),
+		ClienteGuid:        pedido.Cliente.Guid.String(),
+		TipoPedidoGuid:     pedido.TipoPedido.Guid.String(),
+		Folio:              pedido.Folio,
+		Fecha:              pedido.Fecha,
+		EsCredito:          pedido.EsCredito,
+		Sync:               pedido.Sync,
+		PedidoDetalle:      pedidoDetalleDto,
+		Traspaso:           traspasoDto,
+	}
+
+	// 1. Lógica de la API
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Convertir pedido a JSON, etc...
+	payload, err := json.Marshal(pedidoRequestDto)
+	if err != nil {
+		runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
+			"pedido_id": pedidoRequestDto.PedidoGuid,
+			"success":   false,
+			"error":     "No se pudo convertir el pedido a JSON",
+		})
+		return
+	}
+
+	fmt.Println(string(payload))
+	resp, err := client.Post("http://localhost:5242/pedidos/registrar", "application/json", bytes.NewBuffer(payload))
+
+	fmt.Println(resp)
+	fmt.Println(err)
+	if err != nil {
+		// 2. Notificar error al frontend de forma independiente
+		runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
+			"pedido_id": pedido.ID,
+			"success":   false,
+			"error":     "No se pudo conectar con el servidor",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// 3. Notificar éxito
+	runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
+		"pedido_id": pedido.ID,
+		"success":   true,
+		"message":   "Sincronizado correctamente",
+	})
 }

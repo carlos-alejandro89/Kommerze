@@ -321,10 +321,15 @@ func (a *SyncService) SyncSucursales() ([]any, error) {
 }
 
 func (a *SyncService) SyncSucursalProductos(parameters map[string]any) ([]any, error) {
+	fmt.Println("Conectando al servicio de lista de precios...")
+	fmt.Println(a.apiBaseURL)
+	fmt.Println(parameters["sucursalGuid"])
 	resp, err := http.Get(fmt.Sprintf("%s/lista-precios/get-precios/%s", a.apiBaseURL, parameters["sucursalGuid"]))
 	if err != nil {
+		fmt.Println("Error en la solicitud:", err)
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -336,6 +341,7 @@ func (a *SyncService) SyncSucursalProductos(parameters map[string]any) ([]any, e
 		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
+	fmt.Println("Datos recibidos:", result.Data)
 	if err := a.repoPrecios.SaveSucursalProducto(result.Data); err != nil {
 		return nil, fmt.Errorf("error sincronizando datos: %w", err)
 	}

@@ -35,7 +35,7 @@ func main() {
 	}
 
 	// Iniciar servicios
-	svc := services.NewServices(db)
+	svc := services.NewServices(db, nil)
 
 	// 3️⃣ Crear app inyectando dependencias
 	app := NewApp(db, svc)

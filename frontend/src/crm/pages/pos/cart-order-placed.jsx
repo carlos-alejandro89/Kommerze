@@ -76,6 +76,7 @@ export function CartOrderPlaced() {
             const stored = localStorage.getItem('cart');
             localStorage.removeItem('cart')
             localStorage.removeItem('validCart')
+            localStorage.removeItem('sucursal')
             return stored ? JSON.parse(stored) : [];
         } catch (e) {
             return [];

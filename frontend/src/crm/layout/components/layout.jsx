@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLayout } from './layout-context';
@@ -10,14 +10,29 @@ import { DialogOpenShop } from './dialog-open-shop';
 import { useActivation } from '@/providers/activation-provider';
 
 export function Layout() {
+  const navigate = useNavigate();
   const { sidebarCollapse } = useLayout();
   const isMobile = useIsMobile();
-  const { isStoreOpen } = useActivation();
-  const [open, setOpen] = useState(!isStoreOpen);
+  const { isStoreOpen, store } = useActivation();
+  const [open, setOpen] = useState(() => {
+    if (store == null) {
+      return false
+    }
+
+    return !isStoreOpen
+  });
 
   const handleOpenChange = (value) => {
     setOpen(value);
   };
+
+
+  useEffect(() => {
+
+    if (store == null) {
+      navigate("/sync")
+    }
+  }, []);
 
   const rootProps = {
     className: cn(
@@ -43,7 +58,7 @@ export function Layout() {
           </main>
         </div>
       </div>
-      <DialogOpenShop open={open} onOpenChange={() => { setOpen(false) }} />
+      {store !== null && <DialogOpenShop open={open} onOpenChange={() => { setOpen(false) }} />}
     </>
   );
 }

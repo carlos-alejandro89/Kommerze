@@ -37,13 +37,17 @@ export const ActivationProvider = ({ children }) => {
 
     const storeStatus = async () => {
         try {
-            console.log("iniciando servicio de estatus de tienda");
+
             const result = await ServiceObtenerOperacionSucursal(license.LicenseKey);
-            setEmpresa(result.data.empresa);
-            setIsStoreOpen(result.data.operaciones.length > 0);
-            setOperation(result.data.operaciones[0]);
-            setStore(result.data.sucursal);
-            return result.data.operaciones.length > 0;
+            console.log("estado de la sucursal", result.data);
+            if (result.success) {
+                setEmpresa(result.data.empresa);
+                setIsStoreOpen(result.data.operaciones.length > 0);
+                setOperation(result.data.operaciones[0]);
+                setStore(result.data.sucursal);
+                return result.data.operaciones.length > 0;
+            }
+            return false;
         } catch (error) {
             console.error("Error al obtener el estado de la sucursal", error);
             setIsStoreOpen(false);
@@ -55,6 +59,10 @@ export const ActivationProvider = ({ children }) => {
         try {
             const result = await ServiceObtenerValorInventario();
             console.log("valor del inventario", result.data);
+            if (result.data === null) {
+                setValorInventario(0);
+                return 0;
+            }
             setValorInventario(result.data);
             return result.data.valorInventario;
         } catch (error) {

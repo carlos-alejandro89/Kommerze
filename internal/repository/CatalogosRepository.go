@@ -149,6 +149,7 @@ func (c *CatalogosRepository) SaveSatProductos(data []any) error {
 }
 
 func (c *CatalogosRepository) SaveProductos(data []any) error {
+	fmt.Println("data", data)
 	var dicLineas = make(map[uuid.UUID]uint)
 	var dicMarcas = make(map[uuid.UUID]uint)
 	var dicSatProds = make(map[uuid.UUID]uint)
@@ -220,6 +221,7 @@ func (c *CatalogosRepository) SaveProductos(data []any) error {
 		}
 
 		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&producto).Error; err != nil {
+			fmt.Println("error insertando producto", err)
 			return fmt.Errorf("error insertando producto: %w", err)
 		}
 	}

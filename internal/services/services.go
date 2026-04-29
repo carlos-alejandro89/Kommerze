@@ -2,6 +2,7 @@ package services
 
 import (
 	"BitComercio/internal/repository"
+	"context"
 	"os"
 
 	"gorm.io/gorm"
@@ -17,7 +18,11 @@ type Services struct {
 	Cloud               *ApiCloudService
 }
 
-func NewServices(db *gorm.DB) *Services {
+func (s *Services) SetContext(ctx context.Context) {
+	s.Pos.SetContext(ctx)
+}
+
+func NewServices(db *gorm.DB, ctx context.Context) *Services {
 	repo := repository.NewCatalogosRepository(db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
@@ -25,7 +30,7 @@ func NewServices(db *gorm.DB) *Services {
 
 	return &Services{
 		Sync:                NewSyncService(db, repo, repoPrecios, apiURL),
-		Pos:                 NewPosService(db),
+		Pos:                 NewPosService(db, ctx),
 		Auth:                NewAuthService(repoUsuarios),
 		License:             NewLicenseService(db, apiURL),
 		OperacionesSucursal: NewOperacionesSucursalService(db),

@@ -31,6 +31,7 @@ func NewApp(db *gorm.DB, svc *services.Services) *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.services.SetContext(ctx)
 }
 
 // Funciones que se expone para interactuar con el frontend
@@ -154,8 +155,8 @@ func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	return result, err
 }
 
-func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto) (*dto.ResponseDto, error) {
-	result, err := a.services.Pos.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido)
+func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint) (*dto.ResponseDto, error) {
+	result, err := a.services.Pos.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino)
 	return result, err
 }
 

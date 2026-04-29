@@ -17,6 +17,8 @@ import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { cn } from '@/lib/utils';
 
+import { useActivation } from '@/providers/activation-provider';
+
 import {
     SyncLineas,
     SyncMarcas,
@@ -33,192 +35,197 @@ import {
     SyncSucursalProductos
 } from "../../../../wailsjs/go/main/App";
 
-const catalogsData = [
-    {
-        id: 1,
-        name: 'Lineas',
-        endpoint: '/catalogos/lineas/get',
-        lastSync: '2m ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: Package,
-        iconBg: 'bg-blue-50 dark:bg-blue-900/20',
-        iconColor: 'text-blue-600 dark:text-blue-400',
-        sync: SyncLineas,
-        params: null
-    },
-    {
-        id: 2,
-        name: 'Marcas',
-        endpoint: '/catalogos/marcas/get',
-        lastSync: '14m ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: Users,
-        iconBg: 'bg-purple-50 dark:bg-purple-900/20',
-        iconColor: 'text-purple-600 dark:text-purple-400',
-        sync: SyncMarcas,
-        params: null
-    },
-    {
-        id: 3,
-        name: 'Empaques',
-        endpoint: '/catalogos/empaques/get',
-        lastSync: 'Failed 1h ago',
-        status: 'Pendiente',
-        statusVariant: 'warning',
-        icon: Database,
-        iconBg: 'bg-amber-50 dark:bg-amber-900/20',
-        iconColor: 'text-amber-600 dark:text-amber-400',
-        failed: true,
-        sync: SyncEmpaques,
-        params: null
-    },
-    {
-        id: 4,
-        name: 'SAT Claves Productos',
-        endpoint: '/catalogos/sat/productos/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSatProductos,
-        params: null
-    },
-    {
-        id: 5,
-        name: 'Productos',
-        endpoint: '/catalogos/productos/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncProductos,
-        params: null
-    },
-
-    {
-        id: 10,
-        name: 'Niveles Empaque',
-        endpoint: '/catalogos/niveles-empaque/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncNivelesEmpaque,
-        params: null
-    },
-    {
-        id: 6,
-        name: 'SAT Formas Pago',
-        endpoint: '/catalogos/sat/formas-pago/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSatFormasPago,
-        params: null
-    },
-    {
-        id: 7,
-        name: 'SAT Metodos Pago',
-        endpoint: '/catalogos/sat/metodos-pago/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSatMetodosPago,
-        params: null
-    },
-    {
-        id: 8,
-        name: 'SAT Regimen Fiscal',
-        endpoint: '/catalogos/sat/regimen-fiscal/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSatRegimenFiscal,
-        params: null
-    },
-    {
-        id: 9,
-        name: 'SAT Usos CFDI',
-        endpoint: '/catalogos/sat/usos-cfdi/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSatUsosCfdi,
-        params: null
-    },
-
-    {
-        id: 11,
-        name: 'Empresas',
-        endpoint: '/catalogos/empresas/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncEmpresas,
-        params: null
-    },
-    {
-        id: 12,
-        name: 'Sucursales',
-        endpoint: '/catalogos/sucursales/get',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSucursales,
-        params: null
-    },
-    {
-        id: 13,
-        name: 'Listas de precios',
-        endpoint: '/lista-precios/get-precios/',
-        lastSync: '3h ago',
-        status: 'Sincronizado',
-        statusVariant: 'success',
-        icon: LayoutGrid,
-        iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        sync: SyncSucursalProductos,
-        params: {
-            sucursalGuid: 'bf531b30-e4bd-4725-b5f2-24458f1ac67a'
-        }
-    }
-];
 
 const gradientButtonStyle = "bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-600 hover:text-white border-0 shadow-sm transition-all duration-200";
 
 export function SyncPage() {
+
+    const { store } = useActivation();
+
+    const catalogsData = [
+        {
+            id: 1,
+            name: 'Lineas',
+            endpoint: '/catalogos/lineas/get',
+            lastSync: '2m ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: Package,
+            iconBg: 'bg-blue-50 dark:bg-blue-900/20',
+            iconColor: 'text-blue-600 dark:text-blue-400',
+            sync: SyncLineas,
+            params: null
+        },
+        {
+            id: 2,
+            name: 'Marcas',
+            endpoint: '/catalogos/marcas/get',
+            lastSync: '14m ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: Users,
+            iconBg: 'bg-purple-50 dark:bg-purple-900/20',
+            iconColor: 'text-purple-600 dark:text-purple-400',
+            sync: SyncMarcas,
+            params: null
+        },
+        {
+            id: 3,
+            name: 'Empaques',
+            endpoint: '/catalogos/empaques/get',
+            lastSync: 'Failed 1h ago',
+            status: 'Pendiente',
+            statusVariant: 'warning',
+            icon: Database,
+            iconBg: 'bg-amber-50 dark:bg-amber-900/20',
+            iconColor: 'text-amber-600 dark:text-amber-400',
+            failed: true,
+            sync: SyncEmpaques,
+            params: null
+        },
+        {
+            id: 4,
+            name: 'SAT Claves Productos',
+            endpoint: '/catalogos/sat/productos/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSatProductos,
+            params: null
+        },
+        {
+            id: 5,
+            name: 'Productos',
+            endpoint: '/catalogos/productos/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncProductos,
+            params: null
+        },
+
+        {
+            id: 10,
+            name: 'Niveles Empaque',
+            endpoint: '/catalogos/niveles-empaque/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncNivelesEmpaque,
+            params: null
+        },
+        {
+            id: 6,
+            name: 'SAT Formas Pago',
+            endpoint: '/catalogos/sat/formas-pago/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSatFormasPago,
+            params: null
+        },
+        {
+            id: 7,
+            name: 'SAT Metodos Pago',
+            endpoint: '/catalogos/sat/metodos-pago/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSatMetodosPago,
+            params: null
+        },
+        {
+            id: 8,
+            name: 'SAT Regimen Fiscal',
+            endpoint: '/catalogos/sat/regimen-fiscal/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSatRegimenFiscal,
+            params: null
+        },
+        {
+            id: 9,
+            name: 'SAT Usos CFDI',
+            endpoint: '/catalogos/sat/usos-cfdi/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSatUsosCfdi,
+            params: null
+        },
+
+        {
+            id: 11,
+            name: 'Empresas',
+            endpoint: '/catalogos/empresas/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncEmpresas,
+            params: null
+        },
+        {
+            id: 12,
+            name: 'Sucursales',
+            endpoint: '/catalogos/sucursales/get',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSucursales,
+            params: null
+        },
+        {
+            id: 13,
+            name: 'Listas de precios',
+            endpoint: '/lista-precios/get-precios/',
+            lastSync: '3h ago',
+            status: 'Sincronizado',
+            statusVariant: 'success',
+            icon: LayoutGrid,
+            iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            sync: SyncSucursalProductos,
+            params: {
+                sucursalGuid: store?.Guid || 'bf531b30-e4bd-4725-b5f2-24458f1ac67a'
+            }
+        }
+    ];
     const [catalogs, setCatalogs] = React.useState(catalogsData);
     const [syncingIds, setSyncingIds] = React.useState(new Set());
     const [isSyncingAll, setIsSyncingAll] = React.useState(false);
 
+
     const sync = async (id) => {
         const catalogo = catalogsData.find((catalog) => catalog.id === id);
+
         const info = await catalogo.sync(catalogo.params);
         return info
     }
