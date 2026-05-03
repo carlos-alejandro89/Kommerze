@@ -136,7 +136,17 @@ func VerifyLicense() *dto.ResponseDto {
 }
 
 func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRequest) (any, error) {
-	requestBody, err := json.Marshal(licenseKey)
+	apiReq := struct {
+		LicenseKey        string `json:"LicenseKey"`
+		NombreDispositivo string `json:"NombreDispositivo"`
+		MachineId         string `json:"MachineId"`
+	}{
+		LicenseKey:        licenseKey.LicenseKey,
+		NombreDispositivo: licenseKey.DeviceName,
+		MachineId:         licenseKey.MachineId,
+	}
+
+	requestBody, err := json.Marshal(apiReq)
 	if err != nil {
 		panic(err)
 	}

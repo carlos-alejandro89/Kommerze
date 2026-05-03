@@ -17,8 +17,8 @@ export function LoginPage() {
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        username: 'carlos.alejandro89@outlook.com',
-        password: 'passwordSegura#1',
+        username: 'admin@kommerze.com',
+        password: 'admin123',
     });
 
 

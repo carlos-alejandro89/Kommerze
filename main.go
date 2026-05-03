@@ -34,6 +34,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Ejecutar Seeder para datos iniciales
+	err = database.RunSeeder(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Iniciar servicios
 	svc := services.NewServices(db, nil)
 
