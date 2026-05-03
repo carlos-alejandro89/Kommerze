@@ -18,13 +18,7 @@ import { getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedR
 import { ServiceConsultaTransacciones } from '../../../../wailsjs/go/main/App';
 import { moneyFormat } from '@/lib/helpers';
 
-const mockData = [
-    { id: 1, folio: 'FOL-001', fecha: '2026-03-24', cliente: 'Juan Perez', avatar: '/media/avatars/300-1.png', email: 'juan.perez@example.com', tipoOperacion: 'Venta', estatus: 'Completado', totalVenta: 1500.50 },
-    { id: 2, folio: 'FOL-002', fecha: '2026-03-23', cliente: 'Maria Garcia', avatar: '/media/avatars/300-2.png', email: 'maria.garcia@example.com', tipoOperacion: 'Cotización', estatus: 'Pendiente', totalVenta: 2300.00 },
-    { id: 3, folio: 'FOL-003', fecha: '2026-03-22', cliente: 'Carlos Lopez', avatar: '/media/avatars/300-3.png', email: 'carlos.lopez@example.com', tipoOperacion: 'Venta', estatus: 'Cancelado', totalVenta: 0.00 },
-    { id: 4, folio: 'FOL-004', fecha: '2026-03-21', cliente: 'Ana Martinez', avatar: '/media/avatars/300-4.png', email: 'ana.martinez@example.com', tipoOperacion: 'Venta', estatus: 'Completado', totalVenta: 850.75 },
-    { id: 5, folio: 'FOL-005', fecha: '2026-03-20', cliente: 'Luis Rodriguez', avatar: '/media/avatars/300-12.png', email: 'luis.rodriguez@example.com', tipoOperacion: 'Cotización', estatus: 'Pendiente', totalVenta: 120.00 },
-];
+
 
 export function HistoryList() {
 

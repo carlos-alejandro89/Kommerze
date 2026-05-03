@@ -1,11 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { DefaultLayout } from './layout';
-import { CompanyPage } from './pages/companies/company/page';
-import { CompaniesListPage } from './pages/companies/page';
-import ContactsPage from './pages/contacts/page';
-import { Dashboard } from './pages/dashboard/page';
-import { DealsPage } from './pages/deals/page';
-import { NotesPage } from './pages/notes/page';
+
 import { ProductsPage } from './pages/products/page';
 import { CreateProductPage } from './pages/products/create-page';
 import { StoreClientPage } from './pages/store-client/home/store-client-page'
@@ -33,13 +28,7 @@ export default function CrmModule() {
         <Route path="dashboard" element={<StoreClientPage />} />
         <Route path="products/" element={<ProductsPage />} />
         <Route path="products/new" element={<CreateProductPage />} />
-        <Route path="notes/" element={<NotesPage />} />
-        <Route path="companies/" element={<CompaniesListPage />} />
-        <Route path="company/" element={<CompanyPage />} />
-        <Route path="companies/:companyId" element={<CompanyPage />} />
-        <Route path="contacts/" element={<ContactsPage />} />
-        <Route path="contacts/:contactId" element={<CompanyPage />} />
-        <Route path="deals/" element={<DealsPage />} />
+
         <Route path="sync/" element={<SyncPage />} />
         <Route path="pos/" element={<POSPage />} />
         <Route path="pos/transaction" element={<CartStepTwo />} />
