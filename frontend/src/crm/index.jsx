@@ -13,6 +13,7 @@ import { AuthGuard } from '@/components/auth-guard';
 import { CartOrderPlaced } from './pages/pos/cart-order-placed';
 import { HistoryPage } from './pages/history/page';
 import { LicenseActivationPage } from './pages/license-activation/license-activation-page';
+import { SettingsPage } from './pages/settings/page';
 
 
 export default function CrmModule() {
@@ -35,6 +36,7 @@ export default function CrmModule() {
         <Route path="pos/payment" element={<CartStepThree />} />
         <Route path="pos/order-placed" element={<CartOrderPlaced />} />
         <Route path="history/" element={<HistoryPage />} />
+        <Route path="settings/" element={<SettingsPage />} />
       </Route>
 
     </Routes>

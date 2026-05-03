@@ -66,6 +66,10 @@ export function ServiceGetSucursales() {
   return window['go']['main']['App']['ServiceGetSucursales']();
 }
 
+export function ServiceLoadCloudCredentials() {
+  return window['go']['main']['App']['ServiceLoadCloudCredentials']();
+}
+
 export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
 }
@@ -84,6 +88,10 @@ export function ServiceObtenerValorInventario() {
 
 export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
+}
+
+export function ServiceSaveCloudCredentials(arg1, arg2) {
+  return window['go']['main']['App']['ServiceSaveCloudCredentials'](arg1, arg2);
 }
 
 export function ServiceSucursalInicioOperacion(arg1) {

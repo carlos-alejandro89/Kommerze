@@ -534,3 +534,22 @@ export namespace requestdto {
 
 }
 
+export namespace services {
+	
+	export class CloudCredentials {
+	    email: string;
+	    password: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudCredentials(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.email = source["email"];
+	        this.password = source["password"];
+	    }
+	}
+
+}
+

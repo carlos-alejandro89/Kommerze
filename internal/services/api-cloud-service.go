@@ -7,12 +7,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 )
 
 type ApiCloudService struct {
 	apiBaseURL string
 	repo       *repository.CatalogosRepository
+	client     *CloudHttpClient
 }
 type ApiCloudResponse struct {
 	Success  bool        `json:"success"`
@@ -21,8 +21,8 @@ type ApiCloudResponse struct {
 	Data     interface{} `json:"data"`
 }
 
-func NewApiCloudService(apiBaseURL string, repo *repository.CatalogosRepository) *ApiCloudService {
-	return &ApiCloudService{apiBaseURL: apiBaseURL, repo: repo}
+func NewApiCloudService(apiBaseURL string, repo *repository.CatalogosRepository, client *CloudHttpClient) *ApiCloudService {
+	return &ApiCloudService{apiBaseURL: apiBaseURL, repo: repo, client: client}
 }
 
 func (a *ApiCloudService) ApiCreateProducto(producto requestdto.ProductoCreate) *dto.ResponseDto {
@@ -32,7 +32,7 @@ func (a *ApiCloudService) ApiCreateProducto(producto requestdto.ProductoCreate) 
 		return dto.NewResponseDto(false, "Error al serializar producto", nil, []string{err.Error()})
 	}
 
-	resp, err := http.Post(fmt.Sprintf("%s/catalogos/productos/create", a.apiBaseURL), "application/json", bytes.NewBuffer(jsonData))
+	resp, err := a.client.Post(fmt.Sprintf("%s/catalogos/productos/create", a.apiBaseURL), "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return dto.NewResponseDto(false, "Error al crear producto", nil, []string{err.Error()})
 	}

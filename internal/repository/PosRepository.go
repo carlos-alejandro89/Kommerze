@@ -70,7 +70,7 @@ func (r *PosRepository) ConsultaTransacciones() (*dto.ResponseDto, error) {
 	err := r.db.Raw(`select p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,
 	                tp.nombre as tipo_operacion, e.nombre as estatus,
 					sum(cantidad*precio_venta) - sum(descuento) as monto_transaccion
-					from pedidos p, tipos_pedido tp, clientes c, estatuses e, pedido_detalle pd
+					from pedidos p, tipos_pedido tp, clientes c, estatus e, pedido_detalle pd
 					where p.tipo_pedido_id = tp.id and
 						p.cliente_id = c.id and
 						p.estatus_id = e.id and

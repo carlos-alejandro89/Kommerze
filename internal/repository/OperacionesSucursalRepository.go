@@ -23,6 +23,9 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursal(licencia string
 
 	err := o.db.Where("licencia = ?", licencia).First(&sucursal).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return dto.NewResponseDto(false, "No se encontró una sucursal con esa licencia", nil, nil)
+		}
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
@@ -56,7 +59,7 @@ func (o *OperacionesSucursalRepository) ObtenerValorInventario() *dto.ResponseDt
 	var inventario models.SucursalProducto
 	var valorInventario float64
 
-	err := o.db.Model(&inventario).Select("SUM (precio_venta*existencia) as ValorInventario").Scan(&valorInventario).Error
+	err := o.db.Model(&inventario).Select("COALESCE(SUM(precio_venta*existencia), 0) as ValorInventario").Scan(&valorInventario).Error
 	if err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}

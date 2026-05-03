@@ -269,16 +269,28 @@ func (c *CatalogosRepository) SaveNivelesEmpaque(data []any) error {
 			if pGuid, err := uuid.Parse(pGuidStr); err == nil {
 				if id, exists := dicProds[pGuid]; exists {
 					nivel.ProductoID = id
+				} else {
+					continue
 				}
+			} else {
+				continue
 			}
+		} else {
+			continue
 		}
 
 		if eGuidStr, ok := fMap["empaqueGuid"].(string); ok && eGuidStr != "" {
 			if eGuid, err := uuid.Parse(eGuidStr); err == nil {
 				if id, exists := dicEmpaques[eGuid]; exists {
 					nivel.EmpaqueID = id
+				} else {
+					continue
 				}
+			} else {
+				continue
 			}
+		} else {
+			continue
 		}
 
 		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&nivel).Error; err != nil {

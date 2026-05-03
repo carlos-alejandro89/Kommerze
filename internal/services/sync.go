@@ -21,23 +21,26 @@ type SyncService struct {
 	repo        *repository.CatalogosRepository
 	repoPrecios *repository.ListaPreciosRepository
 	apiBaseURL  string
+	client      *CloudHttpClient
 }
 
 func NewSyncService(
 	db *gorm.DB,
 	repo *repository.CatalogosRepository,
 	repoPrecios *repository.ListaPreciosRepository,
-	apiBaseURL string) *SyncService {
+	apiBaseURL string,
+	client *CloudHttpClient) *SyncService {
 	return &SyncService{
 		db:          db,
 		repo:        repo,
 		repoPrecios: repoPrecios,
 		apiBaseURL:  apiBaseURL,
+		client:      client,
 	}
 }
 
 func (s *SyncService) SyncLinea() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/lineas/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/lineas/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("Error en servicio: %w", err)
 	}
@@ -62,7 +65,7 @@ func (s *SyncService) SyncLinea() ([]any, error) {
 }
 
 func (s *SyncService) SyncEmpaques() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/empaques/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/empaques/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("Error en servicio: %w", err)
 	}
@@ -87,7 +90,7 @@ func (s *SyncService) SyncEmpaques() ([]any, error) {
 }
 
 func (s *SyncService) SyncMarcas() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/marcas/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/marcas/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("Error en servicio: %w", err)
 	}
@@ -112,7 +115,7 @@ func (s *SyncService) SyncMarcas() ([]any, error) {
 }
 
 func (s *SyncService) SyncSatProductos() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sat/productos/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/productos/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("Error en servicio: %w", err)
 	}
@@ -137,7 +140,7 @@ func (s *SyncService) SyncSatProductos() ([]any, error) {
 }
 
 func (s *SyncService) SyncProductos() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/productos/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/productos/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -160,7 +163,7 @@ func (s *SyncService) SyncProductos() ([]any, error) {
 }
 
 func (s *SyncService) SyncNivelesEmpaque() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/niveles-empaque/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/niveles-empaque/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -183,7 +186,7 @@ func (s *SyncService) SyncNivelesEmpaque() ([]any, error) {
 }
 
 func (s *SyncService) SyncSatFormasPago() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sat/formas-pago/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/formas-pago/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -206,7 +209,7 @@ func (s *SyncService) SyncSatFormasPago() ([]any, error) {
 }
 
 func (s *SyncService) SyncSatMetodosPago() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sat/metodos-pago/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/metodos-pago/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -229,7 +232,7 @@ func (s *SyncService) SyncSatMetodosPago() ([]any, error) {
 }
 
 func (s *SyncService) SyncSatUsosCfdi() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sat/usos-cfdi/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/usos-cfdi/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -252,7 +255,7 @@ func (s *SyncService) SyncSatUsosCfdi() ([]any, error) {
 }
 
 func (s *SyncService) SyncSatRegimenFiscal() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sat/regimen-fiscal/get", s.apiBaseURL))
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/regimen-fiscal/get", s.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -275,7 +278,7 @@ func (s *SyncService) SyncSatRegimenFiscal() ([]any, error) {
 }
 
 func (a *SyncService) SyncEmpresas() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/empresas/get", a.apiBaseURL))
+	resp, err := a.client.Get(fmt.Sprintf("%s/catalogos/empresas/get", a.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -298,7 +301,7 @@ func (a *SyncService) SyncEmpresas() ([]any, error) {
 }
 
 func (a *SyncService) SyncSucursales() ([]any, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/catalogos/sucursales/get", a.apiBaseURL))
+	resp, err := a.client.Get(fmt.Sprintf("%s/catalogos/sucursales/get", a.apiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
@@ -324,7 +327,7 @@ func (a *SyncService) SyncSucursalProductos(parameters map[string]any) ([]any, e
 	fmt.Println("Conectando al servicio de lista de precios...")
 	fmt.Println(a.apiBaseURL)
 	fmt.Println(parameters["sucursalGuid"])
-	resp, err := http.Get(fmt.Sprintf("%s/lista-precios/get-precios/%s", a.apiBaseURL, parameters["sucursalGuid"]))
+	resp, err := a.client.Get(fmt.Sprintf("%s/lista-precios/get-precios/%s", a.apiBaseURL, parameters["sucursalGuid"]))
 	if err != nil {
 		fmt.Println("Error en la solicitud:", err)
 		return nil, fmt.Errorf("error in request: %w", err)

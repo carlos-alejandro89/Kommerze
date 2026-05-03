@@ -3,6 +3,7 @@
 import {requestdto} from '../models';
 import {dto} from '../models';
 import {uuid} from '../models';
+import {services} from '../models';
 import {models} from '../models';
 
 export function ServiceActivateLicense(arg1:requestdto.ActivateLicenseRequest):Promise<any>;
@@ -37,6 +38,8 @@ export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
 
 export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
+export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
+
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function ServiceObtenerOperacionSucursal(arg1:string):Promise<dto.ResponseDto>;
@@ -46,6 +49,8 @@ export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
+
+export function ServiceSaveCloudCredentials(arg1:string,arg2:string):Promise<void>;
 
 export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
 

@@ -1,5 +1,5 @@
 import { ThemeProvider } from 'next-themes';
-import { HelmetProvider } from 'react-helmet-async';
+
 import { BrowserRouter } from 'react-router-dom';
 import { LoadingBarContainer } from 'react-top-loading-bar';
 import { Toaster } from '@/components/ui/sonner';
@@ -19,7 +19,6 @@ export function App() {
       disableTransitionOnChange
       enableColorScheme
     >
-      <HelmetProvider>
         <LoadingBarContainer>
           <BrowserRouter basename={BASE_URL}>
             <Toaster />
@@ -30,7 +29,6 @@ export function App() {
             </AuthProvider>
           </BrowserRouter>
         </LoadingBarContainer>
-      </HelmetProvider>
     </ThemeProvider>
   );
 }

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ShoppingCart,
   History,
+  Settings,
 } from 'lucide-react';
 
 export const MAIN_NAV = [
@@ -86,6 +87,12 @@ export const MAIN_NAV = [
     title: 'Synchronization',
     path: '/sync',
     id: 'sync',
+  },
+  {
+    icon: Settings,
+    title: 'Ajustes',
+    path: '/settings',
+    id: 'settings',
   },
   {
     icon: CircleEllipsis,

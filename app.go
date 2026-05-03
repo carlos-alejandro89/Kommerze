@@ -242,3 +242,11 @@ func (a *App) ServiceApiCrearProducto(producto requestdto.ProductoCreate) (*dto.
 func (a *App) ServiceConsultaTransacciones() (*dto.ResponseDto, error) {
 	return a.services.Pos.ConsultaTransacciones()
 }
+
+func (a *App) ServiceSaveCloudCredentials(email, password string) error {
+	return services.SaveCloudCredentials(email, password)
+}
+
+func (a *App) ServiceLoadCloudCredentials() (*services.CloudCredentials, error) {
+	return services.LoadCloudCredentials()
+}

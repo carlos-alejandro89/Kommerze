@@ -27,14 +27,15 @@ func NewServices(db *gorm.DB, ctx context.Context) *Services {
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
 	apiURL := os.Getenv("API_BASE_URL")
+	cloudClient := NewCloudHttpClient(apiURL)
 
 	return &Services{
-		Sync:                NewSyncService(db, repo, repoPrecios, apiURL),
+		Sync:                NewSyncService(db, repo, repoPrecios, apiURL, cloudClient),
 		Pos:                 NewPosService(db, ctx),
 		Auth:                NewAuthService(repoUsuarios),
 		License:             NewLicenseService(db, apiURL),
 		OperacionesSucursal: NewOperacionesSucursalService(db),
 		Catalogos:           NewCatalogosService(repo),
-		Cloud:               NewApiCloudService(apiURL, repo),
+		Cloud:               NewApiCloudService(apiURL, repo, cloudClient),
 	}
 }
