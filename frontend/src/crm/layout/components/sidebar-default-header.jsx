@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLayout } from './layout-context';
-import { useAuth } from '@/providers/auth-provider';
+import { useAuth } from '@/providers/AuthProvider';
 
 const mockWorkspaces = [
   {

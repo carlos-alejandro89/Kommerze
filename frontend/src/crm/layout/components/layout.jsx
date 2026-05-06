@@ -7,7 +7,7 @@ import { Sidebar } from './sidebar';
 import { Footer } from './footer';
 import { DialogOpenShop } from './dialog-open-shop';
 
-import { useActivation } from '@/providers/activation-provider';
+import { useActivation } from '@/providers/ActivationProvider';
 
 export function Layout() {
   const navigate = useNavigate();

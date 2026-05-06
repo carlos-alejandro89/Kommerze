@@ -1,177 +1,318 @@
-/* Tailwind Core */
+/* ─────────────────────────────────────────────
+   Kommerze POS — Global Styles
+   Tailwind v4 · Dark Mode Nativo
+────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 
-/** Dark Mode Variant **/
+/* ── Dark Mode Variant ── */
 @custom-variant dark (&:is(.dark *));
 
-/** Colors - https://tailwindcss.com/docs/colors **/
+/* ─────────────────────────────────────────────
+   Design Tokens — Light Mode
+────────────────────────────────────────────── */
 :root {
-  --background: var(--color-white);
-  --foreground: var(--color-zinc-950);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-950);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-blue-500);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-100);
-  --secondary-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-500);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: oklch(94% 0.004 286.32);
-  /* between --color-zinc-100 and --color-zinc-200 */
-  --input: var(--color-zinc-200);
-  --ring: var(--color-zinc-400);
-  --radius: 0.5rem;
+  /* Brand */
+  --brand-50:  oklch(97% 0.015 255);
+  --brand-100: oklch(93% 0.032 255);
+  --brand-200: oklch(86% 0.060 255);
+  --brand-300: oklch(76% 0.090 255);
+  --brand-400: oklch(65% 0.130 255);
+  --brand-500: oklch(55% 0.200 255);
+  --brand-600: oklch(47% 0.210 255);
+  --brand-700: oklch(38% 0.200 255);
+  --brand-800: oklch(30% 0.170 255);
+  --brand-900: oklch(22% 0.130 255);
+
+  /* Accent — Violet */
+  --accent-500: oklch(60% 0.240 290);
+  --accent-600: oklch(52% 0.240 290);
+
+  /* Success */
+  --success-500: oklch(64% 0.190 150);
+  --success-600: oklch(56% 0.190 150);
+
+  /* Warning */
+  --warning-500: oklch(75% 0.170 60);
+
+  /* Danger */
+  --danger-500: oklch(62% 0.240 27);
+  --danger-600: oklch(54% 0.230 27);
+
+  /* Neutrals */
+  --neutral-0:   oklch(100% 0 0);
+  --neutral-50:  oklch(98.5% 0.002 264);
+  --neutral-100: oklch(96.7% 0.003 264);
+  --neutral-150: oklch(94.5% 0.004 264);
+  --neutral-200: oklch(92%   0.005 264);
+  --neutral-300: oklch(86%   0.006 264);
+  --neutral-400: oklch(72%   0.008 264);
+  --neutral-500: oklch(58%   0.009 264);
+  --neutral-600: oklch(46%   0.008 264);
+  --neutral-700: oklch(36%   0.007 264);
+  --neutral-800: oklch(26%   0.006 264);
+  --neutral-900: oklch(17%   0.005 264);
+  --neutral-950: oklch(12%   0.004 264);
+
+  /* Surface */
+  --bg:           var(--neutral-50);
+  --bg-subtle:    var(--neutral-150);
+  --surface:      var(--neutral-0);
+  --surface-raised: var(--neutral-0);
+  --surface-overlay: var(--neutral-0);
+
+  /* Sidebar */
+  --sidebar-bg:       oklch(14% 0.022 255);
+  --sidebar-border:   oklch(20% 0.025 255);
+  --sidebar-surface:  oklch(18% 0.025 255);
+  --sidebar-fg:       oklch(85% 0.010 255);
+  --sidebar-fg-muted: oklch(55% 0.010 255);
+  --sidebar-active-bg: var(--brand-500);
+  --sidebar-active-fg: var(--neutral-0);
+  --sidebar-hover-bg:  oklch(22% 0.025 255);
+
+  /* Text */
+  --text-primary:   var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-muted:     var(--neutral-500);
+  --text-disabled:  var(--neutral-400);
+  --text-inverse:   var(--neutral-0);
+
+  /* Border */
+  --border:        var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --border-focus:  var(--brand-500);
+
+  /* Aliases para compatibilidad con shadcn */
+  --background:   var(--bg);
+  --foreground:   var(--text-primary);
+  --card:         var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover:      var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary:      var(--brand-500);
+  --primary-foreground: var(--neutral-0);
+  --secondary:    var(--neutral-100);
+  --secondary-foreground: var(--neutral-800);
+  --muted:        var(--neutral-100);
+  --muted-foreground: var(--neutral-500);
+  --accent:       var(--neutral-100);
+  --accent-foreground: var(--neutral-900);
+  --destructive:  var(--danger-500);
+  --destructive-foreground: var(--neutral-0);
+  --border-color: var(--border);
+  --input:        var(--neutral-200);
+  --ring:         var(--brand-300);
+  --radius:       0.5rem;
+
+  /* Charts */
+  --chart-1: var(--brand-500);
+  --chart-2: var(--success-500);
+  --chart-3: var(--warning-500);
+  --chart-4: var(--danger-500);
+  --chart-5: var(--accent-500);
 }
 
+/* ─────────────────────────────────────────────
+   Design Tokens — Dark Mode
+────────────────────────────────────────────── */
 .dark {
-  --background: #121215;
-  --foreground: var(--color-zinc-50);
-  --card: #18181b;
-  --card-foreground: var(--color-zinc-50);
-  --popover: #18181b;
-  --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-blue-600);
-  --primary-foreground: var(--color-zinc-950);
-  --secondary: var(--color-zinc-800);
-  --secondary-foreground: var(--color-zinc-50);
-  --muted: var(--color-zinc-900);
-  --muted-foreground: var(--color-zinc-500);
-  --accent: var(--color-zinc-900);
-  --accent-foreground: var(--color-zinc-50);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: var(--color-zinc-800);
-  --input: var(--color-zinc-800);
-  --ring: var(--color-zinc-600);
+  /* Surface */
+  --bg:           oklch(11% 0.005 264);
+  --bg-subtle:    oklch(13.5% 0.006 264);
+  --surface:      oklch(15% 0.007 264);
+  --surface-raised: oklch(18% 0.008 264);
+  --surface-overlay: oklch(20% 0.009 264);
+
+  /* Sidebar — stays dark always */
+  --sidebar-bg:       oklch(9% 0.018 255);
+  --sidebar-border:   oklch(16% 0.020 255);
+  --sidebar-surface:  oklch(12% 0.020 255);
+
+  /* Text */
+  --text-primary:   oklch(96% 0.003 264);
+  --text-secondary: oklch(72% 0.005 264);
+  --text-muted:     oklch(52% 0.006 264);
+  --text-disabled:  oklch(38% 0.005 264);
+
+  /* Border */
+  --border:        oklch(23% 0.008 264);
+  --border-strong: oklch(30% 0.009 264);
+
+  /* Aliases */
+  --background:   var(--bg);
+  --foreground:   var(--text-primary);
+  --card:         var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover:      var(--surface-raised);
+  --popover-foreground: var(--text-primary);
+  --primary:      var(--brand-500);
+  --primary-foreground: var(--neutral-0);
+  --secondary:    oklch(20% 0.008 264);
+  --secondary-foreground: oklch(90% 0.004 264);
+  --muted:        oklch(18% 0.007 264);
+  --muted-foreground: var(--text-muted);
+  --accent:       oklch(20% 0.008 264);
+  --accent-foreground: oklch(90% 0.004 264);
+  --border-color: var(--border);
+  --input:        oklch(22% 0.008 264);
+  --ring:         var(--brand-600);
 }
 
-/** Theme Setup **/
+/* ─────────────────────────────────────────────
+   Tailwind Theme Registration
+────────────────────────────────────────────── */
 @theme inline {
-  /** Base Colors **/
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Color System */
+  --color-background:       var(--background);
+  --color-foreground:       var(--foreground);
+  --color-card:             var(--card);
+  --color-card-foreground:  var(--card-foreground);
+  --color-popover:          var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-primary: var(--primary);
+  --color-primary:          var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  --color-secondary:        var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-destructive: var(--destructive);
+  --color-muted:            var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent:           var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive:      var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:           var(--border);
+  --color-input:            var(--input);
+  --color-ring:             var(--ring);
 
-  /** Base Styles **/
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  /* Brand shortcuts */
+  --color-brand-50:  var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
 
-  /** Animations **/
-  --animate-marquee: marquee var(--duration) infinite linear;
-  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  /* Success / Warning / Danger */
+  --color-success:   var(--success-500);
+  --color-warning:   var(--warning-500);
+  --color-danger:    var(--danger-500);
 
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
+  /* Sidebar */
+  --color-sidebar:        var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-fg:     var(--sidebar-fg);
+  --color-sidebar-muted:  var(--sidebar-fg-muted);
 
-    to {
-      transform: translateX(calc(-100% - var(--gap)));
-    }
+  /* Surface */
+  --color-surface:         var(--surface);
+  --color-surface-raised:  var(--surface-raised);
+  --color-bg-subtle:       var(--bg-subtle);
+
+  /* Border Radius */
+  --radius-sm:   calc(var(--radius) - 4px);
+  --radius-md:   calc(var(--radius) - 2px);
+  --radius-lg:   var(--radius);
+  --radius-xl:   calc(var(--radius) + 4px);
+  --radius-2xl:  calc(var(--radius) + 8px);
+  --radius-full: 9999px;
+
+  /* Animations */
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-fade-in:   fadeIn 0.2s ease-out;
+  --animate-slide-up:  slideUp 0.25s ease-out;
+  --animate-slide-in-left: slideInLeft 0.3s ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
-
-  @keyframes marquee-vertical {
-    from {
-      transform: translateY(0);
-    }
-
-    to {
-      transform: translateY(calc(-100% - var(--gap)));
-    }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
   }
 }
 
-/** Global Styles **/
+/* ─────────────────────────────────────────────
+   Base Styles
+────────────────────────────────────────────── */
 @layer base {
-  * {
-    @apply border-border;
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg);
+    color: var(--text-primary);
+    min-height: 100dvh;
   }
 
   *:focus-visible {
-    @apply !outline-ring !rounded-xs !shadow-none !outline-2 !outline-offset-3 !transition-none;
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
   }
 }
 
-/** Custom Scrollbar **/
+/* ─────────────────────────────────────────────
+   Custom Scrollbar
+────────────────────────────────────────────── */
 @layer base {
-  ::-webkit-scrollbar {
-    width: 5px;
+  ::-webkit-scrollbar        { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  {
+    background: var(--border-strong);
+    border-radius: 999px;
   }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--input);
-    border-radius: 5px;
-  }
-
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--input) transparent;
+    scrollbar-color: var(--border-strong) transparent;
   }
 }
 
-/** Smooth scroll **/
-html {
-  scroll-behavior: smooth;
-}
-
-/** Custom Containers **/
+/* ─────────────────────────────────────────────
+   Utilities
+────────────────────────────────────────────── */
 @utility container {
-  @apply mx-auto max-w-none px-4 lg:px-5;
-
-  @media (width >=--theme(--breakpoint-xl)) {
+  @apply mx-auto max-w-none px-4 lg:px-6;
+  @media (width >= --theme(--breakpoint-xl)) {
     @apply max-w-(--breakpoint-xl);
   }
 }
 
 @utility container-fluid {
-  @apply mx-auto w-full px-4 lg:px-5;
+  @apply mx-auto w-full px-4 lg:px-6;
 }
 
-/* Metronic Configs */
-@import './config.metronic.css';
+/* Glass effect */
+@utility glass {
+  background: oklch(from var(--surface) l c h / 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(from var(--border) l c h / 0.5);
+}
 
-/* Store Inventory Layout */
-@import './demos/demo1.css';
-
-/* Card Title */
+/* shadcn card-title slot */
 [data-slot='card-title'] {
-  @apply font-medium;
+  @apply font-semibold;
 }

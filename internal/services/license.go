@@ -6,18 +6,18 @@ import (
 	"BitComercio/internal/repository/dto"
 	requestdto "BitComercio/internal/services/requestDto"
 	"bytes"
-	"encoding/json"
-	"io"
-
-	gorm "gorm.io/gorm"
-
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
+
+	gorm "gorm.io/gorm"
 
 	"github.com/denisbrodbeck/machineid"
 )
@@ -36,11 +36,21 @@ func NewLicenseService(db *gorm.DB, apiBaseURL string) *LicenseService {
 }
 
 // Estructura que coincide con API de Activacion
+type LicenciaInfo struct {
+	Guid            string `json:"guid"`
+	LicenciaKey     string `json:"licenciaKey"`
+	MachineId       string `json:"machineId"`
+	FechaExpiracion string `json:"fechaExpiracion"`
+}
+
+type SucursalInfo struct {
+	Guid     string       `json:"guid"`
+	Licencia LicenciaInfo `json:"licencia"`
+}
+
 type LicenseData struct {
-	MachineID      string
-	LicenseKey     string
-	ExpirationDate string
-	Signature      string
+	Sucursal  SucursalInfo `json:"sucursal"`
+	Signature string       `json:"signature"`
 }
 
 func GetLicensePath() (string, error) {
@@ -103,30 +113,46 @@ func VerifyLicense() *dto.ResponseDto {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
-	if loadLicense.MachineID != machineID {
+	if loadLicense.Sucursal.Licencia.MachineId != machineID {
 		return dto.NewResponseDto(false, "Licencia no corresponde a este equipo", nil, []string{"Licencia no corresponde a este equipo"})
 	}
 
+	// 1. Parsear la fecha ISO 8601 y reformatear a "yyyy-MM-dd HH:mm:ss" (formato que firma el servidor C#)
+	parsedDate, err := time.Parse(time.RFC3339Nano, loadLicense.Sucursal.Licencia.FechaExpiracion)
+	if err != nil {
+		// Intentar sin nanosegundos por si acaso
+		parsedDate, err = time.Parse(time.RFC3339, loadLicense.Sucursal.Licencia.FechaExpiracion)
+		if err != nil {
+			return dto.NewResponseDto(false, fmt.Errorf("fecha de expiración inválida: %v", err).Error(), nil, []string{err.Error()})
+		}
+	}
+	expirationFormatted := parsedDate.UTC().Format("2006-01-02 15:04:05")
+
+	// 2. Construir payload: machineId|licenciaKey|expirationDate
+	payload := fmt.Sprintf("%s|%s|%s",
+		loadLicense.Sucursal.Licencia.MachineId,
+		loadLicense.Sucursal.Licencia.LicenciaKey,
+		expirationFormatted,
+	)
+	fmt.Printf("[VerifyLicense] Payload: %s\n", payload)
+
+	// 3. Llave pública Ed25519
 	publicKeyHex := os.Getenv("PUBLIC_KEY")
-	// 1. Convertir la llave pública de Hex a Bytes
 	pubKeyBytes, err := hex.DecodeString(publicKeyHex)
 	if err != nil {
 		return dto.NewResponseDto(false, fmt.Errorf("error en llave pública: %v", err).Error(), nil, []string{err.Error()})
 	}
 	pubKey := ed25519.PublicKey(pubKeyBytes)
 
-	// 2. Reconstruir el "payload" EXACTAMENTE como lo hizo el servidor C#
-	payload := fmt.Sprintf("%s|%s|%s", loadLicense.MachineID, loadLicense.LicenseKey, loadLicense.ExpirationDate)
-	message := []byte(payload)
-
-	// 3. Decodificar la firma de Base64 (que envió el servidor)
+	// 4. Decodificar firma de Base64
 	sig, err := base64.StdEncoding.DecodeString(loadLicense.Signature)
 	if err != nil {
 		return dto.NewResponseDto(false, fmt.Errorf("firma inválida: %v", err).Error(), nil, []string{err.Error()})
 	}
 
-	// 4. Verificación Criptográfica
-	isValid := ed25519.Verify(pubKey, message, sig)
+	// 5. Verificación criptográfica
+	isValid := ed25519.Verify(pubKey, []byte(payload), sig)
+	fmt.Printf("[VerifyLicense] Firma válida: %v\n", isValid)
 
 	if !isValid {
 		return dto.NewResponseDto(false, "Firma inválida", nil, []string{"Firma inválida"})
@@ -159,8 +185,14 @@ func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRe
 
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	fmt.Printf("RAW API RESPONSE: %s\n", string(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
@@ -170,7 +202,7 @@ func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRe
 		HttpCode int    `json:"httpCode"`
 		Data     any    `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 

@@ -5,7 +5,7 @@ import { ExternalLink, ChevronRight, FileCheck } from 'lucide-react';
 import { ConsultarExistencias, confirmarTransaccion, validarPago } from './resumen-actions';
 import { ModalDetalleInventario } from './modal-detalle-inventario';
 import { DialogAlert } from '@/components/common/dialog-alert';
-import { useActivation } from '@/providers/activation-provider';
+import { useActivation } from '@/providers/ActivationProvider';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
     const { store } = useActivation();

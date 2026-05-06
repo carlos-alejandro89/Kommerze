@@ -21,8 +21,8 @@ import {
     Mail
 } from "lucide-react";
 
-import { useAuth } from '@/providers/auth-provider';
-import { useActivation } from '@/providers/activation-provider';
+import { useAuth } from '@/providers/AuthProvider';
+import { useActivation } from '@/providers/ActivationProvider';
 import { DialogAlert } from '@/components/common/dialog-alert';
 
 export function DialogOpenShop({ open, onOpenChange }) {

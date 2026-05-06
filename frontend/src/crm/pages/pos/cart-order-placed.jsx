@@ -94,8 +94,8 @@ export function CartOrderPlaced() {
     const cambio = Math.max(0, totalPagos - total);
 
     return (
-        <div className="flex flex-col h-full w-full bg-slate-50/50 dark:bg-zinc-950/50 relative">
-            <ContentHeader className="flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex flex-col h-[calc(100vh-56px)] w-full bg-bg-subtle relative">
+            <ContentHeader className="flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
                 <div className="w-full">
                     <Steps currentStep={3} />
                 </div>

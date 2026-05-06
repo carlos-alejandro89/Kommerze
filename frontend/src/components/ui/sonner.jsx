@@ -1,11 +1,30 @@
 'use client';
 
 import * as React from 'react';
-import { useTheme } from 'next-themes';
 import { Toaster as Sonner } from 'sonner';
 
 const Toaster = ({ ...props }) => {
-  const { theme = 'system' } = useTheme();
+  // Check if dark mode is active by reading the document class or local storage
+  const [theme, setTheme] = React.useState('light');
+
+  React.useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark') || 
+                   localStorage.getItem('kommerze-theme') === 'dark';
+    setTheme(isDark ? 'dark' : 'light');
+
+    // Optional: add a mutation observer to listen for class changes on documentElement
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const currentlyDark = document.documentElement.classList.contains('dark');
+          setTheme(currentlyDark ? 'dark' : 'light');
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Sonner

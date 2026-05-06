@@ -2,7 +2,6 @@ package repository
 
 import (
 	"BitComercio/internal/models"
-	"errors"
 
 	gorm "gorm.io/gorm"
 )
@@ -16,14 +15,18 @@ func NewCajasRepository(db *gorm.DB) *CajasRepository {
 }
 
 func (c *CajasRepository) ActivarCaja(caja models.Caja) error {
+	result := c.db.
+		Where(models.Caja{Clave: caja.Clave}).
+		Assign(models.Caja{
+			Nombre:   caja.Nombre,
+			Licencia: caja.Licencia,
+			Activa:   caja.Activa,
+		}).
+		FirstOrCreate(&caja)
 
-	result := c.db.Where("clave = ?", caja.Clave).Find(&caja)
-
-	if result.RowsAffected > 0 {
-		return errors.New("Caja activada previamente")
+	if result.Error != nil {
+		return result.Error
 	}
-
-	c.db.Create(&caja)
 
 	return nil
 }
