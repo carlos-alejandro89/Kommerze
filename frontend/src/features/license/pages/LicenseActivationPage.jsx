@@ -25,11 +25,18 @@ export function LicenseActivationPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await ServiceActivateLicense(formData);
+      const result = await ServiceActivateLicense(formData);
       toast.success('Licencia activada correctamente');
       navigate('/login', { replace: true });
     } catch (error) {
-      toast.error('No se pudo activar la licencia: ' + String(error));
+      const msg = String(error);
+      // 409 = ya activada previamente en este equipo → tratar como éxito
+      if (msg.includes('409') || msg.toLowerCase().includes('previamente') || msg.toLowerCase().includes('already')) {
+        toast.success('Licencia válida. Accediendo al sistema...');
+        navigate('/login', { replace: true });
+        return;
+      }
+      toast.error('No se pudo activar la licencia: ' + msg);
     } finally {
       setLoading(false);
     }

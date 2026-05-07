@@ -30,6 +30,10 @@ export function ServiceGetEmpaques() {
   return window['go']['main']['App']['ServiceGetEmpaques']();
 }
 
+export function ServiceGetKommerzConfig() {
+  return window['go']['main']['App']['ServiceGetKommerzConfig']();
+}
+
 export function ServiceGetLineas() {
   return window['go']['main']['App']['ServiceGetLineas']();
 }
@@ -62,6 +66,10 @@ export function ServiceGetSatUsosCFDI() {
   return window['go']['main']['App']['ServiceGetSatUsosCFDI']();
 }
 
+export function ServiceGetSucursalGuid() {
+  return window['go']['main']['App']['ServiceGetSucursalGuid']();
+}
+
 export function ServiceGetSucursales() {
   return window['go']['main']['App']['ServiceGetSucursales']();
 }
@@ -90,12 +98,24 @@ export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
 }
 
+export function ServiceRestartApp() {
+  return window['go']['main']['App']['ServiceRestartApp']();
+}
+
 export function ServiceSaveCloudCredentials(arg1, arg2) {
   return window['go']['main']['App']['ServiceSaveCloudCredentials'](arg1, arg2);
 }
 
+export function ServiceSaveKommerzConfig(arg1) {
+  return window['go']['main']['App']['ServiceSaveKommerzConfig'](arg1);
+}
+
 export function ServiceSucursalInicioOperacion(arg1) {
   return window['go']['main']['App']['ServiceSucursalInicioOperacion'](arg1);
+}
+
+export function ServiceTestLocalServerConnection(arg1) {
+  return window['go']['main']['App']['ServiceTestLocalServerConnection'](arg1);
 }
 
 export function ServiceVerifyLicense() {

@@ -12,11 +12,20 @@ import {
   SyncLineas, SyncMarcas, SyncEmpaques, SyncSatProductos,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
-  SyncEmpresas, SyncSucursales, SyncSucursalProductos
+  SyncEmpresas, SyncSucursales, SyncSucursalProductos,
+  ServiceGetSucursalGuid,
 } from "../../../../wailsjs/go/main/App";
 
 export function SyncPage() {
   const { store } = useActivation();
+  const [sucursalGuid, setSucursalGuid] = React.useState('');
+
+  // Leer el GUID de la sucursal desde kommerze_config.json
+  React.useEffect(() => {
+    ServiceGetSucursalGuid()
+      .then((guid) => { if (guid) setSucursalGuid(guid); })
+      .catch(() => {});
+  }, []);
 
   const catalogsData = React.useMemo(() => [
     { id: 1, name: 'Líneas', endpoint: '/catalogos/lineas/get', icon: Package, sync: SyncLineas },
@@ -33,19 +42,28 @@ export function SyncPage() {
     { id: 12, name: 'Sucursales', endpoint: '/catalogos/sucursales/get', icon: LayoutGrid, sync: SyncSucursales },
     {
       id: 13, name: 'Listas de precios', endpoint: '/lista-precios/get-precios/', icon: LayoutGrid,
-      sync: SyncSucursalProductos, params: { sucursalGuid: store?.Guid || 'bf531b30-e4bd-4725-b5f2-24458f1ac67a' }
+      sync: SyncSucursalProductos,
+      // Usar el GUID del config; si aún no cargó, diferir hasta que esté disponible
+      params: { sucursalGuid: sucursalGuid || store?.Guid || '' },
     }
   ].map(c => ({
     ...c,
     lastSync: 'Nunca',
     status: 'Pendiente',
     failed: false,
-  })), [store?.Guid]);
+  })), [sucursalGuid, store?.Guid]);
 
   const [catalogs, setCatalogs] = React.useState(catalogsData);
   const [syncingIds, setSyncingIds] = React.useState(new Set());
   const [isSyncingAll, setIsSyncingAll] = React.useState(false);
   const [search, setSearch] = React.useState('');
+
+  // Actualizar params de "Listas de precios" cuando el GUID esté disponible
+  React.useEffect(() => {
+    setCatalogs(prev => prev.map(c =>
+      c.id === 13 ? { ...c, params: { sucursalGuid: sucursalGuid || store?.Guid || '' } } : c
+    ));
+  }, [sucursalGuid, store?.Guid]);
 
   const handleSync = async (id) => {
     setSyncingIds((prev) => new Set(prev).add(id));
@@ -87,7 +105,7 @@ export function SyncPage() {
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in bg-bg-subtle">
       <div className="flex-1 overflow-y-auto p-5 lg:p-8">
         <div className="max-w-4xl mx-auto space-y-6">
-          
+
           {/* ── Header ────────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
@@ -108,7 +126,7 @@ export function SyncPage() {
 
           {/* ── Main Panel ──────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-            
+
             {/* Toolbar */}
             <div className="border-b border-border bg-bg-subtle px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <h3 className="text-sm font-bold text-foreground">Catálogos Disponibles ({filteredCatalogs.length})</h3>
@@ -128,7 +146,7 @@ export function SyncPage() {
             <div className="divide-y divide-border">
               {filteredCatalogs.map((catalog) => {
                 const isSyncing = syncingIds.has(catalog.id);
-                
+
                 return (
                   <div
                     key={catalog.id}
@@ -202,7 +220,7 @@ export function SyncPage() {
                   </div>
                 );
               })}
-              
+
               {filteredCatalogs.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground">
                   <Database className="size-8 mx-auto mb-3 opacity-20" />

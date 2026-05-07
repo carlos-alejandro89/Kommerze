@@ -3,11 +3,14 @@ import { lazy, Suspense } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { AuthGuard } from '@/components/AuthGuard';
+import { DeviceGuard } from '@/components/DeviceGuard';
 import { ScreenLoader } from '@/components/ScreenLoader';
 
 // ── Lazy Pages ──────────────────────────────────────────────────────────────
 const LoginPage             = lazy(() => import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const LicenseActivationPage = lazy(() => import('@/features/license/pages/LicenseActivationPage').then(m => ({ default: m.LicenseActivationPage })));
+const DeviceRolePage        = lazy(() => import('@/features/device-setup/pages/DeviceRolePage').then(m => ({ default: m.DeviceRolePage })));
+const LocalServerSetupPage  = lazy(() => import('@/features/device-setup/pages/LocalServerSetupPage').then(m => ({ default: m.LocalServerSetupPage })));
 const DashboardPage         = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const POSPage               = lazy(() => import('@/features/pos/pages/POSPage'));
 const TransactionPage       = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
@@ -27,9 +30,29 @@ function SuspensePage({ children }) {
 // ── Router Definition ────────────────────────────────────────────────────────
 export const router = createBrowserRouter(
   [
-    // ── Auth routes (no sidebar) ──────────────────────────────────────────
+    // ── Device setup (no guard) ───────────────────────────────────────────
+    // Estas rutas son accesibles antes de tener un rol configurado
     {
       element: <AuthLayout />,
+      children: [
+        {
+          path: '/device-setup/role',
+          element: <SuspensePage><DeviceRolePage /></SuspensePage>,
+        },
+        {
+          path: '/device-setup/local-server',
+          element: <SuspensePage><LocalServerSetupPage /></SuspensePage>,
+        },
+      ],
+    },
+
+    // ── Auth routes (requieren rol, no sidebar) ───────────────────────────
+    {
+      element: (
+        <DeviceGuard>
+          <AuthLayout />
+        </DeviceGuard>
+      ),
       children: [
         {
           path: '/login',
@@ -42,12 +65,14 @@ export const router = createBrowserRouter(
       ],
     },
 
-    // ── Protected routes (with sidebar) ──────────────────────────────────
+    // ── Protected routes (requieren rol + auth, con sidebar) ──────────────
     {
       element: (
-        <AuthGuard>
-          <AppLayout />
-        </AuthGuard>
+        <DeviceGuard>
+          <AuthGuard>
+            <AppLayout />
+          </AuthGuard>
+        </DeviceGuard>
       ),
       children: [
         { index: true, element: <Navigate to="/dashboard" replace /> },

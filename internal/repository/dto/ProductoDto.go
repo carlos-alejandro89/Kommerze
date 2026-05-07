@@ -25,4 +25,6 @@ type ProductoDto struct {
 	InformacionProducto datatypes.JSON
 	Caracteristicas     datatypes.JSON
 	InstruccionesUso    datatypes.JSON
+	Linea               string
+	Marca               string
 }

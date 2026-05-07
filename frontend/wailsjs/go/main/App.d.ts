@@ -20,6 +20,8 @@ export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promi
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
+export function ServiceGetKommerzConfig():Promise<services.KommerzConfig>;
+
 export function ServiceGetLineas():Promise<dto.ResponseDto>;
 
 export function ServiceGetMachineID():Promise<string>;
@@ -36,6 +38,8 @@ export function ServiceGetSatRegimenFiscal():Promise<dto.ResponseDto>;
 
 export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
 
+export function ServiceGetSucursalGuid():Promise<string>;
+
 export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
@@ -50,9 +54,15 @@ export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
+export function ServiceRestartApp():Promise<void>;
+
 export function ServiceSaveCloudCredentials(arg1:string,arg2:string):Promise<void>;
 
+export function ServiceSaveKommerzConfig(arg1:services.KommerzConfig):Promise<void>;
+
 export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
+
+export function ServiceTestLocalServerConnection(arg1:string):Promise<dto.ResponseDto>;
 
 export function ServiceVerifyLicense():Promise<dto.ResponseDto>;
 

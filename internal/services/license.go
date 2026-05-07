@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	gorm "gorm.io/gorm"
@@ -53,45 +52,26 @@ type LicenseData struct {
 	Signature string       `json:"signature"`
 }
 
-func GetLicensePath() (string, error) {
-	// 1. Obtener la ruta base de configuración del usuario
-	configDir, err := os.UserConfigDir()
+// LoadLicense lee la licencia del archivo de configuración unificado.
+func LoadLicense() (*LicenseData, error) {
+	cfg, err := LoadKommerzConfig()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	// 2. Crear el nombre de la carpeta de tu app
-	appDir := filepath.Join(configDir, "Kommerze")
-
-	// 3. Crear la carpeta si no existe (permisos 0755)
-	err = os.MkdirAll(appDir, 0755)
-	if err != nil {
-		return "", err
+	if cfg.License == nil {
+		return nil, os.ErrNotExist
 	}
-
-	// 4. Retornar la ruta completa al archivo
-	return filepath.Join(appDir, "licencia.json"), nil
+	return cfg.License, nil
 }
 
-func LoadLicense() (*LicenseData, error) {
-	licensePath, err := GetLicensePath()
+// saveLicense persiste la licencia dentro del config unificado.
+func saveLicense(lic *LicenseData) error {
+	cfg, err := LoadKommerzConfig()
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	data, err := os.ReadFile(licensePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var lic LicenseData
-	// Convierte el JSON en el struct
-	err = json.Unmarshal(data, &lic)
-	if err != nil {
-		return nil, err
-	}
-
-	return &lic, nil
+	cfg.License = lic
+	return SaveKommerzConfig(cfg)
 }
 
 func GetMachineID() (string, error) {
@@ -206,17 +186,18 @@ func (l *LicenseService) ActivateLicense(licenseKey requestdto.ActivateLicenseRe
 		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
-	path, err := GetLicensePath()
-	if err != nil {
-		return nil, fmt.Errorf("error getting license path: %w", err)
-	}
-
+	// Guardar la licencia en el config unificado
+	var licData LicenseData
 	jsonData, err := json.Marshal(result.Data)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling license: %w", err)
 	}
-
-	os.WriteFile(path, jsonData, 0644)
+	if err := json.Unmarshal(jsonData, &licData); err != nil {
+		return nil, fmt.Errorf("error parsing license data: %w", err)
+	}
+	if err := saveLicense(&licData); err != nil {
+		return nil, fmt.Errorf("error saving license: %w", err)
+	}
 
 	model := models.Caja{
 		Clave:    licenseKey.MachineId,

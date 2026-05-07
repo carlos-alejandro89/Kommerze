@@ -194,6 +194,8 @@ export namespace dto {
 	    InformacionProducto: number[];
 	    Caracteristicas: number[];
 	    InstruccionesUso: number[];
+	    Linea: string;
+	    Marca: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProductoDto(source);
@@ -220,6 +222,8 @@ export namespace dto {
 	        this.InformacionProducto = source["InformacionProducto"];
 	        this.Caracteristicas = source["Caracteristicas"];
 	        this.InstruccionesUso = source["InstruccionesUso"];
+	        this.Linea = source["Linea"];
+	        this.Marca = source["Marca"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -550,6 +554,128 @@ export namespace services {
 	        this.password = source["password"];
 	    }
 	}
+	export class LicenciaInfo {
+	    guid: string;
+	    licenciaKey: string;
+	    machineId: string;
+	    fechaExpiracion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LicenciaInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.guid = source["guid"];
+	        this.licenciaKey = source["licenciaKey"];
+	        this.machineId = source["machineId"];
+	        this.fechaExpiracion = source["fechaExpiracion"];
+	    }
+	}
+	export class SucursalInfo {
+	    guid: string;
+	    licencia: LicenciaInfo;
+	
+	    static createFrom(source: any = {}) {
+	        return new SucursalInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.guid = source["guid"];
+	        this.licencia = this.convertValues(source["licencia"], LicenciaInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LicenseData {
+	    sucursal: SucursalInfo;
+	    signature: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LicenseData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sucursal = this.convertValues(source["sucursal"], SucursalInfo);
+	        this.signature = source["signature"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class KommerzConfig {
+	    role: string;
+	    localServerUrl?: string;
+	    cloudEmail?: string;
+	    cloudPassword?: string;
+	    license?: LicenseData;
+	
+	    static createFrom(source: any = {}) {
+	        return new KommerzConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.role = source["role"];
+	        this.localServerUrl = source["localServerUrl"];
+	        this.cloudEmail = source["cloudEmail"];
+	        this.cloudPassword = source["cloudPassword"];
+	        this.license = this.convertValues(source["license"], LicenseData);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 
 }
 

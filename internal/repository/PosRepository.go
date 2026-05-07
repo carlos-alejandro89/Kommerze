@@ -43,12 +43,15 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
 	                 p.fraccionable ,nv.codigo_barra ,nv.img_referencia , nivel_id,
 					 precio_compra,precio_venta, descuento ,existencia ,
 	                 p.informacion_producto,p.caracteristicas,p.instrucciones_uso,
-					 nv.guid, pb.guid as producto_base_guid, p.guid as producto_guid
+					 nv.guid, pb.guid as producto_base_guid, p.guid as producto_guid,
+					 l.nombre_linea as linea, m.nombre_marca as marca
 					 from sucursal_producto sp
 					 join nivel_empaque nv on sp.nivel_id  = nv.id
 					 join empaques e on nv.empaque_id = e.id
 					 join productos p on nv.producto_id  = p.id
                      left join productos pb on p.producto_base_id = pb.id
+					 left join lineas l on p.linea_id = l.id
+					 left join marcas m on p.marca_id = m.id
 					 where p.descripcion like @busqueda 
 					 or codigo like @busqueda 
 					 or codigo_barra = @buscar
