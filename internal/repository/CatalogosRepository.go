@@ -297,11 +297,13 @@ func (c *CatalogosRepository) SaveNivelesEmpaque(data []any) error {
 			return fmt.Errorf("error insertando nivel_empaque: %w", err)
 		}
 
+		// Crear el registro placeholder de sucursal_producto solo si no existe.
+		// Si ya existe (con precios reales de la sincronización de Listas de Precios),
+		// NO se deben sobreescribir los precios con cero. Por eso se usa DoNothing.
 		sucursalProducto := models.SucursalProducto{
 			BaseModel: models.BaseModel{
 				Guid: guid,
 			},
-
 			NivelID:      nivel.ID,
 			PrecioCompra: decimal.Zero,
 			PrecioVenta:  decimal.Zero,
@@ -312,17 +314,10 @@ func (c *CatalogosRepository) SaveNivelesEmpaque(data []any) error {
 		}
 
 		if err := c.db.Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "guid"}},
-			DoUpdates: clause.AssignmentColumns([]string{
-				"precio_compra",
-				"precio_venta",
-				"precio_venta2",
-				"precio_venta3",
-				"descuento",
-				"sync",
-			}),
+			Columns:   []clause.Column{{Name: "guid"}},
+			DoNothing: true, // ← nunca pisar precios reales con ceros
 		}).Create(&sucursalProducto).Error; err != nil {
-			return fmt.Errorf("error insertando sucursal_producto: %w", err)
+			return fmt.Errorf("error insertando sucursal_producto placeholder: %w", err)
 		}
 	}
 	return nil

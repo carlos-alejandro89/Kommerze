@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
+
 
 type ListaPreciosRepository struct {
 	db *gorm.DB
@@ -37,18 +37,19 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 			continue
 		}
 
-		// GUID del propio registro sucursal_producto
-		recordGuid, err := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
-		if err != nil {
-			continue // registro inválido, saltar
+		// GUID del propio registro sucursal_producto (de la nube)
+		var recordGuid uuid.UUID
+		if guidVal, ok := fMap["guid"]; ok && guidVal != nil && guidVal != "" {
+			if parsedGuid, err := uuid.Parse(fmt.Sprintf("%v", guidVal)); err == nil {
+				recordGuid = parsedGuid
+			}
 		}
 
 		// GUID del nivel de empaque para resolver la FK
 		nivelGuid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["nivelGuid"]))
 		nivelID, exists := dicNiveles[nivelGuid]
 		if !exists || nivelID == 0 {
-			// El nivel no existe localmente aún — saltar este registro.
-			// Sincronizar "Niveles Empaque" primero para resolver la dependencia.
+			// El nivel no existe localmente — sincroniza "Niveles Empaque" primero.
 			errores = append(errores, fmt.Sprintf("nivel no encontrado localmente (nivelGuid=%s), sincroniza Niveles Empaque primero", nivelGuid))
 			continue
 		}
@@ -57,32 +58,49 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 		precioVenta, _ := strconv.ParseFloat(fmt.Sprintf("%v", fMap["precioVenta"]), 64)
 		porcentajeDescuento, _ := strconv.ParseFloat(fmt.Sprintf("%v", fMap["porcentajeDescuento"]), 64)
 
-		sucursalProducto := models.SucursalProducto{
-			BaseModel: models.BaseModel{
-				Guid: recordGuid,
-			},
-			NivelID:      nivelID,
-			PrecioCompra: decimal.NewFromFloat(precioCompra),
-			PrecioVenta:  decimal.NewFromFloat(precioVenta),
-			PrecioVenta2: decimal.NewFromFloat(precioVenta),
-			PrecioVenta3: decimal.NewFromFloat(precioVenta),
-			Descuento:    decimal.NewFromFloat(porcentajeDescuento),
-			Sync:         true,
+		updateData := map[string]any{
+			"precio_compra": decimal.NewFromFloat(precioCompra),
+			"precio_venta":  decimal.NewFromFloat(precioVenta),
+			"precio_venta2": decimal.NewFromFloat(precioVenta),
+			"precio_venta3": decimal.NewFromFloat(precioVenta),
+			"descuento":     decimal.NewFromFloat(porcentajeDescuento),
+			"sync":          true,
 		}
 
-		if err := r.db.Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "guid"}},
-			DoUpdates: clause.AssignmentColumns([]string{
-				"nivel_id",
-				"precio_compra",
-				"precio_venta",
-				"precio_venta2",
-				"precio_venta3",
-				"descuento",
-				"sync",
-			}),
-		}).Create(&sucursalProducto).Error; err != nil {
-			errores = append(errores, fmt.Sprintf("error insertando guid=%s: %v", recordGuid, err))
+		if recordGuid != uuid.Nil {
+			updateData["guid"] = recordGuid // normalizar al GUID real de la nube si lo tenemos
+		}
+
+		// Actualizar el registro placeholder existente (creado por SaveNivelesEmpaque)
+		// buscando por nivel_id. Si no existe, insertar un registro nuevo.
+		// Esto garantiza que los precios reales siempre sobreescriben el placeholder con ceros.
+		result := r.db.Model(&models.SucursalProducto{}).
+			Where("nivel_id = ?", nivelID).
+			Updates(updateData)
+
+		if result.Error != nil {
+			errores = append(errores, fmt.Sprintf("error actualizando nivel_id=%d: %v", nivelID, result.Error))
+			continue
+		}
+
+		// Si no había placeholder previo (RowsAffected=0), insertar directamente
+		if result.RowsAffected == 0 {
+			if recordGuid == uuid.Nil {
+				recordGuid = uuid.New()
+			}
+			sucursalProducto := models.SucursalProducto{
+				BaseModel:    models.BaseModel{Guid: recordGuid},
+				NivelID:      nivelID,
+				PrecioCompra: decimal.NewFromFloat(precioCompra),
+				PrecioVenta:  decimal.NewFromFloat(precioVenta),
+				PrecioVenta2: decimal.NewFromFloat(precioVenta),
+				PrecioVenta3: decimal.NewFromFloat(precioVenta),
+				Descuento:    decimal.NewFromFloat(porcentajeDescuento),
+				Sync:         true,
+			}
+			if err := r.db.Create(&sucursalProducto).Error; err != nil {
+				errores = append(errores, fmt.Sprintf("error insertando guid=%s: %v", recordGuid, err))
+			}
 		}
 	}
 

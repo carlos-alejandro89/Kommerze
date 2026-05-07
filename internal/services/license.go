@@ -43,8 +43,9 @@ type LicenciaInfo struct {
 }
 
 type SucursalInfo struct {
-	Guid     string       `json:"guid"`
-	Licencia LicenciaInfo `json:"licencia"`
+	Guid           string       `json:"guid"`
+	NombreSucursal string       `json:"nombreSucursal"`
+	Licencia       LicenciaInfo `json:"licencia"`
 }
 
 type LicenseData struct {

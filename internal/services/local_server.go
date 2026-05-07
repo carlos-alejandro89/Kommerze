@@ -96,7 +96,16 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
 func (l *LocalServerService) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Servidor Local activo"})
+	branchName := "Kommerze POS"
+	cfg, err := LoadKommerzConfig()
+	if err == nil && cfg.License != nil && cfg.License.Sucursal.NombreSucursal != "" {
+		branchName = cfg.License.Sucursal.NombreSucursal
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":    true,
+		"message":    "Servidor Local activo",
+		"branchName": branchName,
+	})
 }
 
 func (l *LocalServerService) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -254,26 +263,27 @@ func extractBearerToken(r *http.Request) string {
 }
 
 // TestLocalServerConnection verifica que el Servidor Local en serverURL responda.
-func TestLocalServerConnection(serverURL string) error {
+func TestLocalServerConnection(serverURL string) (map[string]any, error) {
 	resp, err := http.Get(fmt.Sprintf("%s/local/health", serverURL))
 	if err != nil {
-		return fmt.Errorf("no se pudo conectar al Servidor Local: %w", err)
+		return nil, fmt.Errorf("no se pudo conectar al Servidor Local: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("el Servidor Local respondió con estado %d", resp.StatusCode)
+		return nil, fmt.Errorf("el Servidor Local respondió con estado %d", resp.StatusCode)
 	}
 
 	var result struct {
-		Success bool   `json:"success"`
-		Message string `json:"message"`
+		Success    bool   `json:"success"`
+		Message    string `json:"message"`
+		BranchName string `json:"branchName"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&result)
 	if !result.Success {
-		return fmt.Errorf("respuesta inesperada del Servidor Local")
+		return nil, fmt.Errorf("respuesta inesperada del Servidor Local")
 	}
-	return nil
+	return map[string]any{"branchName": result.BranchName}, nil
 }
 
 // Asegurar que models se importa (Usuario se usa en handleLogin)

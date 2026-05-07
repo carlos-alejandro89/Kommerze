@@ -373,10 +373,11 @@ func (a *App) ServiceGetSucursalGuid() string {
 
 // ServiceTestLocalServerConnection verifica que el Servidor Local responda.
 func (a *App) ServiceTestLocalServerConnection(serverURL string) *dto.ResponseDto {
-	if err := services.TestLocalServerConnection(serverURL); err != nil {
+	data, err := services.TestLocalServerConnection(serverURL)
+	if err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
-	return dto.NewResponseDto(true, "Conexión exitosa al Servidor Local", nil, nil)
+	return dto.NewResponseDto(true, "Conexión exitosa al Servidor Local", data, nil)
 }
 
 // ServiceRestartApp cierra la aplicación para que el usuario la reabra

@@ -45,6 +45,9 @@ export const ActivationProvider = ({ children }) => {
             try {
               const ping = await ServiceTestLocalServerConnection(cfg.localServerUrl);
               setIsValid(!!ping?.success);
+              if (ping?.success && ping?.data?.branchName) {
+                setLicense({ sucursal: { nombreSucursal: ping.data.branchName } });
+              }
             } catch {
               setIsValid(false);
             }

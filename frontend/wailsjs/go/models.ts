@@ -574,6 +574,7 @@ export namespace services {
 	}
 	export class SucursalInfo {
 	    guid: string;
+	    nombreSucursal: string;
 	    licencia: LicenciaInfo;
 	
 	    static createFrom(source: any = {}) {
@@ -583,6 +584,7 @@ export namespace services {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.guid = source["guid"];
+	        this.nombreSucursal = source["nombreSucursal"];
 	        this.licencia = this.convertValues(source["licencia"], LicenciaInfo);
 	    }
 	

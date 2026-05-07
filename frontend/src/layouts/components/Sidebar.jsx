@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 export function Sidebar({ open, onToggle }) {
   const { logout } = useAuth();
-  const { store, operation } = useActivation();
+  const { store, operation, license } = useActivation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -30,8 +30,8 @@ export function Sidebar({ open, onToggle }) {
         </div>
         {open && (
           <div className="flex flex-col min-w-0 animate-fade-in">
-            <span className="text-[13px] font-semibold text-sidebar-fg truncate leading-tight">
-              {store?.Nombre ?? 'Kommerze POS'}
+            <span className="text-[13px] font-semibold text-sidebar-fg truncate leading-tight" title={store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze POS'}>
+              {store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze POS'}
             </span>
             <span className="text-[11px] text-sidebar-muted truncate leading-tight">
               {operation?.Nombre ?? 'Terminal 01'}
