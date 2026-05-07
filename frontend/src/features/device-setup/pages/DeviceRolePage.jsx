@@ -1,8 +1,8 @@
 import { motion } from 'motion/react';
 import { Server, Monitor, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { ServiceSaveKommerzConfig, ServiceRestartApp } from '../../../../wailsjs/go/main/App';
+import { useState, useEffect } from 'react';
+import { ServiceSaveKommerzConfig, ServiceRestartApp, ServiceGetLocalIP } from '../../../../wailsjs/go/main/App';
 import { useActivation } from '@/providers/ActivationProvider';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
@@ -60,6 +60,11 @@ export function DeviceRolePage() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [localIP, setLocalIP] = useState('');
+
+  useEffect(() => {
+    ServiceGetLocalIP().then(setLocalIP).catch(() => {});
+  }, []);
 
   const handleContinue = async () => {
     if (!selected) return;
@@ -182,12 +187,18 @@ export function DeviceRolePage() {
 
                 {/* Features */}
                 <ul className="space-y-1.5">
-                  {role.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className={`size-1.5 rounded-full bg-current ${role.checkColor}`} />
-                      {f}
-                    </li>
-                  ))}
+                  {role.features.map((f) => {
+                    let featureText = f;
+                    if (role.id === 'servidor_local' && f.includes('Expone API') && localIP) {
+                      featureText = `Expone API para las Cajas (${localIP}:8989)`;
+                    }
+                    return (
+                      <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className={`size-1.5 rounded-full bg-current ${role.checkColor}`} />
+                        {featureText}
+                      </li>
+                    );
+                  })}
                 </ul>
               </motion.button>
             );

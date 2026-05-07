@@ -4,9 +4,10 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
-	requestdto "BitComercio/internal/services/requestDto"
+	"BitComercio/internal/services/requestDto"
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -384,4 +385,20 @@ func (a *App) ServiceTestLocalServerConnection(serverURL string) *dto.ResponseDt
 // con los servicios inicializados según el rol guardado en kommerze_config.json.
 func (a *App) ServiceRestartApp() {
 	runtime.Quit(a.ctx)
+}
+
+// ServiceGetLocalIP devuelve la dirección IP local del dispositivo en la red LAN.
+func (a *App) ServiceGetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "127.0.0.1"
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return "127.0.0.1"
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Server, Shield, Cloud, HardDrive, RefreshCw, Monitor, Globe, RotateCcw, Wifi } from 'lucide-react';
+import { Save, Server, Shield, Cloud, HardDrive, RefreshCw, Monitor, Globe, RotateCcw, Wifi, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   ServiceGetKommerzConfig,
   ServiceSaveKommerzConfig,
   ServiceTestLocalServerConnection,
+  ServiceGetLocalIP,
 } from '../../../../wailsjs/go/main/App';
 
 export function SettingsPage() {
@@ -24,8 +25,10 @@ export function SettingsPage() {
   const [connStatus, setConnStatus]   = useState(null);
   const [testingConn, setTestingConn] = useState(false);
   const [savingConn, setSavingConn]   = useState(false);
+  const [localIP, setLocalIP]         = useState('');
 
   useEffect(() => {
+    ServiceGetLocalIP().then(setLocalIP).catch(() => {});
     const loadCreds = async () => {
       try {
         const creds = await ServiceLoadCloudCredentials();
@@ -41,6 +44,16 @@ export function SettingsPage() {
     loadCreds();
     loadConfig();
   }, []);
+
+  const [copiedIP, setCopiedIP] = useState(false);
+  const handleCopyIP = () => {
+    const url = localIP ? `http://${localIP}:8989` : '';
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopiedIP(true);
+    setTimeout(() => setCopiedIP(false), 2000);
+    toast.success('Dirección copiada al portapapeles');
+  };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -161,9 +174,21 @@ export function SettingsPage() {
                   {deviceRole === 'servidor_local' && (
                     <div className="rounded-lg border border-border bg-bg-subtle p-4">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Las Cajas deben conectarse a:</p>
-                      <p className="font-mono text-sm text-foreground">http://&lt;IP de este equipo&gt;:8989</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <p className="font-mono text-sm text-foreground bg-muted px-2 py-1 rounded border border-border">
+                          {localIP ? `http://${localIP}:8989` : 'http://<IP de este equipo>:8989'}
+                        </p>
+                        <button
+                          onClick={handleCopyIP}
+                          disabled={!localIP}
+                          className="flex size-7 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                          title="Copiar dirección"
+                        >
+                          {copiedIP ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
                       <p className="text-[11px] text-muted-foreground mt-2">
-                        Ejecuta <code className="bg-muted px-1 rounded">hostname -I</code> en la terminal para ver tu IP local.
+                        IP local detectada automáticamente. Utiliza esta dirección en las terminales Caja.
                       </p>
                     </div>
                   )}

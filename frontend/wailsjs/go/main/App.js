@@ -38,6 +38,10 @@ export function ServiceGetLineas() {
   return window['go']['main']['App']['ServiceGetLineas']();
 }
 
+export function ServiceGetLocalIP() {
+  return window['go']['main']['App']['ServiceGetLocalIP']();
+}
+
 export function ServiceGetMachineID() {
   return window['go']['main']['App']['ServiceGetMachineID']();
 }

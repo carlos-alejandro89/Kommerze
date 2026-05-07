@@ -24,6 +24,8 @@ export function ServiceGetKommerzConfig():Promise<services.KommerzConfig>;
 
 export function ServiceGetLineas():Promise<dto.ResponseDto>;
 
+export function ServiceGetLocalIP():Promise<string>;
+
 export function ServiceGetMachineID():Promise<string>;
 
 export function ServiceGetMarcas():Promise<dto.ResponseDto>;
