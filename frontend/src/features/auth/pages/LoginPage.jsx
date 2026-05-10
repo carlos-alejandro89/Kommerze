@@ -9,7 +9,7 @@ import logo from '@/assets/Softi.png';
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { verifyLicense, storeStatus, empresa, getInventoryValue } = useActivation();
+  const { verifyLicense, storeStatus, empresa, getInventoryValue, isCaja } = useActivation();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -19,12 +19,14 @@ export function LoginPage() {
   });
 
   useEffect(() => {
+    // En modo Caja, la licencia la valida el Servidor Local; no verificar aquí.
+    if (isCaja) return;
     const checkLicense = async () => {
       const ok = await verifyLicense();
       if (!ok) navigate('/license/activate', { replace: true });
     };
     checkLicense();
-  }, []);
+  }, [isCaja]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
