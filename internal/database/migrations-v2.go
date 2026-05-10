@@ -1,10 +1,10 @@
 package database
 
 import (
+	"BitComercio/internal/services"
 	"embed"
 	"log"
 	"net/url"
-	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -15,13 +15,8 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func RunMigrationsV2(db *gorm.DB) error {
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := url.QueryEscape(os.Getenv("DB_USER"))
-	pass := url.QueryEscape(os.Getenv("DB_PASSWORD"))
-	name := os.Getenv("DB_NAME")
-	ssl := os.Getenv("SSL_MODE")
+func RunMigrationsV2(db *gorm.DB, cfg *services.KommerzConfig) error {
+	host, port, user, pass, name, ssl := cfg.EffectiveDBConfig()
 
 	d, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
@@ -31,7 +26,7 @@ func RunMigrationsV2(db *gorm.DB) error {
 	m, err := migrate.NewWithSourceInstance(
 		"iofs",
 		d,
-		"postgres://"+user+":"+pass+"@"+host+":"+port+"/"+name+"?sslmode="+ssl,
+		"postgres://"+url.QueryEscape(user)+":"+url.QueryEscape(pass)+"@"+host+":"+port+"/"+name+"?sslmode="+ssl,
 	)
 	if err != nil {
 		log.Fatal(err)

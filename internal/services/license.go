@@ -10,10 +10,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	gorm "gorm.io/gorm"
@@ -60,7 +60,7 @@ func LoadLicense() (*LicenseData, error) {
 		return nil, err
 	}
 	if cfg.License == nil {
-		return nil, os.ErrNotExist
+		return nil, errors.New("licencia no encontrada")
 	}
 	return cfg.License, nil
 }
@@ -118,7 +118,8 @@ func VerifyLicense() *dto.ResponseDto {
 	fmt.Printf("[VerifyLicense] Payload: %s\n", payload)
 
 	// 3. Llave pública Ed25519
-	publicKeyHex := os.Getenv("PUBLIC_KEY")
+	// Clave pública Ed25519 del servidor de licencias (valor fijo del sistema).
+	const publicKeyHex = "E51E6D828F8FE614047A8830C196AA82D05BB8546FADB95B20B0A67F60B92EA0"
 	pubKeyBytes, err := hex.DecodeString(publicKeyHex)
 	if err != nil {
 		return dto.NewResponseDto(false, fmt.Errorf("error en llave pública: %v", err).Error(), nil, []string{err.Error()})

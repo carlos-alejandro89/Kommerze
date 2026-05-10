@@ -6,8 +6,6 @@ import (
 	"embed"
 	"log"
 
-	"github.com/joho/godotenv"
-
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -17,11 +15,6 @@ import (
 var assets embed.FS
 
 func main() {
-	// Cargar .env
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
-
 	// Leer configuración del dispositivo
 	cfg, err := services.LoadKommerzConfig()
 	if err != nil {
@@ -35,7 +28,7 @@ func main() {
 	switch cfg.Role {
 	case services.RoleLocalServer:
 		// ── Servidor Local: conectar a BD y levantar todos los servicios ──────
-		db, err := database.NewDB()
+		db, err := database.NewDB(cfg)
 		if err != nil {
 			log.Fatal("[main] Error conectando a la BD:", err)
 		}
@@ -64,10 +57,10 @@ func main() {
 	// Correr Wails
 	err = wails.Run(&options.App{
 		Title:         "Kommerze",
-		Width:         1532,
-		Height:        768,
-		DisableResize: false,
-		Fullscreen:    true,
+		Width:            1280,
+		Height:           800,
+		DisableResize:    false,
+		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

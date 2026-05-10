@@ -11,6 +11,7 @@ const LoginPage             = lazy(() => import('@/features/auth/pages/LoginPage
 const LicenseActivationPage = lazy(() => import('@/features/license/pages/LicenseActivationPage').then(m => ({ default: m.LicenseActivationPage })));
 const DeviceRolePage        = lazy(() => import('@/features/device-setup/pages/DeviceRolePage').then(m => ({ default: m.DeviceRolePage })));
 const LocalServerSetupPage  = lazy(() => import('@/features/device-setup/pages/LocalServerSetupPage').then(m => ({ default: m.LocalServerSetupPage })));
+const DatabaseSetupPage     = lazy(() => import('@/features/device-setup/pages/DatabaseSetupPage').then(m => ({ default: m.DatabaseSetupPage })));
 const DashboardPage         = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const POSPage               = lazy(() => import('@/features/pos/pages/POSPage'));
 const TransactionPage       = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
@@ -42,6 +43,10 @@ export const router = createBrowserRouter(
         {
           path: '/device-setup/local-server',
           element: <SuspensePage><LocalServerSetupPage /></SuspensePage>,
+        },
+        {
+          path: '/device-setup/database',
+          element: <SuspensePage><DatabaseSetupPage /></SuspensePage>,
         },
       ],
     },

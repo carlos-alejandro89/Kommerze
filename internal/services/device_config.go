@@ -6,6 +6,14 @@ import (
 	"path/filepath"
 )
 
+// defaultStr devuelve fallback si s está vacío.
+func defaultStr(s, fallback string) string {
+	if s == "" {
+		return fallback
+	}
+	return s
+}
+
 // DeviceRole identifica el rol que cumple este dispositivo en la red.
 type DeviceRole string
 
@@ -38,6 +46,28 @@ type KommerzConfig struct {
 
 	// Licencia de la sucursal (solo Servidor Local, escrita al activar)
 	License *LicenseData `json:"license,omitempty"`
+
+	// Configuración de la base de datos local (solo servidor_local).
+	// Si están vacíos se usan los defaults de instalación estándar de PostgreSQL.
+	DBHost     string `json:"dbHost,omitempty"`
+	DBPort     string `json:"dbPort,omitempty"`
+	DBUser     string `json:"dbUser,omitempty"`
+	DBPassword string `json:"dbPassword,omitempty"`
+	DBName     string `json:"dbName,omitempty"`
+	DBSSLMode  string `json:"dbSslMode,omitempty"`
+}
+
+// EffectiveDBConfig devuelve los valores de conexión a la BD aplicando
+// defaults para una instalación estándar de PostgreSQL cuando los campos
+// del config están vacíos.
+func (c *KommerzConfig) EffectiveDBConfig() (host, port, user, password, name, sslMode string) {
+	host     = defaultStr(c.DBHost,    "127.0.0.1")
+	port     = defaultStr(c.DBPort,    "5432")
+	user     = defaultStr(c.DBUser,    "postgres")
+	password = c.DBPassword // sin default, PostgreSQL local suele no tener contraseña
+	name     = defaultStr(c.DBName,    "kommerze_db")
+	sslMode  = defaultStr(c.DBSSLMode, "disable")
+	return
 }
 
 // GetKommerzConfigPath devuelve la ruta completa al archivo de configuración.

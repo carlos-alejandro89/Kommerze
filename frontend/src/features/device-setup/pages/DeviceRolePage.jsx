@@ -1,8 +1,8 @@
 import { motion } from 'motion/react';
 import { Server, Monitor, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { ServiceSaveKommerzConfig, ServiceRestartApp, ServiceGetLocalIP } from '../../../../wailsjs/go/main/App';
+import { useState } from 'react';
+import { ServiceSaveKommerzConfig } from '../../../../wailsjs/go/main/App';
 import { useActivation } from '@/providers/ActivationProvider';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
@@ -28,7 +28,7 @@ const roles = [
     checkColor: 'text-indigo-400',
     selectedBorder: 'border-indigo-500',
     selectedGlow: 'shadow-indigo-500/20',
-    next: '/license/activate',
+    next: '/device-setup/database',
   },
   {
     id: 'caja',
@@ -59,12 +59,6 @@ export function DeviceRolePage() {
   const { setDeviceRole } = useActivation();
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [restarting, setRestarting] = useState(false);
-  const [localIP, setLocalIP] = useState('');
-
-  useEffect(() => {
-    ServiceGetLocalIP().then(setLocalIP).catch(() => {});
-  }, []);
 
   const handleContinue = async () => {
     if (!selected) return;
@@ -73,42 +67,15 @@ export function DeviceRolePage() {
     try {
       await ServiceSaveKommerzConfig({ role: selected });
       setDeviceRole(selected);
-
-      if (selected === 'servidor_local') {
-        // El backend necesita reiniciarse para conectar a BD e inicializar LicenseService
-        setRestarting(true);
-        setLoading(false);
-        await new Promise((r) => setTimeout(r, 1500));
-        ServiceRestartApp(); // void — cierra la app, el usuario la reabre
-      } else {
-        // Caja: no necesita reinicio, el proxy es stateless
-        toast.success(`Rol configurado: ${role.title}`);
-        navigate(role.next, { replace: true });
-      }
+      toast.success(`Rol configurado: ${role.title}`);
+      navigate(role.next, { replace: true });
     } catch (err) {
       toast.error('Error al guardar la configuración: ' + String(err));
-      setRestarting(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Pantalla de reinicio en progreso
-  if (restarting) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background gap-6">
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/15">
-          <div className="size-8 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin" />
-        </div>
-        <div className="text-center px-6">
-          <h2 className="text-xl font-bold text-foreground mb-2">Configuración guardada</h2>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            La aplicación se cerrará. Ábrela nuevamente para continuar con la activación de licencia.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background relative overflow-hidden px-4 py-12">
@@ -187,18 +154,12 @@ export function DeviceRolePage() {
 
                 {/* Features */}
                 <ul className="space-y-1.5">
-                  {role.features.map((f) => {
-                    let featureText = f;
-                    if (role.id === 'servidor_local' && f.includes('Expone API') && localIP) {
-                      featureText = `Expone API para las Cajas (${localIP}:8989)`;
-                    }
-                    return (
-                      <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className={`size-1.5 rounded-full bg-current ${role.checkColor}`} />
-                        {featureText}
-                      </li>
-                    );
-                  })}
+                  {role.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className={`size-1.5 rounded-full bg-current ${role.checkColor}`} />
+                      {f}
+                    </li>
+                  ))}
                 </ul>
               </motion.button>
             );

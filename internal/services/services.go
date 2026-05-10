@@ -4,10 +4,13 @@ import (
 	"BitComercio/internal/repository"
 	"context"
 	"log"
-	"os"
 
 	"gorm.io/gorm"
 )
+
+// apiCloudBaseURL es la URL base del API de Kommerze Cloud.
+// Valor fijo del sistema; no varía por instalación.
+const apiCloudBaseURL = "https://kommerze-cloud-api.developers-lab.com"
 
 type Services struct {
 	Sync                *SyncService
@@ -42,7 +45,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	repo := repository.NewCatalogosRepository(db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
-	apiURL := os.Getenv("API_BASE_URL")
+	apiURL := apiCloudBaseURL
 	cloudClient := NewCloudHttpClient(apiURL)
 
 	pos := NewPosService(db, ctx)

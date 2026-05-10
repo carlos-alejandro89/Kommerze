@@ -644,6 +644,12 @@ export namespace services {
 	    cloudEmail?: string;
 	    cloudPassword?: string;
 	    license?: LicenseData;
+	    dbHost?: string;
+	    dbPort?: string;
+	    dbUser?: string;
+	    dbPassword?: string;
+	    dbName?: string;
+	    dbSslMode?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new KommerzConfig(source);
@@ -656,6 +662,12 @@ export namespace services {
 	        this.cloudEmail = source["cloudEmail"];
 	        this.cloudPassword = source["cloudPassword"];
 	        this.license = this.convertValues(source["license"], LicenseData);
+	        this.dbHost = source["dbHost"];
+	        this.dbPort = source["dbPort"];
+	        this.dbUser = source["dbUser"];
+	        this.dbPassword = source["dbPassword"];
+	        this.dbName = source["dbName"];
+	        this.dbSslMode = source["dbSslMode"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

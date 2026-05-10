@@ -1,52 +1,51 @@
 package database
 
 import (
+	"BitComercio/internal/services"
 	"fmt"
 	"net/url"
-	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func buildDSN() (string, error) {
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := url.QueryEscape(os.Getenv("DB_USER"))
-	pass := url.QueryEscape(os.Getenv("DB_PASSWORD"))
-	name := os.Getenv("DB_NAME")
-	ssl := os.Getenv("SSL_MODE")
-
-	if host == "" || port == "" || user == "" || name == "" {
-		return "", fmt.Errorf("faltan variables de entorno para la conexión a la base de datos")
-	}
-
-	if ssl == "" {
-		ssl = "disable"
-	}
+func buildDSN(cfg *services.KommerzConfig) string {
+	host, port, user, pass, name, ssl := cfg.EffectiveDBConfig()
 
 	// Formato clásico key=value (más seguro que URL si hay caracteres especiales)
-	dsn := fmt.Sprintf(
+	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		host,
 		port,
-		user,
-		pass,
+		url.QueryEscape(user),
+		url.QueryEscape(pass),
 		name,
 		ssl,
 	)
-
-	return dsn, nil
 }
 
-func NewDB() (*gorm.DB, error) {
-	dsn, err := buildDSN()
-
+// NewDB abre una conexión a PostgreSQL usando los valores de KommerzConfig.
+// Si los campos de BD están vacíos se aplican los defaults de instalación estándar.
+func NewDB(cfg *services.KommerzConfig) (*gorm.DB, error) {
+	dsn := buildDSN(cfg)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic("Error al conectar a la base de datos")
+		return nil, fmt.Errorf("error al conectar a la base de datos: %w", err)
 	}
-
 	return db, nil
+}
 
+// TestDBConnection abre y cierra una conexión de prueba.
+// Devuelve nil si la conexión es exitosa; de lo contrario devuelve el error.
+func TestDBConnection(cfg *services.KommerzConfig) error {
+	db, err := NewDB(cfg)
+	if err != nil {
+		return err
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	defer sqlDB.Close()
+	return sqlDB.Ping()
 }

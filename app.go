@@ -1,13 +1,17 @@
 package main
 
 import (
+	"BitComercio/internal/database"
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
 	"BitComercio/internal/services/requestDto"
 	"context"
 	"fmt"
+	"log"
 	"net"
+	"os"
+	"os/exec"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -362,6 +366,40 @@ func (a *App) ServiceSaveKommerzConfig(cfg services.KommerzConfig) error {
 	return services.SaveKommerzConfig(&cfg)
 }
 
+// ServiceTestDBConnection prueba una conexión a PostgreSQL con los valores
+// proporcionados sin modificar la configuración guardada.
+// Usada por DatabaseSetupPage para validar credenciales antes de guardar.
+func (a *App) ServiceTestDBConnection(host, port, user, password, name, sslMode string) *dto.ResponseDto {
+	testCfg := &services.KommerzConfig{
+		DBHost:     host,
+		DBPort:     port,
+		DBUser:     user,
+		DBPassword: password,
+		DBName:     name,
+		DBSSLMode:  sslMode,
+	}
+	if err := database.TestDBConnection(testCfg); err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+	return dto.NewResponseDto(true, "Conexión exitosa", nil, nil)
+}
+
+// ServiceSaveDBConfig persiste solo los campos de BD en KommerzConfig
+// haciendo merge con la configuración existente para no perder otros campos.
+func (a *App) ServiceSaveDBConfig(host, port, user, password, name, sslMode string) error {
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return err
+	}
+	cfg.DBHost     = host
+	cfg.DBPort     = port
+	cfg.DBUser     = user
+	cfg.DBPassword = password
+	cfg.DBName     = name
+	cfg.DBSSLMode  = sslMode
+	return services.SaveKommerzConfig(cfg)
+}
+
 // ServiceGetSucursalGuid devuelve el GUID de la sucursal guardado en kommerze_config.json.
 // Lo usa el frontend para construir endpoints como /lista-precios/get-precios/{guid}.
 func (a *App) ServiceGetSucursalGuid() string {
@@ -381,9 +419,25 @@ func (a *App) ServiceTestLocalServerConnection(serverURL string) *dto.ResponseDt
 	return dto.NewResponseDto(true, "Conexión exitosa al Servidor Local", data, nil)
 }
 
-// ServiceRestartApp cierra la aplicación para que el usuario la reabra
-// con los servicios inicializados según el rol guardado en kommerze_config.json.
+// ServiceRestartApp relanza el ejecutable actual y luego cierra la instancia en curso.
+// El nuevo proceso se desacopla del padre para que sobreviva al cierre.
 func (a *App) ServiceRestartApp() {
+	exe, err := os.Executable()
+	if err != nil {
+		log.Printf("[ServiceRestartApp] No se pudo obtener la ruta del ejecutable: %v", err)
+		runtime.Quit(a.ctx)
+		return
+	}
+
+	cmd := exec.Command(exe)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	setSysProcAttr(cmd) // desacopla el proceso hijo (ver restart_unix.go / restart_windows.go)
+
+	if err := cmd.Start(); err != nil {
+		log.Printf("[ServiceRestartApp] No se pudo relanzar la app: %v", err)
+	}
+
 	runtime.Quit(a.ctx)
 }
 
