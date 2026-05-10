@@ -43,6 +43,7 @@ export const MAIN_NAV = [
     title: 'Sincronización',
     icon: RefreshCw,
     path: '/sync',
+    serverOnly: true, // Solo visible en modo Servidor Local
   },
   {
     id: 'settings',

@@ -7,8 +7,11 @@ import { cn } from '@/lib/utils';
 
 export function Sidebar({ open, onToggle }) {
   const { logout } = useAuth();
-  const { store, operation, license } = useActivation();
+  const { store, operation, license, isCaja } = useActivation();
   const navigate = useNavigate();
+
+  // Filtrar ítems que no deben mostrarse según el rol del dispositivo
+  const navItems = MAIN_NAV.filter((item) => !item.serverOnly || !isCaja);
 
   const handleLogout = () => {
     logout();
@@ -42,7 +45,7 @@ export function Sidebar({ open, onToggle }) {
 
       {/* ── Nav Items ───────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-0.5 px-2">
-        {MAIN_NAV.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}

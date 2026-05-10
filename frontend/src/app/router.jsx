@@ -5,6 +5,14 @@ import { AuthLayout } from '@/layouts/AuthLayout';
 import { AuthGuard } from '@/components/AuthGuard';
 import { DeviceGuard } from '@/components/DeviceGuard';
 import { ScreenLoader } from '@/components/ScreenLoader';
+import { useActivation } from '@/providers/ActivationProvider';
+
+// Guard para rutas exclusivas del Servidor Local
+function ServerOnlyGuard({ children }) {
+  const { isCaja } = useActivation();
+  if (isCaja) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
 // ── Lazy Pages ──────────────────────────────────────────────────────────────
 const LoginPage             = lazy(() => import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -119,7 +127,11 @@ export const router = createBrowserRouter(
         },
         {
           path: '/sync',
-          element: <SuspensePage><SyncPage /></SuspensePage>,
+          element: (
+            <ServerOnlyGuard>
+              <SuspensePage><SyncPage /></SuspensePage>
+            </ServerOnlyGuard>
+          ),
         },
       ],
     },
