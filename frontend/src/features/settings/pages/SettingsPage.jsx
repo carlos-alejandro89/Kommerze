@@ -103,12 +103,16 @@ export function SettingsPage() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const tabs = [
-    { id: 'dispositivo', label: 'Dispositivo', icon: deviceRole === 'caja' ? Monitor : Server },
-    { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud },
-    { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive },
-    { id: 'security',    label: 'Seguridad',              icon: Shield },
+  const allTabs = [
+    { id: 'dispositivo', label: 'Dispositivo',           icon: deviceRole === 'caja' ? Monitor : Server },
+    { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud,     serverOnly: true },
+    { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
+    { id: 'security',    label: 'Seguridad',              icon: Shield,    serverOnly: true },
   ];
+  // En modo Caja solo se muestra la pestaña de Dispositivo
+  const tabs = deviceRole === 'caja'
+    ? allTabs.filter((t) => !t.serverOnly)
+    : allTabs;
 
   const roleLabel      = deviceRole === 'servidor_local' ? 'Servidor Local' : deviceRole === 'caja' ? 'Caja' : 'Sin configurar';
   const roleBadgeColor = deviceRole === 'servidor_local'
