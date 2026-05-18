@@ -30,6 +30,7 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 	}
 
 	var errores []string
+	omitidos := 0
 
 	for _, fila := range listaPrecios {
 		fMap, ok := fila.(map[string]any)
@@ -49,8 +50,8 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 		nivelGuid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["nivelGuid"]))
 		nivelID, exists := dicNiveles[nivelGuid]
 		if !exists || nivelID == 0 {
-			// El nivel no existe localmente — sincroniza "Niveles Empaque" primero.
-			errores = append(errores, fmt.Sprintf("nivel no encontrado localmente (nivelGuid=%s), sincroniza Niveles Empaque primero", nivelGuid))
+			// Advertencia: el nivel no existe localmente — se omite sin fallar la sincronización.
+			omitidos++
 			continue
 		}
 
@@ -104,8 +105,14 @@ func (r *ListaPreciosRepository) SaveSucursalProducto(listaPrecios []any) error 
 		}
 	}
 
+	if omitidos > 0 {
+		fmt.Printf("[ListaPrecios] ⚠ %d registros omitidos (nivelGuid sin contraparte local — re-sincroniza Niveles Empaque si persiste)\n", omitidos)
+	}
+
+	// Solo retornar error si hubo fallos reales de BD (INSERT/UPDATE fallidos).
+	// Los nivelGuid no encontrados localmente son advertencias, no errores.
 	if len(errores) > 0 {
-		return fmt.Errorf("sync lista precios completada con %d advertencias: %s", len(errores), errores[0])
+		return fmt.Errorf("errores al guardar lista de precios (%d): %s", len(errores), errores[0])
 	}
 	return nil
 }

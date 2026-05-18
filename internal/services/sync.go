@@ -324,30 +324,34 @@ func (a *SyncService) SyncSucursales() ([]any, error) {
 }
 
 func (a *SyncService) SyncSucursalProductos(parameters map[string]any) ([]any, error) {
-	fmt.Println("Conectando al servicio de lista de precios...")
-	fmt.Println(a.apiBaseURL)
-	fmt.Println(parameters["sucursalGuid"])
-	resp, err := a.client.Get(fmt.Sprintf("%s/lista-precios/get-precios/%s", a.apiBaseURL, parameters["sucursalGuid"]))
+	sucursalGuid := fmt.Sprintf("%v", parameters["sucursalGuid"])
+	fmt.Printf("[SyncListaPrecios] Iniciando → URL: %s/lista-precios/get-precios/%s\n", a.apiBaseURL, sucursalGuid)
+
+	resp, err := a.client.Get(fmt.Sprintf("%s/lista-precios/get-precios/%s", a.apiBaseURL, sucursalGuid))
 	if err != nil {
-		fmt.Println("Error en la solicitud:", err)
+		fmt.Printf("[SyncListaPrecios] ❌ Error en la solicitud HTTP: %v\n", err)
 		return nil, fmt.Errorf("error in request: %w", err)
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("[SyncListaPrecios] ❌ La API respondió con status %d\n", resp.StatusCode)
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
 
 	var result ApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		fmt.Printf("[SyncListaPrecios] ❌ Error decodificando JSON: %v\n", err)
 		return nil, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
-	fmt.Println("Datos recibidos:", result.Data)
+	fmt.Printf("[SyncListaPrecios] ✓ Registros recibidos: %d\n", len(result.Data))
+
 	if err := a.repoPrecios.SaveSucursalProducto(result.Data); err != nil {
+		fmt.Printf("[SyncListaPrecios] ❌ Error guardando en BD: %v\n", err)
 		return nil, fmt.Errorf("error sincronizando datos: %w", err)
 	}
 
+	fmt.Printf("[SyncListaPrecios] ✅ Sincronización completada\n")
 	return result.Data, nil
 }
