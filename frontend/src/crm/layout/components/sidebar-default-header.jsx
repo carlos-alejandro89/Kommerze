@@ -11,8 +11,9 @@ import {
   Sun,
   User,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,9 +37,27 @@ const mockWorkspaces = [
 
 ];
 
+const THEME_KEY = 'kommerze-theme';
+
+function useAppTheme() {
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+  }, [dark]);
+
+  return { isDark: dark, toggle: () => setDark(v => !v) };
+}
+
 export function SidebarDefaultHeader() {
   const { sidebarCollapse, setSidebarCollapse } = useLayout();
-  const { theme, setTheme } = useTheme();
+  const { isDark, toggle } = useAppTheme();
   const { user, logout } = useAuth();
 
   return (
@@ -116,15 +135,13 @@ export function SidebarDefaultHeader() {
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              {theme === 'dark' ? (
+            <DropdownMenuItem onClick={toggle}>
+              {isDark ? (
                 <Sun className="size-4" />
               ) : (
                 <Moon className="size-4" />
               )}
-              <span>{theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+              <span>{isDark ? 'Light' : 'Dark'} Mode</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

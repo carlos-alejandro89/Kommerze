@@ -1,16 +1,25 @@
-import {
-    ServiceConsultarExistenciaProductos,
-    ServiceConfirmarTransaccion
-} from '../../../../wailsjs/go/main/App';
+/**
+ * resumen-actions.js
+ *
+ * Acciones del resumen del POS. Las funciones de servicio se reciben como
+ * parámetros desde usePosService — no importan directamente desde wailsjs.
+ * Esto permite que el patrón dual (Servidor Local / Caja) funcione de forma
+ * transparente sin cambios aquí.
+ */
 
-export const ConsultarExistencias = async (setInvalidItems) => {
+/**
+ * Consulta las existencias de los productos en el carrito.
+ * @param {Function} consultarExistenciasService - posService.consultarExistencias
+ * @param {Function} setInvalidItems
+ */
+export const ConsultarExistencias = async (consultarExistenciasService, setInvalidItems) => {
 
     try {
         const cartItems = localStorage.getItem('cart')
         const cart = JSON.parse(cartItems)
         const productosGuids = cart.map(item => item.id)
 
-        const productos = await ServiceConsultarExistenciaProductos(productosGuids)
+        const productos = await consultarExistenciasService(productosGuids)
 
         /**
          * shopspring/decimal se serializa a JSON como string (ej: "15.000")
@@ -71,7 +80,13 @@ export const ConsultarExistencias = async (setInvalidItems) => {
     }
 }
 
-export const confirmarTransaccion = async (setAlertConfig, store) => {
+/**
+ * Confirma la transacción contra el backend.
+ * @param {Function} confirmarTransaccionService - posService.confirmarTransaccion
+ * @param {Function} setAlertConfig
+ * @param {object|null} store
+ */
+export const confirmarTransaccion = async (confirmarTransaccionService, setAlertConfig, store) => {
     const operationType = JSON.parse(localStorage.getItem('operationType'))
     const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
     const sucursalTraspaso = JSON.parse(localStorage.getItem('sucursal'))
@@ -90,7 +105,7 @@ export const confirmarTransaccion = async (setAlertConfig, store) => {
     }
 
     try {
-        const result = await ServiceConfirmarTransaccion(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null);
+        const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null);
 
         localStorage.setItem('folio', result.data.Folio)
         return result.success;

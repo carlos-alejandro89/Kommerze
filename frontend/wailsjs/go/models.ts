@@ -1,5 +1,27 @@
 export namespace dto {
 	
+	export class ClienteDto {
+	    ID: number;
+	    Guid: string;
+	    RazonSocial: string;
+	    RFC: string;
+	    Correo: string;
+	    Telefono: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClienteDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	    }
+	}
 	export class InventarioDto {
 	    Codigo: string;
 	    CodigoBarra?: string;

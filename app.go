@@ -82,6 +82,19 @@ func (a *App) catalogosService() interface {
 	return a.services.Catalogos
 }
 
+// clientesService devuelve la implementación correcta según el modo del dispositivo.
+// Servidor Local → ClientesService (acceso directo a BD)
+// Caja           → CajaProxyService (HTTP al Servidor Local)
+func (a *App) clientesService() interface {
+	BuscarClientes(string) ([]dto.ClienteDto, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Clientes
+}
+
+
 // ── Sync (solo Servidor Local) ────────────────────────────────────────────────
 
 func (a *App) SyncLineas() (string, error) {
@@ -336,6 +349,15 @@ func (a *App) ServiceGetSatUsosCFDI() (*dto.ResponseDto, error) {
 func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 	return a.catalogosService().GetSucursales()
 }
+
+// ── Clientes ──────────────────────────────────────────────────────────────────
+
+// ServiceBuscarClientes busca clientes por razón social, RFC o teléfono.
+// Funciona en modo Servidor Local (BD directa) y Caja (proxy HTTP).
+func (a *App) ServiceBuscarClientes(q string) ([]dto.ClienteDto, error) {
+	return a.clientesService().BuscarClientes(q)
+}
+
 
 // ── Cloud (solo Servidor Local) ───────────────────────────────────────────────
 

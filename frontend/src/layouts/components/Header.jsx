@@ -5,12 +5,18 @@ import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 
+const THEME_KEY = 'kommerze-theme';
+
 /** Toggle dark mode by adding/removing the `dark` class on <html> */
 function useDarkMode() {
-  const [dark, setDark] = useState(
-    () => document.documentElement.classList.contains('dark')
-      || window.matchMedia('(prefers-color-scheme: dark)').matches,
-  );
+  const [dark, setDark] = useState(() => {
+    // 1) Preferencia guardada por el usuario
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    // 2) Sin preferencia guardada → usar preferencia del sistema
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   useEffect(() => {
     if (dark) {
@@ -18,7 +24,7 @@ function useDarkMode() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('kommerze-theme', dark ? 'dark' : 'light');
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
   }, [dark]);
 
   return [dark, setDark];

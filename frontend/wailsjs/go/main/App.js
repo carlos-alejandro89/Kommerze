@@ -10,6 +10,10 @@ export function ServiceApiCrearProducto(arg1) {
   return window['go']['main']['App']['ServiceApiCrearProducto'](arg1);
 }
 
+export function ServiceBuscarClientes(arg1) {
+  return window['go']['main']['App']['ServiceBuscarClientes'](arg1);
+}
+
 export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5);
 }

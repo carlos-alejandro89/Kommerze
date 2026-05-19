@@ -25,7 +25,7 @@ import { DialogSucursales } from './components/dialog-sucursales';
 
 import { ResumenCuenta } from './resumen';
 import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
-import { ServiceObtenerTiposPedido, ServiceGetSucursales } from '../../../../wailsjs/go/main/App';
+import { usePosService } from './usePosService';
 // Mock data for initial items
 const shoppingCart = [
 
@@ -34,6 +34,7 @@ const shoppingCart = [
 
 export function CartStepTwo() {
     const navigate = useNavigate();
+    const posService = usePosService();
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     const [itemSelected, setItemSelected] = React.useState({});
@@ -44,19 +45,19 @@ export function CartStepTwo() {
 
     const ObtenerTiposPedido = async () => {
         try {
-            const res = await ServiceObtenerTiposPedido();
+            const res = await posService.obtenerTiposPedido();
             setTiposPedido(res || []);
         } catch (error) {
-            console.error('Error al llamar a ServiceObtenerTiposPedido:', error);
+            console.error('Error al llamar a obtenerTiposPedido:', error);
         }
     }
 
     const ObtenerSucursales = async () => {
         try {
-            const res = await ServiceGetSucursales();
+            const res = await posService.obtenerSucursales();
             setSucursales(res.data || []);
         } catch (error) {
-            console.error('Error al llamar a ServiceGetSucursales:', error);
+            console.error('Error al llamar a obtenerSucursales:', error);
         }
     }
 

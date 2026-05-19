@@ -6,10 +6,12 @@ import { ConsultarExistencias, confirmarTransaccion, validarPago } from './resum
 import { ModalDetalleInventario } from './modal-detalle-inventario';
 import { DialogAlert } from '@/components/common/dialog-alert';
 import { useActivation } from '@/providers/ActivationProvider';
+import { usePosService } from './usePosService';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
     const { store } = useActivation();
     const navigate = useNavigate();
+    const posService = usePosService();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
     const [alertConfig, setAlertConfig] = useState({ open: false, title: '', description: '', type: 'warning' });
@@ -25,7 +27,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         0: () => countItems > 0,
         1: async (operationType) => {
 
-            const inventarioValido = (operationType === 2) ? true : await ConsultarExistencias(setInvalidItems)
+            const inventarioValido = (operationType === 2) ? true : await ConsultarExistencias(posService.consultarExistencias, setInvalidItems)
             if (!inventarioValido) {
                 setIsModalOpen(true)
                 return false
@@ -33,7 +35,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
 
             if (parseInt(operationType) === 2 || parseInt(operationType) === 3) {
-                const transaccionValida = await confirmarTransaccion(setAlertConfig, store) // Se guarda la cotizacion
+                const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store)
                 setNextPage(currentStep + 2)
                 return transaccionValida
             }
@@ -49,7 +51,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 }
             }
 
-            const transaccionValida = await confirmarTransaccion(setAlertConfig, store) // Se guarda la venta
+            const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store)
             return transaccionValida
         }
     }

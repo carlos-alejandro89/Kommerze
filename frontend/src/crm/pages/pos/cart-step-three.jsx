@@ -17,12 +17,13 @@ import { ResumenCuenta } from './resumen';
 import { ModalFormaPago } from './modal-forma-pago';
 import { ItemPagos } from './components/item-pagos';
 import { moneyFormat } from '@/lib/helpers';
-import { ServiceGetSatFormasPago } from '../../../../wailsjs/go/main/App';
+import { usePosService } from './usePosService';
 const shoppingCart = [];
 
 
 export function CartStepThree() {
     const navigate = useNavigate();
+    const posService = usePosService();
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     //const [productId, setProductId] = React.useState(null);
@@ -42,7 +43,7 @@ export function CartStepThree() {
     const [formaPago, setFormaPago] = React.useState([]);
 
     React.useEffect(() => {
-        ServiceGetSatFormasPago()
+        posService.obtenerFormasPago()
             .then(res => {
                 // res.data es el array de formas de pago del catálogo SAT
                 const data = res?.data || [];

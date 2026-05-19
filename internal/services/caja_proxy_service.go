@@ -199,3 +199,17 @@ func (c *CajaProxyService) GetSatProductos() (*dto.ResponseDto, error) {
 func (c *CajaProxyService) GetSucursales() (*dto.ResponseDto, error) {
 	return c.catalogoGet("/local/catalogos/sucursales")
 }
+
+// ── ClientesService equivalente ───────────────────────────────────────────────
+
+func (c *CajaProxyService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
+	var result struct {
+		Success bool             `json:"success"`
+		Data    []dto.ClienteDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/clientes?q=%s", q), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+

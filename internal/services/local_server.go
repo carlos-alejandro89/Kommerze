@@ -19,14 +19,16 @@ type LocalServerService struct {
 	pos       *PosService
 	auth      *AuthService
 	catalogos *CatalogosService
+	clientes  *ClientesService
 	server    *http.Server
 }
 
-func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService) *LocalServerService {
+func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService) *LocalServerService {
 	return &LocalServerService{
 		pos:       pos,
 		auth:      auth,
 		catalogos: cat,
+		clientes:  clientes,
 	}
 }
 
@@ -41,6 +43,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/transacciones", l.handleTransacciones)
 	mux.HandleFunc("/local/tipos-pedido", l.handleTiposPedido)
 	mux.HandleFunc("/local/existencias", l.handleExistencias)
+	mux.HandleFunc("/local/clientes", l.handleClientes)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -207,6 +210,22 @@ func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// ── Clientes handler ──────────────────────────────────────────────────────────
+
+func (l *LocalServerService) handleClientes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	q := r.URL.Query().Get("q")
+	clientes, err := l.clientes.BuscarClientes(q)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": clientes})
 }
 
 // ── Catalogos handlers ────────────────────────────────────────────────────────

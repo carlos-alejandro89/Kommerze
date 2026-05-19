@@ -24,7 +24,7 @@ import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
 import { SearchDropdown } from './components/SearchDropdown';
 import { useCartState } from './useCartState';
-import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
+import { usePosService } from './usePosService';
 
 // ── Constante de imagen placeholder ─────────────────────────────────────────
 const PLACEHOLDER_IMG = 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg';
@@ -50,6 +50,7 @@ function mapProductoToCartItem(producto) {
 
 export default function POSPage() {
     const { cart, addItem, changeQuantity, updateQuantity, removeItem, clearCart, subtotal, descuento, total } = useCartState();
+    const posService = usePosService();
 
     // ── Búsqueda ─────────────────────────────────────────────────────────────
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -116,7 +117,7 @@ export default function POSPage() {
 
         const timer = setTimeout(async () => {
             try {
-                const result = await ServiceConsultaProductos(searchQuery.toUpperCase());
+                const result = await posService.buscarProductos(searchQuery.toUpperCase());
                 setSuggestions(result || []);
             } catch {
                 setSuggestions([]);
@@ -147,7 +148,7 @@ export default function POSPage() {
 
             if (event.key === 'Enter') {
                 if (rawBarcode.length > 2) {
-                    ServiceConsultaProductos(rawBarcode.toUpperCase())
+                    posService.buscarProductos(rawBarcode.toUpperCase())
                         .then(result => {
                             if (result && result.length > 0) {
                                 addProductToCart(result[0]);
@@ -204,7 +205,7 @@ export default function POSPage() {
             } else {
                 setIsSearching(true);
                 try {
-                    const result = await ServiceConsultaProductos(searchQuery.toUpperCase());
+                    const result = await posService.buscarProductos(searchQuery.toUpperCase());
                     if (result && result.length > 0) {
                         addProductToCart(result[0]);
                     } else {
