@@ -132,7 +132,8 @@ export namespace dto {
 	    Fraccionable: boolean;
 	    ProductoBaseGuid: string;
 	    GuidBase: string;
-	    Existencia: string;
+	    // Go type: decimal
+	    Existencia: any;
 	    CantidadBase: number;
 	
 	    static createFrom(source: any = {}) {
@@ -151,7 +152,7 @@ export namespace dto {
 	        this.Fraccionable = source["Fraccionable"];
 	        this.ProductoBaseGuid = source["ProductoBaseGuid"];
 	        this.GuidBase = source["GuidBase"];
-	        this.Existencia = source["Existencia"];
+	        this.Existencia = this.convertValues(source["Existencia"], null);
 	        this.CantidadBase = source["CantidadBase"];
 	    }
 	

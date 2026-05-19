@@ -17,15 +17,40 @@ import { Badge } from "@/components/ui/badge"
 import { BtnFormaPago } from "./components/btn-forma-pago";
 
 const Icons = {
+    // Nombres usados internamente (fallback)
     'Efectivo': DollarSign,
     'Tarjeta': CreditCard,
     'Transferencia': ArrowRightLeft,
     'Cheque': CheckCircle,
     'Otro': MoreHorizontal,
+    // Nombres del catálogo SAT
+    'Transferencia electrónica de fondos': ArrowRightLeft,
+    'Tarjeta de crédito': CreditCard,
+    'Tarjeta de débito': CreditCard,
+    'Cheque nominativo': CheckCircle,
+    'Monedero electrónico': CreditCard,
+    'Dinero electrónico': ArrowRightLeft,
+    'Vales de despensa': MoreHorizontal,
+    'Dación en pago': MoreHorizontal,
+    'Pago por subrogación': MoreHorizontal,
+    'Pago por consignación': MoreHorizontal,
+    'Condonación': MoreHorizontal,
+    'Compensación': MoreHorizontal,
+    'Novación': MoreHorizontal,
+    'Confusión': MoreHorizontal,
+    'Remisión de deuda': MoreHorizontal,
+    'Prescripción o caducidad': MoreHorizontal,
+    'A satisfacción del acreedor': MoreHorizontal,
+    'Tarjeta de servicios': CreditCard,
+    'Aplicación de anticipos': MoreHorizontal,
+    'Intermediario pagos': MoreHorizontal,
+    'Por definir': MoreHorizontal,
 }
 
-export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment }) {
-    const Icon = Icons[formaPago.Nombre];
+export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment, renderTrigger }) {
+    // Fallback a MoreHorizontal si el nombre no está en el mapa
+    const Icon = Icons[formaPago.Nombre] ?? MoreHorizontal;
+
 
     const agregarPago = () => {
         const data = {
@@ -41,7 +66,10 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment 
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <BtnFormaPago formaPago={formaPago} isActive={isActive} onClick={onClick} />
+                {renderTrigger
+                    ? renderTrigger({ onClick: () => onClick(formaPago.ID) })
+                    : <BtnFormaPago formaPago={formaPago} isActive={isActive} onClick={onClick} />
+                }
             </DialogTrigger>
             <DialogContent className="sm:max-w-md bg-slate-50 dark:bg-zinc-950 border dark:border-zinc-800 shadow-2xl overflow-hidden rounded-2xl p-0">
                 <DialogHeader className="p-6 pb-4 border-b border-border/50 bg-white/50 dark:bg-zinc-900/50">

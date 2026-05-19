@@ -19,6 +19,16 @@ func RunMigrations(db *gorm.DB) error {
 	if err := migrations.MigrateViews(db); err != nil {
 		return err
 	}
+
+	if err := migrations.MigrateSequences(db); err != nil {
+		return err
+	}
+
+	if err := migrations.SeedCatalogos(db); err != nil {
+		return err
+	}
+
+
 	/*// Migrar el esquema (crea la tabla automáticamente)
 	db.AutoMigrate(
 

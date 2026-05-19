@@ -3,22 +3,22 @@
 import * as React from 'react';
 import {
     X,
-    Info, LayoutGrid, History, Banknote
+    Info, LayoutGrid, History, Banknote,
+    ChevronDown, ChevronUp,
+    DollarSign, CreditCard, ArrowRightLeft, CheckCircle, MoreHorizontal
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
 import { ModalFormaPago } from './modal-forma-pago';
-import { ServiceConsultaProductos } from '../../../../wailsjs/go/main/App';
 import { ItemPagos } from './components/item-pagos';
 import { moneyFormat } from '@/lib/helpers';
+import { ServiceGetSatFormasPago } from '../../../../wailsjs/go/main/App';
 const shoppingCart = [];
-
 
 
 export function CartStepThree() {
@@ -27,7 +27,7 @@ export function CartStepThree() {
     const [open, setOpen] = React.useState(false);
     //const [productId, setProductId] = React.useState(null);
     const [itemSelected, setItemSelected] = React.useState({});
-    const [paymentMethod, setPaymentMethod] = React.useState('efectivo');
+    const [paymentMethod, setPaymentMethod] = React.useState(null);
     const [amountReceived, setAmountReceived] = React.useState(0);
     const [pagosAplicados, setPagosAplicados] = React.useState(() => {
         try {
@@ -38,26 +38,33 @@ export function CartStepThree() {
         }
     });
 
+    // Cargar métodos de pago desde el backend local
+    const [formaPago, setFormaPago] = React.useState([]);
 
-    const mockFormaPago = [
-        {
-            ID: 1,
-            Nombre: 'Efectivo',
-            Descripcion: 'Pago en efectivo',
-        },
-        {
-            ID: 2,
-            Nombre: 'Tarjeta',
-            Descripcion: 'Pago con tarjeta',
-        },
-        {
-            ID: 3,
-            Nombre: 'Transferencia',
-            Descripcion: 'Pago electrónico SPEI',
-        }
-    ]
-
-    const [formaPago, setFormaPago] = React.useState(mockFormaPago);
+    React.useEffect(() => {
+        ServiceGetSatFormasPago()
+            .then(res => {
+                // res.data es el array de formas de pago del catálogo SAT
+                const data = res?.data || [];
+                if (data.length > 0) {
+                    setFormaPago(data);
+                } else {
+                    // Fallback si el catálogo SAT no está sincronizado
+                    setFormaPago([
+                        { ID: 1, Nombre: 'Efectivo', Descripcion: 'Pago en efectivo' },
+                        { ID: 2, Nombre: 'Tarjeta', Descripcion: 'Pago con tarjeta de crédito/débito' },
+                        { ID: 3, Nombre: 'Transferencia', Descripcion: 'Pago electrónico SPEI' },
+                    ]);
+                }
+            })
+            .catch(() => {
+                setFormaPago([
+                    { ID: 1, Nombre: 'Efectivo', Descripcion: 'Pago en efectivo' },
+                    { ID: 2, Nombre: 'Tarjeta', Descripcion: 'Pago con tarjeta de crédito/débito' },
+                    { ID: 3, Nombre: 'Transferencia', Descripcion: 'Pago electrónico SPEI' },
+                ]);
+            });
+    }, []);
 
     React.useEffect(() => {
         const cartStorage = localStorage.getItem('cart')
@@ -165,13 +172,13 @@ export function CartStepThree() {
                                         </div>
                                     </header>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                        {/* Card: EFECTIVO */}
-                                        {formaPago.map((formaPago) => (
-                                            <ModalFormaPago key={formaPago.ID} formaPago={formaPago} isActive={paymentMethod === formaPago.ID} onClick={handleSelectPaymentMethod} handleAddPayment={handleAddPayment} />
-                                        ))}
-
-                                    </div>
+                                    {/* ── Métodos de pago ── */}
+                                    <PaymentMethodSelector
+                                        formaPago={formaPago}
+                                        paymentMethod={paymentMethod}
+                                        onSelect={handleSelectPaymentMethod}
+                                        onAddPayment={handleAddPayment}
+                                    />
 
                                     {/* Section Pagos aplicados */}
                                     {pagosAplicados.length === 0 ? (
@@ -243,6 +250,7 @@ export function CartStepThree() {
                                                 {paymentMethod === 1 && "Asegúrese de verificar la autenticidad de los billetes de alta denominación antes de ingresarlos a la caja."}
                                                 {paymentMethod === 2 && "Solicite al cliente que inserte o acerque su tarjeta a la terminal y espere la confirmación aprobada del banco."}
                                                 {paymentMethod === 3 && "Antes de entregar la mercancía, valide en su portal bancario o mediante la referencia que los fondos fueron acreditados exitosamente."}
+                                                {paymentMethod === null && "Seleccione un método de pago para continuar con el cobro de esta transacción."}
                                             </p>
                                         </div>
                                     </div>
@@ -253,25 +261,7 @@ export function CartStepThree() {
                         {/* Right Sidebar: Services & Summary */}
                         <div className="w-[340px] flex flex-col bg-gradient-to-b from-white/50 to-blue-50/50 dark:from-zinc-950 dark:to-blue-900/20 shrink-0 border-l border-border/40 overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                {/* 1. Promo Code Section */}
-                                <div className="relative group">
-                                    <Input
-                                        type="text"
-                                        placeholder="Código de Descuento"
-                                        className="w-full h-10 pl-10 pr-16 rounded-xl "
-                                    />
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-3 text-[10px] font-bold uppercase text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                        >
-                                            Aplicar
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* 2. Bottom Summary Section */}
+                                {/* Resumen de cuenta */}
                                 <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={2} />
                                 {/* 3. Services List */}
 
@@ -318,3 +308,189 @@ export function CartStepThree() {
         </div>
     );
 }
+
+// ── Nombres de métodos comunes para un POS (en minúsculas para comparar) ─────
+const COMMON_METHOD_NAMES_LOWER = new Set([
+    'efectivo',
+    'transferencia electrónica de fondos',
+    'tarjeta de crédito',
+    'tarjeta de débito',
+    'cheque nominativo',
+    'tarjeta de servicios',
+    // nombres cortos del fallback
+    'tarjeta',
+    'transferencia',
+    'cheque',
+]);
+
+const isCommonMethod = (nombre) =>
+    COMMON_METHOD_NAMES_LOWER.has((nombre || '').toLowerCase().trim());
+
+const METHOD_ICONS_LOWER = {
+    'efectivo':                            DollarSign,
+    'tarjeta':                             CreditCard,
+    'transferencia':                       ArrowRightLeft,
+    'cheque':                              CheckCircle,
+    'transferencia electrónica de fondos': ArrowRightLeft,
+    'tarjeta de crédito':                  CreditCard,
+    'tarjeta de débito':                   CreditCard,
+    'cheque nominativo':                   CheckCircle,
+    'tarjeta de servicios':                CreditCard,
+};
+
+const METHOD_COLORS_LOWER = {
+    'efectivo':                            'from-emerald-500 to-emerald-700',
+    'tarjeta':                             'from-blue-500 to-blue-700',
+    'tarjeta de crédito':                  'from-blue-500 to-blue-700',
+    'tarjeta de débito':                   'from-sky-500 to-sky-700',
+    'transferencia':                       'from-violet-500 to-violet-700',
+    'transferencia electrónica de fondos': 'from-violet-500 to-violet-700',
+    'cheque':                              'from-amber-500 to-amber-700',
+    'cheque nominativo':                   'from-amber-500 to-amber-700',
+    'tarjeta de servicios':                'from-indigo-500 to-indigo-700',
+};
+
+const getMethodIcon   = (nombre) => METHOD_ICONS_LOWER[(nombre || '').toLowerCase().trim()]   ?? MoreHorizontal;
+const getMethodColor  = (nombre) => METHOD_COLORS_LOWER[(nombre || '').toLowerCase().trim()]  ?? 'from-slate-500 to-slate-700';
+
+/**
+ * PaymentMethodSelector
+ * Muestra métodos comunes de POS con tarjetas grandes y descriptivas.
+ * Colapsa los métodos fiscales del SAT en un "Ver otros métodos".
+ */
+function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPayment }) {
+    const [showOthers, setShowOthers] = React.useState(false);
+
+    const common = formaPago.filter(m => isCommonMethod(m.Nombre));
+    const others  = formaPago.filter(m => !isCommonMethod(m.Nombre));
+
+    return (
+        <div className="space-y-4">
+            {/* ── Métodos comunes (tarjetas grandes) ── */}
+            {common.length > 0 ? (
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                    {common.map(fp => (
+                        <PaymentCard
+                            key={fp.ID}
+                            fp={fp}
+                            isActive={paymentMethod === fp.ID}
+                            onSelect={onSelect}
+                            onAddPayment={onAddPayment}
+                        />
+                    ))}
+                </div>
+            ) : (
+                // Fallback: mostrar todos si no hay coincidencias
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                    {formaPago.map(fp => (
+                        <PaymentCard
+                            key={fp.ID}
+                            fp={fp}
+                            isActive={paymentMethod === fp.ID}
+                            onSelect={onSelect}
+                            onAddPayment={onAddPayment}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* ── Otros métodos fiscales (colapsable) ── */}
+            {others.length > 0 && (
+                <div>
+                    <button
+                        type="button"
+                        onClick={() => setShowOthers(v => !v)}
+                        className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-1 py-1.5 group"
+                    >
+                        {showOthers
+                            ? <ChevronUp className="size-3.5 transition-transform" />
+                            : <ChevronDown className="size-3.5 transition-transform" />
+                        }
+                        <span>
+                            {showOthers ? 'Ocultar' : 'Ver'} otros métodos fiscales
+                            <span className="ml-1.5 text-[10px] font-bold bg-slate-200 dark:bg-zinc-700 text-slate-500 dark:text-zinc-400 px-1.5 py-0.5 rounded-full">
+                                {others.length}
+                            </span>
+                        </span>
+                    </button>
+
+                    {showOthers && (
+                        <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 mt-2 p-3 rounded-xl border border-dashed border-border bg-slate-50/50 dark:bg-zinc-900/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {others.map(fp => (
+                                <ModalFormaPago
+                                    key={fp.ID}
+                                    formaPago={fp}
+                                    isActive={paymentMethod === fp.ID}
+                                    onClick={onSelect}
+                                    handleAddPayment={onAddPayment}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * PaymentCard — tarjeta visual grande para métodos comunes del POS.
+ * Abre el ModalFormaPago al hacer clic.
+ */
+function PaymentCard({ fp, isActive, onSelect, onAddPayment }) {
+    const Icon     = getMethodIcon(fp.Nombre);
+    const gradient = getMethodColor(fp.Nombre);
+
+    // Nombre capitalizado para mostrar en la tarjeta
+    const displayName = fp.Nombre
+        ? fp.Nombre.charAt(0).toUpperCase() + fp.Nombre.slice(1).toLowerCase()
+        : fp.Nombre;
+
+    return (
+        <ModalFormaPago
+            formaPago={fp}
+            isActive={isActive}
+            onClick={onSelect}
+            handleAddPayment={onAddPayment}
+            renderTrigger={(triggerProps) => (
+                <button
+                    {...triggerProps}
+                    className={`
+                        relative w-full rounded-2xl p-5 text-left transition-all duration-200 overflow-hidden
+                        border-2 group active:scale-[0.98]
+                        ${isActive
+                            ? 'border-primary shadow-lg shadow-primary/20 bg-primary/5 dark:bg-primary/10'
+                            : 'border-border hover:border-primary/50 bg-white dark:bg-zinc-900 hover:shadow-md'
+                        }
+                    `}
+                >
+                    {/* Icono con gradiente */}
+                    <div className={`
+                        size-11 rounded-xl flex items-center justify-center mb-4
+                        bg-gradient-to-br ${gradient} shadow-md
+                        group-hover:scale-110 transition-transform duration-200
+                    `}>
+                        <Icon className="size-5 text-white" />
+                    </div>
+
+                    {/* Nombre capitalizado */}
+                    <div className="font-bold text-sm text-foreground leading-tight mb-1">
+                        {displayName}
+                    </div>
+                    <div className="text-xs text-muted-foreground leading-snug line-clamp-2">
+                        {fp.Descripcion || 'Método de pago'}
+                    </div>
+
+                    {/* Punto activo */}
+                    {isActive && (
+                        <div className="absolute top-3 right-3 size-2.5 rounded-full bg-primary shadow-[0_0_6px_2px_rgba(var(--primary),0.4)]" />
+                    )}
+
+                    <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-gradient-to-br from-white/5 to-transparent" />
+                </button>
+            )}
+        />
+    );
+}
+
+

@@ -2,11 +2,20 @@ import { cn } from '@/lib/utils';
 import { DollarSign, CreditCard, CheckCircle, MoreHorizontal, ArrowRightLeft } from 'lucide-react';
 
 const Icons = {
+    // Nombres internos
     'Efectivo': DollarSign,
     'Tarjeta': CreditCard,
     'Transferencia': ArrowRightLeft,
     'Cheque': CheckCircle,
     'Otro': MoreHorizontal,
+    // Nombres del catálogo SAT
+    'Transferencia electrónica de fondos': ArrowRightLeft,
+    'Tarjeta de crédito': CreditCard,
+    'Tarjeta de débito': CreditCard,
+    'Cheque nominativo': CheckCircle,
+    'Monedero electrónico': CreditCard,
+    'Dinero electrónico': ArrowRightLeft,
+    'Tarjeta de servicios': CreditCard,
 }
 export function BtnFormaPago({ formaPago, isActive, onClick }) {
     const Icono = Icons[formaPago.Nombre] || MoreHorizontal

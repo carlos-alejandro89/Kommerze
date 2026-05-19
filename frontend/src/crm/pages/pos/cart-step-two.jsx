@@ -15,7 +15,6 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Content } from '@/crm/layout/components/content';
@@ -270,25 +269,7 @@ export function CartStepTwo() {
                         {/* Right Sidebar: Services & Summary */}
                         <div className="w-[340px] flex flex-col bg-gradient-to-b from-white/50 to-blue-50/50 dark:from-zinc-950 dark:to-blue-900/20 shrink-0 border-l border-border/40 overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                {/* 1. Promo Code Section */}
-                                <div className="relative group">
-                                    <Input
-                                        type="text"
-                                        placeholder="Código de Descuento"
-                                        className="w-full h-10 pl-10 pr-16 rounded-xl "
-                                    />
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-3 text-[10px] font-bold uppercase text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                        >
-                                            Aplicar
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* 2. Bottom Summary Section */}
+                                {/* Resumen de cuenta */}
                                 <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
                                 {/* 3. Services List */}
 

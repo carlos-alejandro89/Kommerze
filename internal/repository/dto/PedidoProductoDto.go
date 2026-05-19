@@ -13,6 +13,6 @@ type PedidoProductoDto struct {
 	Fraccionable     bool
 	ProductoBaseGuid string
 	GuidBase         string
-	Existencia       string
+	Existencia       decimal.Decimal
 	CantidadBase     float64
 }

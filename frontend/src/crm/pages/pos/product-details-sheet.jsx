@@ -24,7 +24,6 @@ import {
 export function ProductDetailsSheet({
   open,
   onOpenChange,
-  productId,
   itemSelected,
   addToCart,
 }) {
@@ -141,11 +140,17 @@ export function ProductDetailsSheet({
               </div>
 
               <div className="flex items-center justify-end gap-2">
-                <span className="text-base font-normal text-secondary-foreground line-through">
-                  {itemSelected.precioVenta}
+                {itemSelected.discount > 0 && (
+                  <span className="text-base font-normal text-secondary-foreground line-through">
+                    ${itemSelected.price?.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-lg font-black text-mono">
+                  ${itemSelected.price > 0
+                    ? (itemSelected.price * (1 - (itemSelected.discount || 0) / 100)).toFixed(2)
+                    : '—'
+                  }
                 </span>
-
-                <span className="text-lg font-medium text-mono">$99.00</span>
               </div>
             </CardContent>
           </ScrollArea>
@@ -153,15 +158,15 @@ export function ProductDetailsSheet({
         <SheetFooter className="border-t py-3.5 px-5 border-border">
           <Button
             onClick={() => {
-              if (productId) {
-                addToCart({ productId });
+              if (itemSelected?.id) {
+                addToCart({ productId: itemSelected.id });
               }
             }}
-            disabled={!productId}
+            disabled={!itemSelected?.id}
             className="grow"
           >
             <ShoppingCart />
-            Add to Cart
+            Agregar al Carrito
           </Button>
         </SheetFooter>
       </SheetContent>

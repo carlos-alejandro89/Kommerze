@@ -109,23 +109,28 @@ func (r *PosRepository) ConsultarExistenciaProductos(productosGuids []uuid.UUID)
 func (r *PosRepository) BeforeCreate(p *models.Pedido, tx *gorm.DB) (err error) {
 	var seqName string
 
-	// Suponiendo que tienes IDs de tipo de pedido fijos
 	switch *p.TipoPedidoID {
-	case 1: // Pedido
+	case 1:
 		seqName = "consecutivo_folio_pedido"
-	case 2: // Cotización
+	case 2:
 		seqName = "consecutivo_folio_cotizacion"
-	case 3: // Transferencia
+	case 3:
 		seqName = "consecutivo_folio_transferencia"
+	default:
+		return fmt.Errorf("tipo de pedido desconocido: %d", *p.TipoPedidoID)
 	}
 
 	var siguienteFolio int
-	// Obtenemos el siguiente valor de la secuencia de forma atómica
-	tx.Raw("SELECT nextval(?)", seqName).Scan(&siguienteFolio)
+	// Capturar el error: si la secuencia no existe o falla,
+	// retornar el error para que la transacción se aborte limpiamente.
+	if err := tx.Raw("SELECT nextval(?)", seqName).Scan(&siguienteFolio).Error; err != nil {
+		return fmt.Errorf("error al obtener folio para secuencia '%s': %w", seqName, err)
+	}
 	p.Folio = siguienteFolio
 
 	return nil
 }
+
 
 func (r *PosRepository) ActualizarExistencias(itemsPedido []dto.PedidoProductoDto, tx *gorm.DB) error {
 	for _, item := range itemsPedido {

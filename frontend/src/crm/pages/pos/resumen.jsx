@@ -101,7 +101,9 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 <Button
                     id="pay-button"
                     onClick={() => goToNextPage()}
-                    className="w-full h-11 rounded-lg bg-white text-[#002366] hover:bg-blue-50 hover:text-[#001233] border-none font-black text-xs shadow-[0_4px_14px_rgba(255,255,255,0.15)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10"
+                    disabled={currentStep === 0 && countItems === 0}
+                    title={currentStep === 0 && countItems === 0 ? 'Agrega productos al carrito para continuar' : undefined}
+                    className="w-full h-11 rounded-lg bg-white text-[#002366] hover:bg-blue-50 hover:text-[#001233] border-none font-black text-xs shadow-[0_4px_14px_rgba(255,255,255,0.15)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                     <div className="flex items-center gap-2 relative z-10 transition-transform group-hover:translate-x-1">
                         {nextPage === Object.keys(urlLinks).length ? <FileCheck className="size-4" /> : <ExternalLink className="size-4" />}
