@@ -180,82 +180,86 @@ export function CartStepThree() {
                                         onAddPayment={handleAddPayment}
                                     />
 
-                                    {/* Section Pagos aplicados */}
-                                    {pagosAplicados.length === 0 ? (
-                                        <div className="mt-4 flex flex-col items-center justify-center py-6 px-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-transparent text-center">
-                                            <Banknote className="size-8 text-muted-foreground/30 mb-2" />
-                                            <span className="text-sm font-bold text-muted-foreground cursor-default">
-                                                Aún no se reciben pagos
-                                            </span>
-                                            <span className="text-xs font-medium text-muted-foreground/50 mt-1 cursor-default">
-                                                Selecciona un método de pago y agrega el pago
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 bg-surface-container-lowest dark:bg-zinc-900 rounded-xl border border-border p-4 shadow-sm">
-                                            <label className="block text-sm font-bold text-muted-foreground mb-4 tracking-tight">Pagos Aplicados</label>
+                                    {/* ── Pagos Aplicados + Monto Recibido en fila ── */}
+                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                                            <div className="space-y-2">
-                                                {pagosAplicados.map(pago => (
-                                                    <ItemPagos key={pago.ID} pago={pago} handleDeletePaymentItem={handleDeletePaymentItem} />
-                                                ))}
+                                        {/* COL IZQ: Monto Recibido */}
+                                        <div className="rounded-xl border border-border bg-surface-container-lowest dark:bg-zinc-900 p-5 space-y-4">
+                                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                                Monto Recibido
+                                            </label>
+
+                                            {/* Input */}
+                                            <input
+                                                type="text"
+                                                value={moneyFormat(amountReceived) || ''}
+                                                onChange={e => setAmountReceived(e.target.value.replace(/[^0-9.]/g, ''))}
+                                                className="w-full bg-slate-100 dark:bg-zinc-800/60 border-none rounded-xl py-4 px-4 text-3xl font-extrabold focus:ring-2 focus:ring-primary/20 dark:text-primary-foreground outline-none transition-all placeholder:text-muted-foreground/30"
+                                                placeholder={total.toFixed(2)}
+                                            />
+
+                                            {/* Accesos rápidos */}
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button variant="secondary" onClick={() => setAmountReceived(total.toFixed(2))} className="h-8 px-3 rounded-lg text-xs font-bold">Exacto</Button>
+                                                <Button variant="secondary" onClick={() => setAmountReceived('500')}  className="h-8 px-3 rounded-lg text-xs font-bold">$500</Button>
+                                                <Button variant="secondary" onClick={() => setAmountReceived('1000')} className="h-8 px-3 rounded-lg text-xs font-bold">$1,000</Button>
+                                                <Button variant="secondary" onClick={() => setAmountReceived('2000')} className="h-8 px-3 rounded-lg text-xs font-bold">$2,000</Button>
                                             </div>
-                                        </div>
-                                    )}
 
-                                    {/* Interactive Amount Input Section */}
-                                    <div className="mt-4 w-full rounded-xl border p-6 bg-surface-container-lowest shadow-sm border-border">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-                                            <div>
-                                                <label className="block text-sm font-bold text-muted-foreground mb-4 tracking-tight">Monto Recibido</label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        value={moneyFormat(amountReceived) || ''}
-
-                                                        className="w-full bg-slate-100 dark:bg-zinc-800/50 border-none rounded-xl py-6 pl-10 pr-6 text-4xl font-extrabold focus:ring-2 focus:ring-primary/20 dark:text-primary-foreground outline-none transition-all placeholder:text-muted-foreground/30"
-                                                        placeholder={total.toFixed(2)}
-                                                    />
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 mt-4">
-                                                    <Button variant="secondary" onClick={() => setAmountReceived(total.toFixed(2))} className="h-9 px-4 rounded-lg text-xs font-bold text-secondary-foreground">Exacto</Button>
-                                                    <Button variant="secondary" onClick={() => setAmountReceived('500')} className="h-9 px-4 rounded-lg text-xs font-bold text-secondary-foreground">$500</Button>
-                                                    <Button variant="secondary" onClick={() => setAmountReceived('1000')} className="h-9 px-4 rounded-lg text-xs font-bold text-secondary-foreground">$1,000</Button>
-                                                    <Button variant="secondary" onClick={() => setAmountReceived('2000')} className="h-9 px-4 rounded-lg text-xs font-bold text-secondary-foreground">$2,000</Button>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col justify-center md:border-l border-border/60 md:pl-12 pt-6 md:pt-0 border-t md:border-t-0">
-                                                <span className="text-sm font-bold text-muted-foreground mb-2 tracking-tight">
-                                                    {(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total) ? 'Por Pagar' : 'Cambio a Entregar'}
-                                                </span>
-                                                <div className={`text-5xl font-extrabold tracking-tighter ${(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total) ? 'text-red-500 dark:text-red-500' : 'text-[#006e2a] dark:text-[#5cfd80]'}`}>
-                                                    $ {amountReceived && !isNaN(parseFloat(amountReceived))
+                                            {/* Cambio / Por pagar */}
+                                            <div className="pt-3 border-t border-border/60">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">
+                                                    {(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
+                                                        ? 'Por pagar'
+                                                        : 'Cambio a entregar'}
+                                                </p>
+                                                <p className={`text-4xl font-extrabold tracking-tighter ${
+                                                    (!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
+                                                        ? 'text-red-500'
+                                                        : 'text-emerald-600 dark:text-emerald-400'
+                                                }`}>
+                                                    ${amountReceived && !isNaN(parseFloat(amountReceived))
                                                         ? Math.abs(parseFloat(amountReceived) - total).toFixed(2)
                                                         : total.toFixed(2)}
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-4 text-blue-600 dark:text-blue-400">
-                                                    <Info className="size-4" />
-                                                    <span className="text-xs font-medium">Cálculo basado en el total de la orden</span>
-                                                </div>
+                                                </p>
                                             </div>
+                                        </div>
+
+                                        {/* COL DER: Pagos Aplicados */}
+                                        <div className="rounded-xl border border-border bg-surface-container-lowest dark:bg-zinc-900 p-5">
+                                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                                                Pagos Aplicados
+                                            </label>
+
+                                            {pagosAplicados.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center h-32 border border-dashed border-border rounded-lg text-center gap-1">
+                                                    <Banknote className="size-6 text-muted-foreground/30" />
+                                                    <span className="text-xs font-medium text-muted-foreground/60">Sin pagos aún</span>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {pagosAplicados.map(pago => (
+                                                        <ItemPagos key={pago.ID} pago={pago} handleDeletePaymentItem={handleDeletePaymentItem} />
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Additional Context/Notes */}
-                                    <div className="mt-auto p-5 bg-gradient-to-br from-slate-200 via-slate-50 to-slate-300 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 rounded-2xl shadow-sm border border-white/50 dark:border-zinc-700 flex items-start gap-3">
-                                        <Info className="size-4 text-slate-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase text-slate-500 tracking-tighter mb-2">Nota de Sistema</p>
-                                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                    {/* Nota de Sistema */}
+                                    {paymentMethod !== null && (
+                                        <div className="mt-3 p-4 bg-slate-100/60 dark:bg-zinc-900/60 rounded-xl border border-border/50 flex items-start gap-2.5">
+                                            <Info className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
                                                 {paymentMethod === 1 && "Asegúrese de verificar la autenticidad de los billetes de alta denominación antes de ingresarlos a la caja."}
                                                 {paymentMethod === 2 && "Solicite al cliente que inserte o acerque su tarjeta a la terminal y espere la confirmación aprobada del banco."}
-                                                {paymentMethod === 3 && "Antes de entregar la mercancía, valide en su portal bancario o mediante la referencia que los fondos fueron acreditados exitosamente."}
-                                                {paymentMethod === null && "Seleccione un método de pago para continuar con el cobro de esta transacción."}
+                                                {paymentMethod === 3 && "Antes de entregar la mercancía, valide en su portal bancario que los fondos fueron acreditados exitosamente."}
                                             </p>
                                         </div>
-                                    </div>
+                                    )}
                                 </CardContent>
                             </Card>
+
                         </div>
 
                         {/* Right Sidebar: Services & Summary */}
@@ -309,49 +313,40 @@ export function CartStepThree() {
     );
 }
 
-// ── Nombres de métodos comunes para un POS (en minúsculas para comparar) ─────
-const COMMON_METHOD_NAMES_LOWER = new Set([
-    'efectivo',
-    'transferencia electrónica de fondos',
-    'tarjeta de crédito',
-    'tarjeta de débito',
-    'cheque nominativo',
-    'tarjeta de servicios',
-    // nombres cortos del fallback
-    'tarjeta',
-    'transferencia',
-    'cheque',
-]);
+// ── Claves SAT de formas de pago comunes en un POS ───────────────────────────
+// 01=Efectivo, 02=Cheque nominativo, 03=Transferencia electrónica,
+// 04=Tarjeta de crédito, 28=Tarjeta de débito, 29=Tarjeta de servicios
+const COMMON_METHOD_CLAVES = new Set(['01', '02', '03', '04', '28', '29']);
 
-const isCommonMethod = (nombre) =>
-    COMMON_METHOD_NAMES_LOWER.has((nombre || '').toLowerCase().trim());
+const isCommonMethod = (fp) =>
+    COMMON_METHOD_CLAVES.has(String(fp.Clave).trim());
 
-const METHOD_ICONS_LOWER = {
-    'efectivo':                            DollarSign,
-    'tarjeta':                             CreditCard,
-    'transferencia':                       ArrowRightLeft,
-    'cheque':                              CheckCircle,
-    'transferencia electrónica de fondos': ArrowRightLeft,
-    'tarjeta de crédito':                  CreditCard,
-    'tarjeta de débito':                   CreditCard,
-    'cheque nominativo':                   CheckCircle,
-    'tarjeta de servicios':                CreditCard,
+const METHOD_ICONS_BY_CLAVE = {
+    '01': DollarSign,      // Efectivo
+    '02': CheckCircle,     // Cheque nominativo
+    '03': ArrowRightLeft,  // Transferencia electrónica
+    '04': CreditCard,      // Tarjeta de crédito
+    '05': CreditCard,      // Monedero electrónico
+    '06': ArrowRightLeft,  // Dinero electrónico
+    '28': CreditCard,      // Tarjeta de débito
+    '29': CreditCard,      // Tarjeta de servicios
 };
 
-const METHOD_COLORS_LOWER = {
-    'efectivo':                            'from-emerald-500 to-emerald-700',
-    'tarjeta':                             'from-blue-500 to-blue-700',
-    'tarjeta de crédito':                  'from-blue-500 to-blue-700',
-    'tarjeta de débito':                   'from-sky-500 to-sky-700',
-    'transferencia':                       'from-violet-500 to-violet-700',
-    'transferencia electrónica de fondos': 'from-violet-500 to-violet-700',
-    'cheque':                              'from-amber-500 to-amber-700',
-    'cheque nominativo':                   'from-amber-500 to-amber-700',
-    'tarjeta de servicios':                'from-indigo-500 to-indigo-700',
+const METHOD_COLORS_BY_CLAVE = {
+    '01': 'from-emerald-500 to-emerald-700', // Efectivo
+    '02': 'from-amber-500  to-amber-700',    // Cheque nominativo
+    '03': 'from-violet-500 to-violet-700',   // Transferencia
+    '04': 'from-blue-500   to-blue-700',     // Tarjeta crédito
+    '05': 'from-purple-500 to-purple-700',   // Monedero
+    '06': 'from-cyan-500   to-cyan-700',     // Dinero electrónico
+    '28': 'from-sky-500    to-sky-700',      // Tarjeta débito
+    '29': 'from-indigo-500 to-indigo-700',   // Tarjeta servicios
 };
 
-const getMethodIcon   = (nombre) => METHOD_ICONS_LOWER[(nombre || '').toLowerCase().trim()]   ?? MoreHorizontal;
-const getMethodColor  = (nombre) => METHOD_COLORS_LOWER[(nombre || '').toLowerCase().trim()]  ?? 'from-slate-500 to-slate-700';
+const getMethodIcon  = (fp) => METHOD_ICONS_BY_CLAVE[String(fp.Clave).trim()]  ?? MoreHorizontal;
+const getMethodColor = (fp) => METHOD_COLORS_BY_CLAVE[String(fp.Clave).trim()] ?? 'from-slate-500 to-slate-700';
+
+
 
 /**
  * PaymentMethodSelector
@@ -361,8 +356,8 @@ const getMethodColor  = (nombre) => METHOD_COLORS_LOWER[(nombre || '').toLowerCa
 function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPayment }) {
     const [showOthers, setShowOthers] = React.useState(false);
 
-    const common = formaPago.filter(m => isCommonMethod(m.Nombre));
-    const others  = formaPago.filter(m => !isCommonMethod(m.Nombre));
+    const common = formaPago.filter(m => isCommonMethod(m));
+    const others  = formaPago.filter(m => !isCommonMethod(m));
 
     return (
         <div className="space-y-4">
@@ -438,8 +433,8 @@ function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPaymen
  * Abre el ModalFormaPago al hacer clic.
  */
 function PaymentCard({ fp, isActive, onSelect, onAddPayment }) {
-    const Icon     = getMethodIcon(fp.Nombre);
-    const gradient = getMethodColor(fp.Nombre);
+    const Icon     = getMethodIcon(fp);
+    const gradient = getMethodColor(fp);
 
     // Nombre capitalizado para mostrar en la tarjeta
     const displayName = fp.Nombre

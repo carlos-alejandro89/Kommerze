@@ -54,9 +54,10 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
 
     const agregarPago = () => {
         const data = {
-            ID: formaPago.ID,
-            Nombre: formaPago.Nombre,
-            Monto: amountReceived,
+            ID:         formaPago.ID,
+            Clave:      formaPago.Clave,   // ← clave SAT para identificar el ícono
+            Nombre:     formaPago.Nombre,
+            Monto:      amountReceived,
             Referencia: 'Pago realizado en caja',
         }
         handleAddPayment(data);

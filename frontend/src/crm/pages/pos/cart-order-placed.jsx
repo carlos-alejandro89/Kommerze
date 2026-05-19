@@ -18,7 +18,7 @@ import { Content } from '@/crm/layout/components/content';
 import { ContentHeader } from '@/crm/layout/components/content-header';
 import { Steps } from './steps';
 import { moneyFormat } from '@/lib/helpers';
-import visa from '@/assets/visa.svg';
+import { ItemPagos } from './components/item-pagos';
 
 export function CartOrderPlaced() {
     const navigate = useNavigate();
@@ -164,35 +164,11 @@ export function CartOrderPlaced() {
                                 <div className="space-y-2">
                                     {pagosAplicados.length > 0 ? (
                                         pagosAplicados.map((pago, index) => (
-                                            <div key={index} className="flex items-center justify-between border border-border rounded-xl gap-2 px-4 py-3 bg-slate-50 dark:bg-zinc-800/50 transition-colors">
-                                                <div className="flex items-center gap-3.5">
-                                                    <div className="shrink-0 flex items-center justify-center">
-                                                        {pago.Nombre === 'Efectivo' || pago.MetodoPagoID === 1 ? (
-                                                            <Banknote className="size-5 text-slate-800 dark:text-slate-300" />
-                                                        ) : (
-                                                            <>
-                                                                <img alt={pago.Nombre} src={visa} className="w-8 h-auto" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'block'; }} />
-                                                                <CreditCard className="size-5 text-slate-800 dark:text-slate-300 hidden" />
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium text-mono cursor-default text-foreground">
-                                                            {pago.Nombre || 'Efectivo'}
-                                                        </span>
-                                                        {pago.Referencia && (
-                                                            <span className="text-[10px] text-secondary-foreground font-medium">
-                                                                {pago.Referencia}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-extrabold text-foreground text-sm cursor-default">
-                                                        {moneyFormat(pago.Monto)}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <ItemPagos
+                                                key={index}
+                                                pago={pago}
+                                                handleDeletePaymentItem={() => {}}
+                                            />
                                         ))
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-4 px-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-transparent text-center">
@@ -203,6 +179,7 @@ export function CartOrderPlaced() {
                                     )}
                                 </div>
                             </Card>
+
                         </div>
 
                         {/* Hierarchical Action Buttons Layout */}

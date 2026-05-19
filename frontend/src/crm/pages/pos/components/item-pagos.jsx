@@ -1,39 +1,50 @@
-import { CreditCard, Pencil, Trash2 } from "lucide-react";
+import {
+    DollarSign, CreditCard, ArrowRightLeft, CheckCircle, MoreHorizontal, Trash2
+} from 'lucide-react';
 import { moneyFormat } from '@/lib/helpers';
-import visa from '@/assets/visa.svg';
+
+const ICONS_BY_CLAVE = {
+    '01': { Icon: DollarSign,     cls: 'text-emerald-500' },
+    '02': { Icon: CheckCircle,    cls: 'text-amber-500'   },
+    '03': { Icon: ArrowRightLeft, cls: 'text-violet-500'  },
+    '04': { Icon: CreditCard,     cls: 'text-blue-500'    },
+    '05': { Icon: CreditCard,     cls: 'text-purple-500'  },
+    '06': { Icon: ArrowRightLeft, cls: 'text-cyan-500'    },
+    '28': { Icon: CreditCard,     cls: 'text-sky-500'     },
+    '29': { Icon: CreditCard,     cls: 'text-indigo-500'  },
+};
+
+const DEFAULT = { Icon: MoreHorizontal, cls: 'text-muted-foreground' };
 
 export function ItemPagos({ pago, handleDeletePaymentItem }) {
-    const deletePayment = ()=>{
-        handleDeletePaymentItem(pago.ID)
-    }
-    return (
-        <div className="flex items-center justify-between border border-border rounded-xl gap-2 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 transition-colors hover:bg-slate-100 dark:hover:bg-zinc-800">
-            <div className="flex items-center gap-3.5">
-                <div className=" shrink-0 flex items-center justify-center">
-                    <img alt="Visa" src={visa} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'block'; }} />
-                    <CreditCard className="size-5 text-slate-800 hidden" />
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-mono hover:text-primary mb-px cursor-default text-foreground">
-                        {pago.Nombre}
-                    </span>
-                    <span className="text-sm text-secondary-foreground">
-                        {pago.Referencia}
-                    </span>
-                </div>
-            </div>
-            <div className="flex items-center gap-5">
+    const { Icon, cls } = ICONS_BY_CLAVE[String(pago.Clave ?? '').trim()] ?? DEFAULT;
 
-                <span className="font-extrabold text-foreground text-lg cursor-default">{moneyFormat(pago.Monto)}</span>
-                <div className="flex gap-0.5">
-                   
-                    <button 
-                    onClick={deletePayment}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full text-muted-foreground hover:text-red-500 transition-colors">
-                        <Trash2 className="size-4" />
-                    </button>
-                </div>
+    return (
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-background border border-border/60 hover:border-border transition-colors group">
+            {/* Ícono */}
+            <Icon className={`size-4 shrink-0 ${cls}`} />
+
+            {/* Nombre y referencia */}
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{pago.Nombre}</p>
+                {pago.Referencia && (
+                    <p className="text-[11px] text-muted-foreground truncate">{pago.Referencia}</p>
+                )}
             </div>
+
+            {/* Monto */}
+            <span className="text-sm font-bold text-foreground tabular-nums shrink-0">
+                {moneyFormat(pago.Monto)}
+            </span>
+
+            {/* Eliminar */}
+            <button
+                onClick={() => handleDeletePaymentItem(pago.ID)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-all shrink-0"
+                title="Eliminar"
+            >
+                <Trash2 className="size-3.5" />
+            </button>
         </div>
-    )
+    );
 }
