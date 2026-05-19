@@ -79,7 +79,7 @@ func (r *PosRepository) ConsultaTransacciones() (*dto.ResponseDto, error) {
 						p.estatus_id = e.id and
 						pd.pedido_id = p.id
 					group by p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,tp.nombre, e.nombre
-					order by tp.nombre, folio`).Scan(&transacciones).Error
+					order by fecha desc, folio desc`).Scan(&transacciones).Error
 
 	if err != nil {
 		return dto.NewResponseDto(false, "Error al consultar transacciones", nil, []string{err.Error()}), err
@@ -201,7 +201,19 @@ func (r *PosRepository) ConfirmarTransaccion(
 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 
+		// Estatus según tipo de operación:
+		//   1 = Venta       → 2 Completado  (pago inmediato)
+		//   2 = Cotización  → 1 Pendiente
+		//   3 = Transferencia → 4 En proceso
 		var estatus uint = 1
+		if tipoOperacion != nil {
+			switch *tipoOperacion {
+			case 1:
+				estatus = 2 // Completado
+			case 3:
+				estatus = 4 // En proceso
+			}
+		}
 		var cliente uint = 1
 
 		pedido = models.Pedido{

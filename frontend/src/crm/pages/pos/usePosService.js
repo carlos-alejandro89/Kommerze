@@ -30,6 +30,7 @@ import {
     ServiceObtenerTiposPedido,
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
+    ServiceConsultaTransacciones,
 } from '../../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -83,6 +84,13 @@ export function usePosService() {
     // ── Transacciones ─────────────────────────────────────────────────────────
 
     /**
+     * Consulta el historial de transacciones registradas.
+     * Devuelve ResponseDto cuyo campo `data` es un array de TransaccionDto.
+     * @returns {Promise<ResponseDto>}
+     */
+    const consultarTransacciones = () => ServiceConsultaTransacciones();
+
+    /**
      * Confirma y registra la transacción en la base de datos.
      * @param {number} tipoOperacion — ID del tipo de pedido
      * @param {PagosAplicadosDto[]} pagosAplicados
@@ -124,5 +132,6 @@ export function usePosService() {
         obtenerFormasPago,
         // Transacciones
         confirmarTransaccion,
+        consultarTransacciones,
     };
 }
