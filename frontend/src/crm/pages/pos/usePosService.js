@@ -31,6 +31,9 @@ import {
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
     ServiceConsultaTransacciones,
+    ServiceCotizacionSolicitarAutorizacion,
+    ServiceCotizacionConvertirAVenta,
+    ServiceCotizacionObtenerDetalle,
 } from '../../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -88,7 +91,13 @@ export function usePosService() {
      * Devuelve ResponseDto cuyo campo `data` es un array de TransaccionDto.
      * @returns {Promise<ResponseDto>}
      */
-    const consultarTransacciones = () => ServiceConsultaTransacciones();
+    /**
+     * Consulta el historial de transacciones con filtros opcionales.
+     * @param {number|null} tipoPedidoID — 1=Venta, 2=Cotizacion, 3=Transferencia, null=Todos
+     * @param {number|null} sucursalID — ID de sucursal origen, null=Todas
+     */
+    const consultarTransacciones = (tipoPedidoID = null, sucursalID = null) =>
+        ServiceConsultaTransacciones(tipoPedidoID, sucursalID);
 
     /**
      * Confirma y registra la transacción en la base de datos.
@@ -102,22 +111,36 @@ export function usePosService() {
     const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino) =>
         ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino);
 
-    // ── TODO (futuras implementaciones) ───────────────────────────────────────
-    // Para implementar, seguir los 5 pasos del patrón dual en Go y luego
-    // descomentar e importar aquí.
-    //
+    // ── Cotizaciones ────────────────────────────────────────────────────────────────────
+
+    /**
+     * Solicita autorización de descuentos al sistema central para una cotización.
+     * @param {string} pedidoGuid
+     * @param {string} sucursalGuid
+     * @param {ItemDescuentoDto[]} items
+     */
+    const solicitarAutorizacion = (pedidoGuid, sucursalGuid, items) =>
+        ServiceCotizacionSolicitarAutorizacion(pedidoGuid, sucursalGuid, items);
+
+    /**
+     * Convierte una cotización autorizada (o sin descuento especial) en una venta real.
+     * @param {number} pedidoID
+     * @param {PagosAplicadosDto[]} pagos
+     * @param {number|null} sucursalOrigenID
+     */
+    const convertirCotizacionAVenta = (pedidoID, pagos, sucursalOrigenID = null) =>
+        ServiceCotizacionConvertirAVenta(pedidoID, pagos, sucursalOrigenID);
+
+    /**
+     * Obtiene el detalle completo de una cotización incluyendo estado de autorización.
+     * @param {number} pedidoID
+     */
+    const obtenerDetalleCotizacion = (pedidoID) =>
+        ServiceCotizacionObtenerDetalle(pedidoID);
+
+    // ── TODO (futuras implementaciones) ────────────────────────────────────────
     // const abrirCajon = () => ServiceAbrirCajon();
-    //
-    // const obtenerCajeroActivo = () => ServiceGetCajeroActivo();
-    //
-    // const aplicarDescuentoCliente = (clienteGuid, total) =>
-    //     ServiceAplicarDescuentoCliente(clienteGuid, total);
-    //
-    // const emitirFactura = (pedidoGuid, receptorFiscal) =>
-    //     ServiceEmitirFactura(pedidoGuid, receptorFiscal);
-    //
-    // const consultarCreditoCliente = (clienteGuid) =>
-    //     ServiceConsultarCreditoCliente(clienteGuid);
+    // const emitirFactura = (pedidoGuid, receptorFiscal) => ServiceEmitirFactura(pedidoGuid, receptorFiscal);
     // ─────────────────────────────────────────────────────────────────────────
 
     return {
@@ -133,5 +156,9 @@ export function usePosService() {
         // Transacciones
         confirmarTransaccion,
         consultarTransacciones,
+        // Cotizaciones
+        solicitarAutorizacion,
+        convertirCotizacionAVenta,
+        obtenerDetalleCotizacion,
     };
 }

@@ -4,11 +4,17 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // CajaProxyService implementa las mismas firmas de método que PosService,
@@ -121,16 +127,69 @@ func (c *CajaProxyService) ConfirmarTransaccion(
 	return &result, nil
 }
 
-func (c *CajaProxyService) ConsultaTransacciones() (*dto.ResponseDto, error) {
+func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
+	path := "/local/transacciones/historial"
+	params := ""
+	if tipoPedidoID != nil {
+		params += fmt.Sprintf("?tipo=%d", *tipoPedidoID)
+	}
+	if sucursalID != nil {
+		if params == "" {
+			params += "?"
+		} else {
+			params += "&"
+		}
+		params += fmt.Sprintf("sucursal=%d", *sucursalID)
+	}
 	var result dto.ResponseDto
-	if err := c.get("/local/transacciones/historial", &result); err != nil {
+	if err := c.get(path+params, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// SetContext es un no-op en Caja (no hay contexto Wails local).
-func (c *CajaProxyService) SetContext(_ interface{}) {}
+// SetContext inicia la conexión WebSocket hacia el Servidor Local
+// para recibir eventos en tiempo real y emitirlos al frontend de esta Caja.
+func (c *CajaProxyService) SetContext(ctx context.Context) {
+	go c.listenWS(ctx)
+}
+
+func (c *CajaProxyService) listenWS(ctx context.Context) {
+	wsURL := strings.ReplaceAll(c.serverURL, "https://", "wss://")
+	wsURL = strings.ReplaceAll(wsURL, "http://", "ws://")
+	wsURL = fmt.Sprintf("%s/local/ws", wsURL)
+
+	backoff := 2 * time.Second
+	for {
+		err := c.connectWS(ctx, wsURL)
+		if err != nil {
+			log.Printf("[CajaProxy] Error WS: %v. Reintentando en %v", err, backoff)
+			time.Sleep(backoff)
+		}
+	}
+}
+
+func (c *CajaProxyService) connectWS(ctx context.Context, wsURL string) error {
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	log.Printf("[CajaProxy] ✅ Conectado al Servidor Local WS: %s", wsURL)
+
+	for {
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		var msg map[string]any
+		if err := json.Unmarshal(raw, &msg); err == nil {
+			if eventType, ok := msg["type"].(string); ok {
+				runtime.EventsEmit(ctx, eventType, msg["data"])
+			}
+		}
+	}
+}
 
 // ── AuthService equivalente ───────────────────────────────────────────────────
 
@@ -213,3 +272,41 @@ func (c *CajaProxyService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 	return result.Data, nil
 }
 
+// ── CotizacionService equivalentes ────────────────────────────────────────────
+
+func (c *CajaProxyService) SolicitarAutorizacion(pedidoGuid, sucursalGuid string, items []dto.ItemDescuentoDto) (*dto.ResponseDto, error) {
+	body := map[string]any{
+		"pedidoGuid":   pedidoGuid,
+		"sucursalGuid": sucursalGuid,
+		"items":        items,
+	}
+	var result dto.ResponseDto
+	if err := c.post("/local/cotizaciones/solicitar-autorizacion", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *CajaProxyService) ConvertirAVenta(pedidoID uint, pagos []dto.PagosAplicadosDto, sucursalOrigenID *uint) (*dto.ResponseDto, error) {
+	body := map[string]any{
+		"pedidoId":         pedidoID,
+		"pagosAplicados":   pagos,
+		"sucursalOrigenId": sucursalOrigenID,
+	}
+	var result dto.ResponseDto
+	if err := c.post("/local/cotizaciones/convertir-venta", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *CajaProxyService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.CotizacionDetalleDto, error) {
+	var result struct {
+		Success bool                     `json:"success"`
+		Data    dto.CotizacionDetalleDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/cotizaciones/detalle?pedidoId=%d", pedidoID), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}

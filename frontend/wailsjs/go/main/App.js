@@ -22,12 +22,24 @@ export function ServiceConsultaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultaProductos'](arg1);
 }
 
-export function ServiceConsultaTransacciones() {
-  return window['go']['main']['App']['ServiceConsultaTransacciones']();
+export function ServiceConsultaTransacciones(arg1, arg2) {
+  return window['go']['main']['App']['ServiceConsultaTransacciones'](arg1, arg2);
 }
 
 export function ServiceConsultarExistenciaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
+}
+
+export function ServiceCotizacionConvertirAVenta(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceCotizacionConvertirAVenta'](arg1, arg2, arg3);
+}
+
+export function ServiceCotizacionObtenerDetalle(arg1) {
+  return window['go']['main']['App']['ServiceCotizacionObtenerDetalle'](arg1);
+}
+
+export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3);
 }
 
 export function ServiceGetEmpaques() {

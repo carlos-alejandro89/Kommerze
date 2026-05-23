@@ -27,6 +27,20 @@ type Pedido struct {
 	Fecha     time.Time `gorm:"type:timestamp;not null;default:now();index"`
 	EsCredito bool      `gorm:"default:false"`
 	Sync      bool      `gorm:"default:false"`
+
+	// Sucursal origen (aplica a Ventas, Cotizaciones y Transferencias)
+	SucursalOrigenID *uint
+	SucursalOrigen   Sucursal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	// Ciclo de autorizacion de descuentos (solo cotizaciones con descuento especial)
+	// Valores: "" = sin solicitud | "solicitada" | "autorizada" | "rechazada"
+	EstatusAutorizacion   string     `gorm:"size:30;default:'';index"`
+	DescuentosSolicitados string     `gorm:"type:text;default:null"`
+	DescuentosAutorizados string     `gorm:"type:text;default:null"`
+	AutorizadoPor         string     `gorm:"size:255;default:null"`
+	ObsAutorizacion       string     `gorm:"type:text;default:null"`
+	FechaResolucion       *time.Time `gorm:"type:timestamp;default:null"`
+	CloudSolicitudGuid    string     `gorm:"size:36;default:null;index"`
 }
 
 func (Pedido) TableName() string {

@@ -290,6 +290,7 @@ export function CartStepTwo() {
                         <Button
                             variant="outline"
                             className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-border/60 hover:bg-muted transition-all active:scale-[0.98]"
+                            onClick={() => navigate('/history')}
                         >
                             <History className="size-4 text-primary" />
                             Historial

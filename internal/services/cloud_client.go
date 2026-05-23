@@ -142,3 +142,10 @@ func (c *CloudHttpClient) Post(url string, contentType string, body io.Reader) (
 	req.Header.Set("Content-Type", contentType)
 	return c.Do(req)
 }
+
+// Token retorna el JWT actual para uso en el handshake WebSocket.
+func (c *CloudHttpClient) Token() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.token
+}

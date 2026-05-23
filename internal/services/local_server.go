@@ -8,28 +8,79 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
+
+// wsHub gestiona las conexiones WebSocket activas de las Cajas.
+type wsHub struct {
+	mu      sync.RWMutex
+	clients map[chan []byte]struct{}
+}
+
+func newWsHub() *wsHub {
+	return &wsHub{clients: make(map[chan []byte]struct{})}
+}
+
+func (h *wsHub) register(ch chan []byte) {
+	h.mu.Lock()
+	h.clients[ch] = struct{}{}
+	h.mu.Unlock()
+}
+
+func (h *wsHub) unregister(ch chan []byte) {
+	h.mu.Lock()
+	delete(h.clients, ch)
+	h.mu.Unlock()
+}
+
+// broadcast envia el mensaje a todas las Cajas conectadas (non-blocking).
+func (h *wsHub) broadcast(msg []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for ch := range h.clients {
+		select {
+		case ch <- msg:
+		default: // caja lenta, se omite este mensaje
+		}
+	}
+}
 
 // LocalServerService expone los servicios existentes del Servidor Local
 // como una API REST HTTP en :8989 para que las Cajas los consuman.
 // No contiene lógica de negocio propia — solo wrappers JSON.
 type LocalServerService struct {
-	pos       *PosService
-	auth      *AuthService
-	catalogos *CatalogosService
-	clientes  *ClientesService
-	server    *http.Server
+	pos        *PosService
+	auth       *AuthService
+	catalogos  *CatalogosService
+	clientes   *ClientesService
+	cotizacion *CotizacionService
+	hub        *wsHub
+	server     *http.Server
 }
 
-func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService) *LocalServerService {
+func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService) *LocalServerService {
 	return &LocalServerService{
-		pos:       pos,
-		auth:      auth,
-		catalogos: cat,
-		clientes:  clientes,
+		pos:        pos,
+		auth:       auth,
+		catalogos:  cat,
+		clientes:   clientes,
+		cotizacion: cotizacion,
+		hub:        newWsHub(),
 	}
+}
+
+// BroadcastToClients serializa y envía un evento a todas las Cajas conectadas por WS.
+func (l *LocalServerService) BroadcastToClients(eventType string, data any) {
+	msg, err := json.Marshal(map[string]any{"type": eventType, "data": data})
+	if err != nil {
+		log.Printf("[LocalServer] Error serializando broadcast: %v", err)
+		return
+	}
+	l.hub.broadcast(msg)
 }
 
 // Start levanta el servidor HTTP en la goroutine del caller.
@@ -53,6 +104,10 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/catalogos/usos-cfdi", l.handleUsosCFDI)
 	mux.HandleFunc("/local/catalogos/sucursales", l.handleSucursales)
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
+	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
+	mux.HandleFunc("/local/cotizaciones/convertir-venta",        l.handleConvertirVenta)
+	mux.HandleFunc("/local/cotizaciones/detalle",                l.handleDetalleCotizacion)
+	mux.HandleFunc("/local/ws",                                  l.handleCajaWs)
 
 	l.server = &http.Server{
 		Addr:    addr,
@@ -203,8 +258,24 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter, _ *http.Request) {
-	result, err := l.pos.ConsultaTransacciones()
+func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter, r *http.Request) {
+	var tipoPedidoID *uint
+	var sucursalID *uint
+
+	if tipoStr := r.URL.Query().Get("tipo"); tipoStr != "" {
+		var tipo uint
+		if _, err := fmt.Sscanf(tipoStr, "%d", &tipo); err == nil {
+			tipoPedidoID = &tipo
+		}
+	}
+	if sucStr := r.URL.Query().Get("sucursal"); sucStr != "" {
+		var suc uint
+		if _, err := fmt.Sscanf(sucStr, "%d", &suc); err == nil {
+			sucursalID = &suc
+		}
+	}
+
+	result, err := l.pos.ConsultaTransacciones(tipoPedidoID, sucursalID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -307,3 +378,110 @@ func TestLocalServerConnection(serverURL string) (map[string]any, error) {
 
 // Asegurar que models se importa (Usuario se usa en handleLogin)
 var _ *models.Usuario
+
+// ── WebSocket hub para Cajas ──────────────────────────────────────────────────
+
+var cajaUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+// handleCajaWs acepta conexiones WebSocket de las Cajas y les envía
+// eventos en tiempo real (ej. cotizacion_resuelta).
+func (l *LocalServerService) handleCajaWs(w http.ResponseWriter, r *http.Request) {
+	conn, err := cajaUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("[LocalServer WS] Error upgrade: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	ch := make(chan []byte, 16)
+	l.hub.register(ch)
+	defer l.hub.unregister(ch)
+
+	log.Printf("[LocalServer WS] Caja conectada desde %s", r.RemoteAddr)
+
+	// Responder pings de la caja
+	conn.SetPingHandler(func(data string) error {
+		return conn.WriteMessage(websocket.PongMessage, []byte(data))
+	})
+
+	// Ping periódico para mantener la conexión viva
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg := <-ch:
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				log.Printf("[LocalServer WS] Caja desconectada: %v", err)
+				return
+			}
+		case <-ticker.C:
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("[LocalServer WS] Ping fallido, caja desconectada: %v", err)
+				return
+			}
+		}
+	}
+}
+
+func (l *LocalServerService) handleSolicitarAutorizacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Metodo no permitido")
+		return
+	}
+	var body struct {
+		PedidoGuid   string                 `json:"pedidoGuid"`
+		SucursalGuid string                 `json:"sucursalGuid"`
+		Items        []dto.ItemDescuentoDto `json:"items"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo invalido")
+		return
+	}
+	result, err := l.cotizacion.SolicitarAutorizacion(body.PedidoGuid, body.SucursalGuid, body.Items)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleConvertirVenta(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Metodo no permitido")
+		return
+	}
+	var body struct {
+		PedidoID         uint                    `json:"pedidoId"`
+		PagosAplicados   []dto.PagosAplicadosDto `json:"pagosAplicados"`
+		SucursalOrigenID *uint                   `json:"sucursalOrigenId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo invalido")
+		return
+	}
+	result, err := l.cotizacion.ConvertirAVenta(body.PedidoID, body.PagosAplicados, body.SucursalOrigenID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleDetalleCotizacion(w http.ResponseWriter, r *http.Request) {
+	pedidoIDStr := r.URL.Query().Get("pedidoId")
+	var pedidoID uint
+	fmt.Sscanf(pedidoIDStr, "%d", &pedidoID)
+	if pedidoID == 0 {
+		writeError(w, http.StatusBadRequest, "pedidoId requerido")
+		return
+	}
+	result, err := l.cotizacion.ObtenerDetalleCotizacion(pedidoID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}

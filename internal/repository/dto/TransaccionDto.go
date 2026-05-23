@@ -11,4 +11,7 @@ type TransaccionDto struct {
 	TipoOperacion    string
 	Estatus          string
 	MontoTransaccion float64
+	EstatusAutorizacion string
+	TipoPedidoID        uint
+	PedidoGuid          string
 }

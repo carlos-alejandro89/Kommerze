@@ -47,7 +47,7 @@ func (a *App) posService() interface {
 	ObtenerTiposPedido() ([]models.TipoPedido, error)
 	ConsultarExistenciaProductos([]uuid.UUID) ([]dto.InventarioDto, error)
 	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint) (*dto.ResponseDto, error)
-	ConsultaTransacciones() (*dto.ResponseDto, error)
+	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -92,6 +92,18 @@ func (a *App) clientesService() interface {
 		return a.services.CajaProxy
 	}
 	return a.services.Clientes
+}
+
+// cotizacionService devuelve la implementacion correcta segun el modo del dispositivo.
+func (a *App) cotizacionService() interface {
+	SolicitarAutorizacion(string, string, []dto.ItemDescuentoDto) (*dto.ResponseDto, error)
+	ConvertirAVenta(uint, []dto.PagosAplicadosDto, *uint) (*dto.ResponseDto, error)
+	ObtenerDetalleCotizacion(uint) (*dto.CotizacionDetalleDto, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Cotizacion
 }
 
 
@@ -258,8 +270,30 @@ func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino)
 }
 
-func (a *App) ServiceConsultaTransacciones() (*dto.ResponseDto, error) {
-	return a.posService().ConsultaTransacciones()
+func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
+	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
+}
+
+// ── Cotizaciones ───────────────────────────────────────────────────
+
+func (a *App) ServiceCotizacionSolicitarAutorizacion(
+	pedidoGuid string,
+	sucursalGuid string,
+	items []dto.ItemDescuentoDto,
+) (*dto.ResponseDto, error) {
+	return a.cotizacionService().SolicitarAutorizacion(pedidoGuid, sucursalGuid, items)
+}
+
+func (a *App) ServiceCotizacionConvertirAVenta(
+	pedidoID uint,
+	pagos []dto.PagosAplicadosDto,
+	sucursalOrigenID *uint,
+) (*dto.ResponseDto, error) {
+	return a.cotizacionService().ConvertirAVenta(pedidoID, pagos, sucursalOrigenID)
+}
+
+func (a *App) ServiceCotizacionObtenerDetalle(pedidoID uint) (*dto.CotizacionDetalleDto, error) {
+	return a.cotizacionService().ObtenerDetalleCotizacion(pedidoID)
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

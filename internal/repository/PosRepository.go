@@ -67,19 +67,40 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
 	return productos, err
 }
 
-func (r *PosRepository) ConsultaTransacciones() (*dto.ResponseDto, error) {
+func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	var transacciones []dto.TransaccionDto
 
-	err := r.db.Raw(`select p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,
-	                tp.nombre as tipo_operacion, e.nombre as estatus,
-					sum(cantidad*precio_venta) - sum(descuento) as monto_transaccion
-					from pedidos p, tipos_pedido tp, clientes c, estatus e, pedido_detalle pd
-					where p.tipo_pedido_id = tp.id and
-						p.cliente_id = c.id and
-						p.estatus_id = e.id and
-						pd.pedido_id = p.id
-					group by p.id,folio,fecha,es_credito,c.razon_social,c.correo,c.telefono,tp.nombre, e.nombre
-					order by fecha desc, folio desc`).Scan(&transacciones).Error
+	query := `select p.id, p.guid as pedido_guid, p.folio, p.fecha, p.es_credito,
+				coalesce(c.razon_social, 'Publico General') as razon_social,
+				coalesce(c.correo, '') as correo, coalesce(c.telefono, '') as telefono,
+				tp.nombre as tipo_operacion, tp.id as tipo_pedido_id,
+				e.nombre as estatus,
+				p.estatus_autorizacion,
+				sum(pd.cantidad * pd.precio_venta) - sum(pd.descuento) as monto_transaccion
+				from pedidos p
+				join tipos_pedido tp on p.tipo_pedido_id = tp.id
+				left join clientes c on p.cliente_id = c.id
+				join estatus e on p.estatus_id = e.id
+				join pedido_detalle pd on pd.pedido_id = p.id
+				where p.deleted_at is null and pd.deleted_at is null`
+
+	var args []interface{}
+
+	if tipoPedidoID != nil {
+		query += " and tp.id = ?"
+		args = append(args, *tipoPedidoID)
+	}
+
+	if sucursalID != nil {
+		query += " and p.sucursal_origen_id = ?"
+		args = append(args, *sucursalID)
+	}
+
+	query += ` group by p.id, p.guid, p.folio, p.fecha, p.es_credito, c.razon_social, c.correo, c.telefono,
+				tp.nombre, tp.id, e.nombre, p.estatus_autorizacion
+				order by p.fecha desc, p.folio desc`
+
+	err := r.db.Raw(query, args...).Scan(&transacciones).Error
 
 	if err != nil {
 		return dto.NewResponseDto(false, "Error al consultar transacciones", nil, []string{err.Error()}), err
@@ -217,12 +238,13 @@ func (r *PosRepository) ConfirmarTransaccion(
 		var cliente uint = 1
 
 		pedido = models.Pedido{
-			EstatusID:    &estatus,
-			ClienteID:    &cliente,
-			TipoPedidoID: tipoOperacion,
-			Fecha:        time.Now(),
-			EsCredito:    false,
-			Sync:         false,
+			EstatusID:        &estatus,
+			ClienteID:        &cliente,
+			TipoPedidoID:     tipoOperacion,
+			Fecha:            time.Now(),
+			EsCredito:        false,
+			Sync:             false,
+			SucursalOrigenID: sucursalOrigen,
 		}
 
 		// 👇 IMPORTANTE: usa tx en lugar de r.db

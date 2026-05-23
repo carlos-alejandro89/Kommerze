@@ -16,9 +16,15 @@ export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicad
 
 export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;
 
-export function ServiceConsultaTransacciones():Promise<dto.ResponseDto>;
+export function ServiceConsultaTransacciones(arg1:any,arg2:any):Promise<dto.ResponseDto>;
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
+
+export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.PagosAplicadosDto>,arg3:any):Promise<dto.ResponseDto>;
+
+export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.CotizacionDetalleDto>;
+
+export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
