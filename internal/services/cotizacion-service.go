@@ -111,6 +111,16 @@ func (s *CotizacionService) wsSession(sucursalGuid string) error {
 	}
 }
 
+func isApprovedStatus(status string) bool {
+	s := strings.ToLower(status)
+	return s == "autorizada" || s == "autorizado" || s == "aprobada" || s == "aprobado"
+}
+
+func isRejectedStatus(status string) bool {
+	s := strings.ToLower(status)
+	return s == "rechazada" || s == "rechazado"
+}
+
 func (s *CotizacionService) handleWsMessage(raw []byte) {
 	var msg dto.WsMessage
 	if err := json.Unmarshal(raw, &msg); err != nil {
@@ -128,19 +138,27 @@ func (s *CotizacionService) handleWsMessage(raw []byte) {
 			log.Printf("[CotizacionWS] Error aplicando resolucion: %v", err)
 			return
 		}
-		log.Printf("[CotizacionWS] ✅ Resolucion aplicada: pedido %s -> %s", res.PedidoGuid, res.EstatusAutorizacion)
+
+		localStatus := res.EstatusAutorizacion
+		if isApprovedStatus(res.EstatusAutorizacion) {
+			localStatus = "autorizada"
+		} else if isRejectedStatus(res.EstatusAutorizacion) {
+			localStatus = "rechazada"
+		}
+
+		log.Printf("[CotizacionWS] ✅ Resolucion aplicada: pedido %s -> %s", res.PedidoGuid, localStatus)
 		// Notificar al frontend del Servidor Local (Wails event)
 		if s.ctx != nil {
 			runtime.EventsEmit(s.ctx, "cotizacion_resuelta", map[string]any{
 				"pedidoGuid": res.PedidoGuid,
-				"estatus":    res.EstatusAutorizacion,
+				"estatus":    localStatus,
 			})
 		}
 		// Notificar a todas las Cajas conectadas vía WS local (:8989/local/ws)
 		if s.broadcastFn != nil {
 			s.broadcastFn("cotizacion_resuelta", map[string]any{
 				"pedidoGuid": res.PedidoGuid,
-				"estatus":    res.EstatusAutorizacion,
+				"estatus":    localStatus,
 			})
 		}
 	}
@@ -160,9 +178,17 @@ func (s *CotizacionService) aplicarResolucion(res *dto.ResolucionCotizacionDto) 
 		// 2. Serializar items autorizados
 		itemsJSON, _ := json.Marshal(res.Items)
 
+		// Determinar estatus local unificado para la BD
+		localStatus := res.EstatusAutorizacion
+		if isApprovedStatus(res.EstatusAutorizacion) {
+			localStatus = "autorizada"
+		} else if isRejectedStatus(res.EstatusAutorizacion) {
+			localStatus = "rechazada"
+		}
+
 		// 3. Actualizar Pedido
 		updates := map[string]any{
-			"estatus_autorizacion":   res.EstatusAutorizacion,
+			"estatus_autorizacion":   localStatus,
 			"descuentos_autorizados": string(itemsJSON),
 			"autorizado_por":         res.AutorizadoPor,
 			"obs_autorizacion":       res.Observaciones,
@@ -175,7 +201,7 @@ func (s *CotizacionService) aplicarResolucion(res *dto.ResolucionCotizacionDto) 
 		}
 
 		// 4. Si autorizada: actualizar descuento en pedido_detalle
-		if res.EstatusAutorizacion == "autorizada" && len(res.Items) > 0 {
+		if isApprovedStatus(res.EstatusAutorizacion) && len(res.Items) > 0 {
 			var pedido models.Pedido
 			if err := tx.Where("guid = ?", res.PedidoGuid).First(&pedido).Error; err != nil {
 				return fmt.Errorf("buscando pedido: %w", err)

@@ -389,6 +389,17 @@ export function HistoryPage() {
                                 <StatusIcon className="size-3" />
                                 {displayEstatus || '—'}
                               </span>
+                              {esCotizacion && t.EstatusAutorizacion && (
+                                <span className={cn(
+                                  "inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.5 rounded-md",
+                                  t.EstatusAutorizacion === 'solicitada' ? 'bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 dark:text-indigo-400' :
+                                  t.EstatusAutorizacion === 'autorizada' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:text-emerald-400' :
+                                  'bg-red-500/10 text-red-600 border border-red-500/20 dark:text-red-400'
+                                )}>
+                                  <Tag className="size-2.5" />
+                                  Desc. {t.EstatusAutorizacion === 'solicitada' ? 'Solicitado' : t.EstatusAutorizacion === 'autorizada' ? 'Aprobado' : 'Rechazado'}
+                                </span>
+                              )}
                             </div>
                           </td>
 

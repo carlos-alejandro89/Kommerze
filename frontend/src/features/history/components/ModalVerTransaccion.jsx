@@ -149,29 +149,51 @@ export function ModalVerTransaccion({ row, onClose }) {
                       <tr className="bg-muted/30 border-b border-border">
                         <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Producto</th>
                         <th className="px-3 py-2 text-right font-semibold text-muted-foreground">P.Unit</th>
+                        <th className="px-3 py-2 text-center font-semibold text-muted-foreground w-32">Descuento</th>
                         <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {(detalle?.Items ?? []).map(item => (
-                        <tr key={item.nivelGuid} className="hover:bg-muted/10">
-                          <td className="px-3 py-2.5">
-                            <div className="font-medium text-foreground truncate max-w-[160px]">{item.producto || item.nivelCodigo}</div>
-                            <div className="text-muted-foreground/70">×{item.cantidad}</div>
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono text-foreground tabular-nums">
-                            {formatMXN(item.precioVenta)}
-                            {item.descuento > 0 && (
-                              <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
-                                −{formatMXN(item.descuento / item.cantidad)} c/u
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono font-semibold text-foreground tabular-nums">
-                            {formatMXN(item.subtotal)}
-                          </td>
-                        </tr>
-                      ))}
+                      {(detalle?.Items ?? []).map(item => {
+                        const descSol = detalle?.DescuentosSolicitados?.find(d => d.nivelGuid === item.nivelGuid);
+                        const descAut = detalle?.DescuentosAutorizados?.find(d => d.nivelGuid === item.nivelGuid);
+                        const solicitadoPct = descSol?.descuentoSolicitado ?? 0;
+                        const autorizadoPct = descAut?.descuentoAutorizado ?? 0;
+
+                        return (
+                          <tr key={item.nivelGuid} className="hover:bg-muted/10">
+                            <td className="px-3 py-2.5">
+                              <div className="font-medium text-foreground truncate max-w-[160px]">{item.producto || item.nivelCodigo}</div>
+                              <div className="text-muted-foreground/70">×{item.cantidad}</div>
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-foreground tabular-nums">
+                              {formatMXN(item.precioVenta)}
+                            </td>
+                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                              {solicitadoPct > 0 ? (
+                                <div className="space-y-0.5">
+                                  <div className="text-[10px] text-muted-foreground">
+                                    Solicitado: <span className="font-semibold">{solicitadoPct}%</span>
+                                  </div>
+                                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                    Autorizado: <span>{autorizadoPct}%</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground/50 text-[11px]">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-semibold text-foreground tabular-nums">
+                              {formatMXN(item.subtotal)}
+                              {item.descuento > 0 && (
+                                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
+                                  −{formatMXN(item.descuento)}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
