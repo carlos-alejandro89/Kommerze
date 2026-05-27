@@ -48,7 +48,7 @@ export namespace dto {
 	}
 	export class ItemDescuentoDto {
 	    nivelGuid: string;
-	    producto: string;
+	    cantidad: number;
 	    precioVenta: number;
 	    descuentoSolicitado: number;
 	    descuentoAutorizado: number;
@@ -60,7 +60,7 @@ export namespace dto {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.nivelGuid = source["nivelGuid"];
-	        this.producto = source["producto"];
+	        this.cantidad = source["cantidad"];
 	        this.precioVenta = source["precioVenta"];
 	        this.descuentoSolicitado = source["descuentoSolicitado"];
 	        this.descuentoAutorizado = source["descuentoAutorizado"];
@@ -405,6 +405,22 @@ export namespace dto {
 	        this.FechaInicio = source["FechaInicio"];
 	        this.ValorInventarioInicial = source["ValorInventarioInicial"];
 	        this.FondoCaja = source["FondoCaja"];
+	    }
+	}
+	export class TipoAutorizacionDto {
+	    ID: number;
+	    Guid: string;
+	    Descripcion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TipoAutorizacionDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.Descripcion = source["Descripcion"];
 	    }
 	}
 

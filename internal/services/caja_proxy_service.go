@@ -274,11 +274,18 @@ func (c *CajaProxyService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 
 // ── CotizacionService equivalentes ────────────────────────────────────────────
 
-func (c *CajaProxyService) SolicitarAutorizacion(pedidoGuid, sucursalGuid string, items []dto.ItemDescuentoDto) (*dto.ResponseDto, error) {
+func (c *CajaProxyService) SolicitarAutorizacion(
+	pedidoGuid, sucursalGuid string,
+	tipoAutorizacionGuid, usuarioSolicitanteGuid, comentarios string,
+	items []dto.ItemDescuentoDto,
+) (*dto.ResponseDto, error) {
 	body := map[string]any{
-		"pedidoGuid":   pedidoGuid,
-		"sucursalGuid": sucursalGuid,
-		"items":        items,
+		"pedidoGuid":             pedidoGuid,
+		"sucursalGuid":           sucursalGuid,
+		"tipoAutorizacionGuid":   tipoAutorizacionGuid,
+		"usuarioSolicitanteGuid": usuarioSolicitanteGuid,
+		"comentarios":            comentarios,
+		"items":                  items,
 	}
 	var result dto.ResponseDto
 	if err := c.post("/local/cotizaciones/solicitar-autorizacion", body, &result); err != nil {

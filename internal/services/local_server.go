@@ -432,15 +432,25 @@ func (l *LocalServerService) handleSolicitarAutorizacion(w http.ResponseWriter, 
 		return
 	}
 	var body struct {
-		PedidoGuid   string                 `json:"pedidoGuid"`
-		SucursalGuid string                 `json:"sucursalGuid"`
-		Items        []dto.ItemDescuentoDto `json:"items"`
+		PedidoGuid             string                 `json:"pedidoGuid"`
+		SucursalGuid           string                 `json:"sucursalGuid"`
+		TipoAutorizacionGuid   string                 `json:"tipoAutorizacionGuid"`
+		UsuarioSolicitanteGuid string                 `json:"usuarioSolicitanteGuid"`
+		Comentarios            string                 `json:"comentarios"`
+		Items                  []dto.ItemDescuentoDto `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Cuerpo invalido")
 		return
 	}
-	result, err := l.cotizacion.SolicitarAutorizacion(body.PedidoGuid, body.SucursalGuid, body.Items)
+	result, err := l.cotizacion.SolicitarAutorizacion(
+		body.PedidoGuid,
+		body.SucursalGuid,
+		body.TipoAutorizacionGuid,
+		body.UsuarioSolicitanteGuid,
+		body.Comentarios,
+		body.Items,
+	)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

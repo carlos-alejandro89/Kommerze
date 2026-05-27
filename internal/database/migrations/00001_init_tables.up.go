@@ -24,5 +24,7 @@ func MigrateTables(db *gorm.DB) error {
 		&models.Usuario{},
 		&models.Pago{},
 		&models.Traspaso{},
+		&models.TipoAutorizacion{},
 	)
 }
+

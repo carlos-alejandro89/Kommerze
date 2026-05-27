@@ -14,6 +14,8 @@ import {
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
+  SyncPerfiles, SyncUsuarios, SyncTiposPedido,
+  SyncTiposAutorizacion, SyncEstatus,
   ServiceGetSucursalGuid,
 } from "../../../../wailsjs/go/main/App";
 
@@ -30,26 +32,31 @@ const STAGES = [
     borderColor: 'border-blue-500/20',
     badgeBg: 'bg-blue-500/15 text-blue-600',
     catalogs: [
-      { id: 8,  name: 'SAT Régimen Fiscal',    endpoint: '/catalogos/sat/regimen-fiscal/get',  icon: LayoutGrid, sync: SyncSatRegimenFiscal },
-      { id: 6,  name: 'SAT Formas Pago',        endpoint: '/catalogos/sat/formas-pago/get',     icon: LayoutGrid, sync: SyncSatFormasPago },
-      { id: 7,  name: 'SAT Métodos Pago',       endpoint: '/catalogos/sat/metodos-pago/get',    icon: LayoutGrid, sync: SyncSatMetodosPago },
-      { id: 9,  name: 'SAT Usos CFDI',          endpoint: '/catalogos/sat/usos-cfdi/get',       icon: LayoutGrid, sync: SyncSatUsosCfdi },
-      { id: 4,  name: 'SAT Claves Productos',   endpoint: '/catalogos/sat/productos/get',       icon: LayoutGrid, sync: SyncSatProductos },
-      { id: 1,  name: 'Líneas',                 endpoint: '/catalogos/lineas/get',              icon: Package,    sync: SyncLineas },
-      { id: 2,  name: 'Marcas',                 endpoint: '/catalogos/marcas/get',              icon: Users,      sync: SyncMarcas },
-      { id: 3,  name: 'Empaques',               endpoint: '/catalogos/empaques/get',            icon: Database,   sync: SyncEmpaques },
+      { id: 8,  name: 'SAT Régimen Fiscal',      endpoint: '/catalogos/sat/regimen-fiscal/get',    icon: LayoutGrid, sync: SyncSatRegimenFiscal },
+      { id: 6,  name: 'SAT Formas Pago',          endpoint: '/catalogos/sat/formas-pago/get',       icon: LayoutGrid, sync: SyncSatFormasPago },
+      { id: 7,  name: 'SAT Métodos Pago',         endpoint: '/catalogos/sat/metodos-pago/get',      icon: LayoutGrid, sync: SyncSatMetodosPago },
+      { id: 9,  name: 'SAT Usos CFDI',            endpoint: '/catalogos/sat/usos-cfdi/get',         icon: LayoutGrid, sync: SyncSatUsosCfdi },
+      { id: 4,  name: 'SAT Claves Productos',     endpoint: '/catalogos/sat/productos/get',         icon: LayoutGrid, sync: SyncSatProductos },
+      { id: 1,  name: 'Líneas',                   endpoint: '/catalogos/lineas/get',                icon: Package,    sync: SyncLineas },
+      { id: 2,  name: 'Marcas',                   endpoint: '/catalogos/marcas/get',                icon: Users,      sync: SyncMarcas },
+      { id: 3,  name: 'Empaques',                 endpoint: '/catalogos/empaques/get',              icon: Database,   sync: SyncEmpaques },
+      { id: 14, name: 'Perfiles',                 endpoint: '/catalogos/perfiles/get',              icon: Users,      sync: SyncPerfiles },
+      { id: 15, name: 'Tipos de Pedido',          endpoint: '/catalogos/tipos-pedido/get',          icon: LayoutGrid, sync: SyncTiposPedido },
+      { id: 16, name: 'Tipos de Autorización',    endpoint: '/catalogos/tipos-autorizacion/get',    icon: LayoutGrid, sync: SyncTiposAutorizacion },
+      { id: 17, name: 'Estatus',                  endpoint: '/catalogos/estatus/get',               icon: LayoutGrid, sync: SyncEstatus },
     ],
   },
   {
     stage: 2,
-    label: 'Etapa 2 — Depende de: SAT Régimen Fiscal',
-    description: 'Requiere que el catálogo SAT Régimen Fiscal esté sincronizado.',
+    label: 'Etapa 2 — Depende de: SAT Régimen Fiscal + Perfiles',
+    description: 'Requiere que SAT Régimen Fiscal y Perfiles estén sincronizados.',
     color: 'text-violet-500',
     bgColor: 'bg-violet-500/10',
     borderColor: 'border-violet-500/20',
     badgeBg: 'bg-violet-500/15 text-violet-600',
     catalogs: [
       { id: 11, name: 'Empresas',               endpoint: '/catalogos/empresas/get',            icon: LayoutGrid, sync: SyncEmpresas },
+      { id: 18, name: 'Usuarios',               endpoint: '/catalogos/usuarios/get',            icon: Users,      sync: SyncUsuarios },
     ],
   },
   {
@@ -147,13 +154,14 @@ export function SyncPage() {
       await catalogDef.sync(params);
       setCatalogState(prev => ({
         ...prev,
-        [id]: { ...prev[id], status: 'Sincronizado', lastSync: 'Justo ahora', failed: false },
+        [id]: { ...prev[id], status: 'Sincronizado', lastSync: 'Justo ahora', failed: false, errorMsg: null },
       }));
       return true;
-    } catch {
+    } catch (err) {
+      const errorMsg = typeof err === 'string' ? err : (err?.message ?? 'Error desconocido');
       setCatalogState(prev => ({
         ...prev,
-        [id]: { ...prev[id], status: 'Error', lastSync: 'Falló', failed: true },
+        [id]: { ...prev[id], status: 'Error', lastSync: 'Falló', failed: true, errorMsg },
       }));
       return false;
     } finally {
@@ -385,6 +393,14 @@ export function SyncPage() {
                                   <History className="size-3" />
                                   Última sinc: {state.lastSync ?? 'Nunca'}
                                 </div>
+                                {state.failed && state.errorMsg && (
+                                  <div className="flex items-start gap-1.5 mt-1.5">
+                                    <AlertCircle className="size-3 text-danger shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-danger font-mono leading-snug break-all">
+                                      {state.errorMsg}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
 

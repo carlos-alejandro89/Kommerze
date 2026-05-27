@@ -22,6 +22,7 @@ import { ContentHeader } from '@/crm/layout/components/content-header';
 import { cn } from '@/lib/utils';
 import { Steps } from './steps';
 import { DialogSucursales } from './components/dialog-sucursales';
+import { PanelSolicitarDescuento } from './components/panel-solicitar-descuento';
 
 import { ResumenCuenta } from './resumen';
 import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
@@ -249,6 +250,15 @@ export function CartStepTwo() {
                                                 </div>
                                             </div>
                                         </div>
+                                    )}
+
+                                    {/* ── Panel Solicitar Descuento (solo en Cotización) ── */}
+                                    {operationType === 2 && cart.length > 0 && (
+                                        <PanelSolicitarDescuento
+                                            cart={cart}
+                                            sucursalGuid={sucursalSeleccionada?.Guid || ''}
+                                            posService={posService}
+                                        />
                                     )}
 
                                     {/* Additional Context/Notes */}

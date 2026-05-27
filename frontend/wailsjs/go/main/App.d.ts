@@ -24,7 +24,7 @@ export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.Pago
 
 export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.CotizacionDetalleDto>;
 
-export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
+export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
@@ -51,6 +51,8 @@ export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
 export function ServiceGetSucursalGuid():Promise<string>;
 
 export function ServiceGetSucursales():Promise<dto.ResponseDto>;
+
+export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;
 
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
 
@@ -84,11 +86,15 @@ export function SyncEmpaques():Promise<string>;
 
 export function SyncEmpresas():Promise<string>;
 
+export function SyncEstatus():Promise<string>;
+
 export function SyncLineas():Promise<string>;
 
 export function SyncMarcas():Promise<string>;
 
 export function SyncNivelesEmpaque():Promise<string>;
+
+export function SyncPerfiles():Promise<string>;
 
 export function SyncProductos():Promise<string>;
 
@@ -105,3 +111,9 @@ export function SyncSatUsosCfdi():Promise<string>;
 export function SyncSucursalProductos(arg1:Record<string, any>):Promise<string>;
 
 export function SyncSucursales():Promise<string>;
+
+export function SyncTiposAutorizacion():Promise<string>;
+
+export function SyncTiposPedido():Promise<string>;
+
+export function SyncUsuarios():Promise<string>;

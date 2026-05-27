@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -220,6 +221,9 @@ func (s *CotizacionService) marcarProcesada(cloudSolicitudGuid string) {
 func (s *CotizacionService) SolicitarAutorizacion(
 	pedidoGuid string,
 	sucursalGuid string,
+	tipoAutorizacionGuid string,
+	usuarioSolicitanteGuid string,
+	comentarios string,
 	items []dto.ItemDescuentoDto,
 ) (*dto.ResponseDto, error) {
 	// 1. Serializar items solicitados
@@ -238,38 +242,66 @@ func (s *CotizacionService) SolicitarAutorizacion(
 		return dto.NewResponseDto(false, "Error al actualizar pedido", nil, []string{err.Error()}), err
 	}
 
-	// 3. Enviar solicitud al cloud
+	// 3. Obtener sucursalGuid desde kommerze_config.json (fuente de verdad)
+	// El parámetro sucursalGuid se usa como fallback para modo Caja.
+	resolvedSucursalGuid := sucursalGuid
+	if cfg, err := LoadKommerzConfig(); err == nil && cfg.License != nil && cfg.License.Sucursal.Guid != "" {
+		resolvedSucursalGuid = cfg.License.Sucursal.Guid
+	}
+	log.Printf("[CotizacionService] sucursalGuid resuelto: %q", resolvedSucursalGuid)
+
+	// 4. Construir payload con el nuevo contrato del cloud
 	payload := map[string]any{
-		"pedidoGuid":   pedidoGuid,
-		"sucursalGuid": sucursalGuid,
-		"items":        items,
+		"pedidoGuid":             pedidoGuid,
+		"sucursalGuid":           resolvedSucursalGuid,
+		"tipoAutorizacionGuid":   tipoAutorizacionGuid,
+		"usuarioSolicitanteGuid": usuarioSolicitanteGuid,
+		"fechaSolicitud":         time.Now().UTC().Format(time.RFC3339Nano),
+		"comentarios":            comentarios,
+		"items":                  items,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
+	cloudURL := fmt.Sprintf("%s/autorizaciones/solicitar", s.apiBaseURL)
+	log.Printf("[CotizacionService] ── Enviando solicitud al cloud ──────────────────")
+	log.Printf("[CotizacionService] POST %s", cloudURL)
+	log.Printf("[CotizacionService] Payload: %s", string(payloadBytes))
+
 	resp, err := s.client.Post(
-		fmt.Sprintf("%s/cotizaciones/solicitar-autorizacion", s.apiBaseURL),
+		cloudURL,
 		"application/json",
 		bytes.NewBuffer(payloadBytes),
 	)
 	if err != nil {
-		// La solicitud local ya fue marcada, el cloud puede reintentar desde la app
-		log.Printf("[CotizacionService] Error enviando al cloud: %v", err)
+		// La solicitud local ya fue marcada; el cloud puede reintentar desde la app
+		log.Printf("[CotizacionService] ❌ Error de conexión al cloud: %v", err)
 		return dto.NewResponseDto(true, "Solicitud guardada localmente. Error al notificar al cloud.", nil, nil), nil
 	}
 	defer resp.Body.Close()
 
-	// 4. Leer cloudSolicitudGuid de la respuesta del cloud
+	// 4. Leer body completo para log y parseo
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	log.Printf("[CotizacionService] ── Respuesta del cloud ─────────────────────────")
+	log.Printf("[CotizacionService] HTTP Status: %d %s", resp.StatusCode, resp.Status)
+	log.Printf("[CotizacionService] Body: %s", string(bodyBytes))
+
 	var cloudResp struct {
 		Success bool `json:"success"`
 		Data    struct {
 			CloudSolicitudGuid string `json:"cloudSolicitudGuid"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&cloudResp); err == nil && cloudResp.Success {
+	if err := json.Unmarshal(bodyBytes, &cloudResp); err != nil {
+		log.Printf("[CotizacionService] ⚠️  No se pudo parsear la respuesta JSON: %v", err)
+	} else if cloudResp.Success {
+		log.Printf("[CotizacionService] ✅ Solicitud creada en cloud. cloudSolicitudGuid: %s", cloudResp.Data.CloudSolicitudGuid)
 		s.db.Model(&models.Pedido{}).
 			Where("guid = ?", pedidoGuid).
 			Update("cloud_solicitud_guid", cloudResp.Data.CloudSolicitudGuid)
+	} else {
+		log.Printf("[CotizacionService] ❌ El cloud respondió success=false")
 	}
+	log.Printf("[CotizacionService] ─────────────────────────────────────────────────")
 
 	return dto.NewResponseDto(true, "Solicitud de autorizacion enviada correctamente", nil, nil), nil
 }

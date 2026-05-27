@@ -355,3 +355,119 @@ func (a *SyncService) SyncSucursalProductos(parameters map[string]any) ([]any, e
 	fmt.Printf("[SyncListaPrecios] ✅ Sincronización completada\n")
 	return result.Data, nil
 }
+
+func (s *SyncService) SyncPerfiles() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/perfiles/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error in request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
+	}
+
+	if err := s.repo.SavePerfiles(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando datos: %w", err)
+	}
+
+	return result.Data, nil
+}
+
+func (s *SyncService) SyncUsuarios() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/usuarios/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error in request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
+	}
+
+	if err := s.repo.SaveUsuarios(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando datos: %w", err)
+	}
+
+	return result.Data, nil
+}
+
+func (s *SyncService) SyncTiposPedido() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/tipos-pedido/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error in request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
+	}
+
+	if err := s.repo.SaveTiposPedido(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando datos: %w", err)
+	}
+
+	return result.Data, nil
+}
+
+func (s *SyncService) SyncTiposAutorizacion() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/tipos-autorizacion/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error in request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
+	}
+
+	if err := s.repo.SaveTiposAutorizacion(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando datos: %w", err)
+	}
+
+	return result.Data, nil
+}
+
+func (s *SyncService) SyncEstatus() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/estatus/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error in request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %w", err)
+	}
+
+	if err := s.repo.SaveEstatus(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando datos: %w", err)
+	}
+
+	return result.Data, nil
+}
+

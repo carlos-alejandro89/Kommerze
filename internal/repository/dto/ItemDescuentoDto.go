@@ -6,7 +6,7 @@ import "encoding/json"
 // Se serializa a JSON en Pedido.DescuentosSolicitados / DescuentosAutorizados.
 type ItemDescuentoDto struct {
 	NivelGuid           string  `json:"nivelGuid"`
-	Producto            string  `json:"producto"`
+	Cantidad            float64 `json:"cantidad"`
 	PrecioVenta         float64 `json:"precioVenta"`
 	DescuentoSolicitado float64 `json:"descuentoSolicitado"`
 	DescuentoAutorizado float64 `json:"descuentoAutorizado"`

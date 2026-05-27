@@ -38,8 +38,8 @@ export function ServiceCotizacionObtenerDetalle(arg1) {
   return window['go']['main']['App']['ServiceCotizacionObtenerDetalle'](arg1);
 }
 
-export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3);
+export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function ServiceGetEmpaques() {
@@ -92,6 +92,10 @@ export function ServiceGetSucursalGuid() {
 
 export function ServiceGetSucursales() {
   return window['go']['main']['App']['ServiceGetSucursales']();
+}
+
+export function ServiceGetTiposAutorizacion() {
+  return window['go']['main']['App']['ServiceGetTiposAutorizacion']();
 }
 
 export function ServiceLoadCloudCredentials() {
@@ -158,6 +162,10 @@ export function SyncEmpresas() {
   return window['go']['main']['App']['SyncEmpresas']();
 }
 
+export function SyncEstatus() {
+  return window['go']['main']['App']['SyncEstatus']();
+}
+
 export function SyncLineas() {
   return window['go']['main']['App']['SyncLineas']();
 }
@@ -168,6 +176,10 @@ export function SyncMarcas() {
 
 export function SyncNivelesEmpaque() {
   return window['go']['main']['App']['SyncNivelesEmpaque']();
+}
+
+export function SyncPerfiles() {
+  return window['go']['main']['App']['SyncPerfiles']();
 }
 
 export function SyncProductos() {
@@ -200,4 +212,16 @@ export function SyncSucursalProductos(arg1) {
 
 export function SyncSucursales() {
   return window['go']['main']['App']['SyncSucursales']();
+}
+
+export function SyncTiposAutorizacion() {
+  return window['go']['main']['App']['SyncTiposAutorizacion']();
+}
+
+export function SyncTiposPedido() {
+  return window['go']['main']['App']['SyncTiposPedido']();
+}
+
+export function SyncUsuarios() {
+  return window['go']['main']['App']['SyncUsuarios']();
 }

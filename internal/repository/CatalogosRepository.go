@@ -543,3 +543,151 @@ func (c *CatalogosRepository) SaveSucursales(data []any) error {
 	}
 	return nil
 }
+
+func (c *CatalogosRepository) SavePerfiles(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		perfil := models.Perfil{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+			NombrePerfil: fmt.Sprintf("%v", fMap["nombrePerfil"]),
+		}
+
+		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&perfil).Error; err != nil {
+			return fmt.Errorf("error insertando perfil: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *CatalogosRepository) SaveUsuarios(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		correoConfirmado := fmt.Sprintf("%v", fMap["correoConfirmado"]) == "true"
+
+		usuario := models.Usuario{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+			Nombre:            fmt.Sprintf("%v", fMap["nombre"]),
+			CorreoElectronico: fmt.Sprintf("%v", fMap["correoElectronico"]),
+			Password:          fmt.Sprintf("%v", fMap["password"]),
+			Telefono:          fmt.Sprintf("%v", fMap["telefono"]),
+			CorreoConfirmado:  correoConfirmado,
+		}
+
+		// Resolver FK de perfil usando el perfilId numérico del cloud.
+		// Buscamos el perfil local cuyo ID coincida con el perfilId recibido.
+		if perfilIdRaw, ok := fMap["perfilId"]; ok {
+			perfilIdFloat, _ := perfilIdRaw.(float64)
+			perfilIdLocal := uint(perfilIdFloat)
+			if perfilIdLocal > 0 {
+				var perfil models.Perfil
+				if err := c.db.First(&perfil, perfilIdLocal).Error; err == nil {
+					usuario.PerfilID = perfil.ID
+				}
+			}
+		}
+
+		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&usuario).Error; err != nil {
+			return fmt.Errorf("error insertando usuario: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *CatalogosRepository) SaveTiposPedido(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+
+		// icon puede llegar como null desde la API; evitar guardar la cadena "<nil>"
+		iconStr := ""
+		if v, ok := fMap["icon"]; ok && v != nil {
+			iconStr = fmt.Sprintf("%v", v)
+		}
+
+		tipoPedido := models.TipoPedido{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+			Nombre:      fmt.Sprintf("%v", fMap["nombre"]),
+			Descripcion: fmt.Sprintf("%v", fMap["descripcion"]),
+			Icon:        iconStr,
+		}
+
+		// Upsert por 'nombre' (único real de la tabla) para manejar datos
+		// que el seeder ya insertó con distinto guid.
+		if err := c.db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "nombre"}},
+			UpdateAll: true,
+		}).Create(&tipoPedido).Error; err != nil {
+			return fmt.Errorf("error insertando tipo_pedido: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *CatalogosRepository) SaveTiposAutorizacion(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		tipoAuth := models.TipoAutorizacion{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+			Descripcion: fmt.Sprintf("%v", fMap["descripcion"]),
+		}
+
+		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&tipoAuth).Error; err != nil {
+			return fmt.Errorf("error insertando tipo_autorizacion: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *CatalogosRepository) SaveEstatus(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		estatus := models.Estatus{
+			BaseModel: models.BaseModel{
+				Guid: guid,
+			},
+			Nombre: fmt.Sprintf("%v", fMap["nombre"]),
+		}
+
+		// Upsert por 'nombre' (único real de la tabla) para manejar datos
+		// que el seeder ya insertó con distinto guid.
+		if err := c.db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "nombre"}},
+			UpdateAll: true,
+		}).Create(&estatus).Error; err != nil {
+			return fmt.Errorf("error insertando estatus: %w", err)
+		}
+	}
+	return nil
+}

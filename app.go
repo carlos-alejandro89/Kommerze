@@ -96,7 +96,7 @@ func (a *App) clientesService() interface {
 
 // cotizacionService devuelve la implementacion correcta segun el modo del dispositivo.
 func (a *App) cotizacionService() interface {
-	SolicitarAutorizacion(string, string, []dto.ItemDescuentoDto) (*dto.ResponseDto, error)
+	SolicitarAutorizacion(string, string, string, string, string, []dto.ItemDescuentoDto) (*dto.ResponseDto, error)
 	ConvertirAVenta(uint, []dto.PagosAplicadosDto, *uint) (*dto.ResponseDto, error)
 	ObtenerDetalleCotizacion(uint) (*dto.CotizacionDetalleDto, error)
 } {
@@ -252,6 +252,62 @@ func (a *App) SyncSucursalProductos(parameters map[string]any) (string, error) {
 	return "Sincronizado", nil
 }
 
+func (a *App) SyncPerfiles() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncPerfiles()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+func (a *App) SyncUsuarios() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncUsuarios()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+func (a *App) SyncTiposPedido() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncTiposPedido()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+func (a *App) SyncTiposAutorizacion() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncTiposAutorizacion()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+func (a *App) SyncEstatus() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncEstatus()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+
 // ── POS ───────────────────────────────────────────────────────────────────────
 
 func (a *App) ServiceConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
@@ -274,14 +330,26 @@ func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint)
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
 }
 
+// ── Tipos de Autorización ─────────────────────────────────────────────────────
+
+// ServiceGetTiposAutorizacion devuelve el catálogo de tipos de autorización.
+// Es un catálogo local fijo sincronizado con la tabla del cloud.
+// No requiere BD ni modo dual.
+func (a *App) ServiceGetTiposAutorizacion() []dto.TipoAutorizacionDto {
+	return dto.TiposAutorizacion
+}
+
 // ── Cotizaciones ───────────────────────────────────────────────────
 
 func (a *App) ServiceCotizacionSolicitarAutorizacion(
 	pedidoGuid string,
 	sucursalGuid string,
+	tipoAutorizacionGuid string,
+	usuarioSolicitanteGuid string,
+	comentarios string,
 	items []dto.ItemDescuentoDto,
 ) (*dto.ResponseDto, error) {
-	return a.cotizacionService().SolicitarAutorizacion(pedidoGuid, sucursalGuid, items)
+	return a.cotizacionService().SolicitarAutorizacion(pedidoGuid, sucursalGuid, tipoAutorizacionGuid, usuarioSolicitanteGuid, comentarios, items)
 }
 
 func (a *App) ServiceCotizacionConvertirAVenta(

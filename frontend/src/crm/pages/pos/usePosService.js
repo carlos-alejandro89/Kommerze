@@ -34,6 +34,7 @@ import {
     ServiceCotizacionSolicitarAutorizacion,
     ServiceCotizacionConvertirAVenta,
     ServiceCotizacionObtenerDetalle,
+    ServiceGetTiposAutorizacion,
 } from '../../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -117,10 +118,13 @@ export function usePosService() {
      * Solicita autorización de descuentos al sistema central para una cotización.
      * @param {string} pedidoGuid
      * @param {string} sucursalGuid
+     * @param {string} tipoAutorizacionGuid
+     * @param {string} usuarioSolicitanteGuid
+     * @param {string} comentarios
      * @param {ItemDescuentoDto[]} items
      */
-    const solicitarAutorizacion = (pedidoGuid, sucursalGuid, items) =>
-        ServiceCotizacionSolicitarAutorizacion(pedidoGuid, sucursalGuid, items);
+    const solicitarAutorizacion = (pedidoGuid, sucursalGuid, tipoAutorizacionGuid, usuarioSolicitanteGuid, comentarios, items) =>
+        ServiceCotizacionSolicitarAutorizacion(pedidoGuid, sucursalGuid, tipoAutorizacionGuid, usuarioSolicitanteGuid, comentarios, items);
 
     /**
      * Convierte una cotización autorizada (o sin descuento especial) en una venta real.
@@ -137,6 +141,12 @@ export function usePosService() {
      */
     const obtenerDetalleCotizacion = (pedidoID) =>
         ServiceCotizacionObtenerDetalle(pedidoID);
+
+    /**
+     * Retorna el catálogo de tipos de autorización disponibles en el cloud.
+     * @returns {Promise<TipoAutorizacionDto[]>}
+     */
+    const obtenerTiposAutorizacion = () => ServiceGetTiposAutorizacion();
 
     // ── TODO (futuras implementaciones) ────────────────────────────────────────
     // const abrirCajon = () => ServiceAbrirCajon();
@@ -160,5 +170,6 @@ export function usePosService() {
         solicitarAutorizacion,
         convertirCotizacionAVenta,
         obtenerDetalleCotizacion,
+        obtenerTiposAutorizacion,
     };
 }

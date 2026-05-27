@@ -4,6 +4,7 @@ import { X, Tag, AlertCircle, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '../../../crm/pages/pos/usePosService';
 import { ServiceGetSucursalGuid } from '../../../../wailsjs/go/main/App';
+import { useAuth } from '@/providers/AuthProvider';
 
 /**
  * ModalSolicitarDescuento
@@ -12,6 +13,7 @@ import { ServiceGetSucursalGuid } from '../../../../wailsjs/go/main/App';
  */
 export function ModalSolicitarDescuento({ row, onClose }) {
   const { obtenerDetalleCotizacion, solicitarAutorizacion } = usePosService();
+  const { user } = useAuth();
 
   const [detalle, setDetalle]       = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -61,7 +63,15 @@ export function ModalSolicitarDescuento({ row, onClose }) {
         descuentoSolicitado: descuentos[item.nivelGuid] ?? 0,
         descuentoAutorizado: 0,
       }));
-      const res = await solicitarAutorizacion(detalle.PedidoGuid, sucursalGuid, items);
+      const GUID_DESCUENTO_ESPECIAL = 'e57b32c1-d9a4-4638-b02f-f481c7e93da0';
+      const res = await solicitarAutorizacion(
+        detalle.PedidoGuid,
+        sucursalGuid,
+        GUID_DESCUENTO_ESPECIAL,
+        user?.Guid || '',
+        justificacion,
+        items
+      );
       if (res?.success === false) { setError(res.message); return; }
       onClose();
     } catch (e) {
