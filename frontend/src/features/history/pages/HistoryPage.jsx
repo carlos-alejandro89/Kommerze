@@ -10,6 +10,8 @@ import { usePosService } from '../../../crm/pages/pos/usePosService';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import { ModalSolicitarDescuento } from '../components/ModalSolicitarDescuento';
 import { ModalConvertirVenta } from '../components/ModalConvertirVenta';
+import { ModalVerTransaccion } from '../components/ModalVerTransaccion';
+import { toast } from 'sonner';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
@@ -129,6 +131,7 @@ export function HistoryPage() {
   // Modales
   const [modalDescuento, setModalDescuento] = useState(null); // row | null
   const [modalVenta, setModalVenta]         = useState(null); // row | null
+  const [modalVer, setModalVer]             = useState(null); // row | null
 
   /* ── Carga de datos ── */
   const cargar = useCallback(async () => {
@@ -149,8 +152,19 @@ export function HistoryPage() {
 
   /* ── Listener WebSocket: el backend emite este evento cuando llega una resolución ── */
   useEffect(() => {
-    const unsub = EventsOn('cotizacion_resuelta', () => {
+    const unsub = EventsOn('cotizacion_resuelta', (data) => {
       cargar(); // recarga la tabla automáticamente
+      if (data) {
+        const isApproved = data.estatus === 'autorizada';
+        const msg = isApproved
+          ? `La solicitud de descuento para la cotización ha sido AUTORIZADA.`
+          : `La solicitud de descuento para la cotización ha sido RECHAZADA.`;
+        if (isApproved) {
+          toast.success(msg, { duration: 5000 });
+        } else {
+          toast.error(msg, { duration: 5000 });
+        }
+      }
     });
     return () => { if (typeof unsub === 'function') unsub(); };
   }, [cargar]);
@@ -318,9 +332,23 @@ export function HistoryPage() {
                     )}
                     {pageItems.map((t) => {
                       const { fecha, hora } = parseFecha(t.Fecha);
-                      const sc              = getStatusConfig(t.Estatus);
-                      const StatusIcon      = sc.icon;
+                      let sc                = getStatusConfig(t.Estatus);
+                      let displayEstatus    = t.Estatus;
                       const esCotizacion    = t.TipoPedidoID === 2;
+
+                      if (esCotizacion) {
+                        if (t.EstatusAutorizacion === 'solicitada') {
+                          sc = { icon: Clock, className: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400' };
+                          displayEstatus = 'Esperando Auth';
+                        } else if (t.EstatusAutorizacion === 'autorizada') {
+                          sc = { icon: BadgeCheck, className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' };
+                          displayEstatus = 'Autorizada';
+                        } else if (t.EstatusAutorizacion === 'rechazada') {
+                          sc = { icon: BadgeX, className: 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400' };
+                          displayEstatus = 'Rechazada';
+                        }
+                      }
+                      const StatusIcon      = sc.icon;
 
                       return (
                         <tr key={t.ID} className="hover:bg-muted/20 transition-colors group">
@@ -359,9 +387,8 @@ export function HistoryPage() {
                                 sc.className,
                               )}>
                                 <StatusIcon className="size-3" />
-                                {t.Estatus || '—'}
+                                {displayEstatus || '—'}
                               </span>
-                              {esCotizacion && <AuthBadge estatus={t.EstatusAutorizacion} />}
                             </div>
                           </td>
 
@@ -369,7 +396,10 @@ export function HistoryPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               {/* Acciones genéricas */}
-                              <button className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                              <button
+                                onClick={() => setModalVer(t)}
+                                className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                              >
                                 <Eye className="size-3" /> Ver
                               </button>
                               {/* Acciones contextuales de cotización */}
@@ -479,6 +509,12 @@ export function HistoryPage() {
         <ModalConvertirVenta
           row={modalVenta}
           onClose={handleModalClose}
+        />
+      )}
+      {modalVer && (
+        <ModalVerTransaccion
+          row={modalVer}
+          onClose={() => setModalVer(null)}
         />
       )}
     </div>

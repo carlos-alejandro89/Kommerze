@@ -145,7 +145,7 @@ export function ModalConvertirVenta({ row, onClose }) {
                             {formatMXN(item.precioVenta)}
                             {item.descuento > 0 && (
                               <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
-                                −{formatMXN(item.descuento)}
+                                −{formatMXN(item.descuento / item.cantidad)} c/u
                               </div>
                             )}
                           </td>
