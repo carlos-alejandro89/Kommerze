@@ -79,6 +79,7 @@ function AuthBadge({ estatus }) {
 /* ── Botones de acción contextuales para cotizaciones ── */
 function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
   if (row.TipoPedidoID !== 2) return null;
+  if (row.Estatus === 'Completada' || row.Estatus === 'Completado') return null;
 
   const auth = row.EstatusAutorizacion || '';
 

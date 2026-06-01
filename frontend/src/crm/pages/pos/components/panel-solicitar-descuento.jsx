@@ -13,12 +13,16 @@ import {
     Percent,
     Save,
     ShieldCheck,
+    ShoppingCart,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { EventsOn, EventsOff } from '../../../../../wailsjs/runtime/runtime';
 import { useAuth } from '@/providers/AuthProvider';
+import { toast } from 'sonner';
+import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
 
 // ── Configuración visual por estatus de autorización ─────────────────────────
 const STATUS_CONFIG = {
@@ -66,6 +70,7 @@ const STATUS_CONFIG = {
  *  - posService : hook usePosService() para llamar al backend
  */
 export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
+    const navigate = useNavigate();
     const { user } = useAuth();
 
     const [collapsed, setCollapsed] = React.useState(false);
@@ -79,9 +84,11 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
     // Map: item.id (guid del nivel) → porcentaje de descuento solicitado (string)
     const [descuentos, setDescuentos] = React.useState({});
 
-    // GUID del pedido una vez guardado en BD
+    // GUID del pedido una vez guardado en BD, su ID numérico y folio
     const [pedidoGuid, setPedidoGuid] = React.useState(null);
+    const [pedidoId, setPedidoId] = React.useState(null);
     const [pedidoFolio, setPedidoFolio] = React.useState(null);
+    const [showConvertirModal, setShowConvertirModal] = React.useState(false);
 
     const [statusAutorizacion, setStatusAutorizacion] = React.useState('sin_solicitud');
     const [obsAutorizacion, setObsAutorizacion] = React.useState('');
@@ -108,6 +115,18 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             setStatusAutorizacion(data?.estatus || 'sin_solicitud');
             setAutorizadoPor(data?.autorizadoPor || '');
             setObsAutorizacion(data?.observaciones || '');
+
+            if (data?.estatus) {
+                const isApproved = data.estatus === 'autorizada';
+                const msg = isApproved
+                    ? `La solicitud de descuento ha sido AUTORIZADA.`
+                    : `La solicitud de descuento ha sido RECHAZADA.`;
+                if (isApproved) {
+                    toast.success(msg, { duration: 5000 });
+                } else {
+                    toast.error(msg, { duration: 5000 });
+                }
+            }
         };
         EventsOn('cotizacion_resuelta', handler);
         return () => EventsOff('cotizacion_resuelta', handler);
@@ -164,6 +183,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
         }
 
         // result.data es el modelo Pedido serializado por Go
+        const id = result?.data?.ID;
         const guid = result?.data?.Guid;
         const folio = result?.data?.Folio;
 
@@ -173,8 +193,9 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
 
         // Persistir folio para que cart-order-placed lo encuentre
         if (folio) localStorage.setItem('folio', String(folio));
+        if (id) setPedidoId(id);
 
-        return { guid, folio };
+        return { id, guid, folio };
     };
 
     // ── Enviar solicitud (guarda cotización si es necesario) ─────────────────
@@ -202,6 +223,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
                 guid = saved.guid;
                 setPedidoGuid(guid);
                 setPedidoFolio(saved.folio);
+                setPedidoId(saved.id);
             }
 
             // Paso 2 — Enviar solicitud de autorización
@@ -222,6 +244,36 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             setErrorMsg(err?.message || String(err) || 'Error al procesar la solicitud.');
             console.error('[PanelSolicitarDescuento]', err);
         }
+    };
+
+    // ── Cierre de modal de conversión y limpieza de checkout ─────────────────
+    const handleConvertirVentaClose = () => {
+        setShowConvertirModal(false);
+
+        // Persistir folio y tipo de operación para cart-order-placed
+        localStorage.setItem('folio', JSON.stringify(pedidoFolio));
+        localStorage.setItem('operationType', JSON.stringify(1)); // Convertido a Venta
+
+        const totalNeto = cart.reduce((sum, item) => {
+            const pct = getPct(item.id);
+            const price = item.price;
+            const disc = pct > 0 ? (price * pct / 100) : 0;
+            return sum + (price - disc) * item.quantity;
+        }, 0);
+
+        localStorage.setItem('pagosAplicados', JSON.stringify([{
+            ID: 1,
+            Nombre: 'Efectivo',
+            Monto: totalNeto.toFixed(2),
+        }]));
+
+        // Limpiar el carrito de compras del POS
+        localStorage.removeItem('cart');
+        localStorage.removeItem('validCart');
+        localStorage.removeItem('sucursal');
+
+        // Redirigir a la pantalla de transacción exitosa
+        navigate('/pos/order-placed');
     };
 
     // ── Calcular totales del preview ─────────────────────────────────────────
@@ -520,6 +572,18 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
                         </div>
                     )}
 
+                    {/* Estado: autorizada — proceder a pago y venta */}
+                    {statusAutorizacion === 'autorizada' && (
+                        <Button
+                            id="btn-convertir-venta-pos"
+                            onClick={() => setShowConvertirModal(true)}
+                            className="w-full h-11 rounded-xl text-sm font-bold gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 active:scale-[0.98]"
+                        >
+                            <ShoppingCart className="size-4" />
+                            Convertir a Venta y Pagar
+                        </Button>
+                    )}
+
                     {/* Estado: rechazada — reintentar */}
                     {statusAutorizacion === 'rechazada' && (
                         <Button
@@ -552,6 +616,18 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
                         </p>
                     )}
                 </div>
+            )}
+
+            {/* Modal de conversión de cotización a venta */}
+            {showConvertirModal && (
+                <ModalConvertirVenta
+                    row={{
+                        ID: pedidoId,
+                        Folio: pedidoFolio,
+                        EstatusAutorizacion: statusAutorizacion,
+                    }}
+                    onClose={handleConvertirVentaClose}
+                />
             )}
         </div>
     );

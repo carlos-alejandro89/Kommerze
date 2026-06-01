@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShoppingCart, AlertCircle, Loader2, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
+import { X, ShoppingCart, AlertCircle, Loader2, CreditCard, Banknote, CheckCircle2, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '../../../crm/pages/pos/usePosService';
-import { ServiceGetSucursalGuid } from '../../../../wailsjs/go/main/App';
+import { toast } from 'sonner';
 
 /**
  * ModalConvertirVenta
@@ -11,22 +11,54 @@ import { ServiceGetSucursalGuid } from '../../../../wailsjs/go/main/App';
  * Muestra los ítems con descuentos autorizados aplicados y el flujo de pago.
  */
 export function ModalConvertirVenta({ row, onClose }) {
-  const { obtenerDetalleCotizacion, convertirCotizacionAVenta } = usePosService();
+  const { obtenerDetalleCotizacion, convertirCotizacionAVenta, obtenerFormasPago } = usePosService();
 
   const [detalle, setDetalle]       = useState(null);
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState(null);
   const [montoRecibido, setMontoRecibido] = useState('');
+  const [formasPago, setFormasPago] = useState([]);
+  const [formaSeleccionada, setFormaSeleccionada] = useState(null);
 
-  /* ── Cargar detalle ── */
+  /* ── Cargar detalle y formas de pago ── */
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    obtenerDetalleCotizacion(row.ID)
-      .then(d => { if (!cancelled) setDetalle(d); })
-      .catch(e => { if (!cancelled) setError(e?.message ?? String(e)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    
+    Promise.all([
+      obtenerDetalleCotizacion(row.ID),
+      obtenerFormasPago().catch(() => ({ success: false, data: [] }))
+    ])
+      .then(([detRes, fpRes]) => {
+        if (cancelled) return;
+        setDetalle(detRes);
+        
+        // Procesar formas de pago
+        const rawFp = fpRes?.data || [];
+        // Filtrar métodos comunes
+        const commonClaves = new Set(['01', '03', '04', '28', '29']);
+        let list = rawFp.filter(fp => commonClaves.has(String(fp.Clave || '').trim()));
+        if (list.length === 0) {
+          list = [
+            { ID: 1, Nombre: 'Efectivo', Clave: '01', Descripcion: 'Pago en efectivo' },
+            { ID: 2, Nombre: 'Tarjeta', Clave: '28', Descripcion: 'Pago con tarjeta de crédito/débito' },
+            { ID: 3, Nombre: 'Transferencia', Clave: '03', Descripcion: 'Pago electrónico' },
+          ];
+        }
+        setFormasPago(list);
+        
+        // Seleccionar efectivo (01) por defecto
+        const cashFp = list.find(fp => String(fp.Clave).trim() === '01') || list[0];
+        setFormaSeleccionada(cashFp);
+      })
+      .catch(e => {
+        if (!cancelled) setError(e?.message ?? String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      
     return () => { cancelled = true; };
   }, [row.ID]);
 
@@ -44,19 +76,29 @@ export function ModalConvertirVenta({ row, onClose }) {
   const cambio   = Math.max(0, monto - totales.total);
   const falta    = totales.total > 0 ? Math.max(0, totales.total - monto) : 0;
 
+  const handleSelectFormaPago = (fp) => {
+    setFormaSeleccionada(fp);
+    // Para cualquier método que no sea Efectivo (01), auto-llenamos el monto exacto
+    if (String(fp.Clave || '').trim() !== '01') {
+      setMontoRecibido(totales.total.toFixed(2));
+    } else {
+      setMontoRecibido('');
+    }
+  };
+
   const handleSubmit = async () => {
     if (falta > 0) { setError(`Falta $${falta.toFixed(2)} para completar el pago.`); return; }
     setSubmitting(true);
     setError(null);
     try {
-      const sucursalGuid = await ServiceGetSucursalGuid();
-      // Por ahora registramos un solo pago en efectivo
       const pagos = [{
+        ID: formaSeleccionada?.ID || 1,
+        Nombre: formaSeleccionada?.Nombre || 'Efectivo',
         Monto: totales.total,
-        FormaID: 1,
       }];
       const res = await convertirCotizacionAVenta(row.ID, pagos, null);
-      if (res?.success === false) { setError(res.message); return; }
+      if (res?.success === false) { setError(res.message || 'Error al procesar la venta'); return; }
+      toast.success('Venta generada exitosamente.');
       onClose();
     } catch (e) {
       setError(e?.message ?? String(e));
@@ -201,8 +243,45 @@ export function ModalConvertirVenta({ row, onClose }) {
 
               {/* Forma de pago */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pago en efectivo</p>
-                <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Método de Pago</p>
+                <div className="space-y-4">
+                  {/* Grid de métodos de pago */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {formasPago.map(fp => {
+                      const ClaveStr = String(fp.Clave || '').trim();
+                      const isSelected = formaSeleccionada?.ID === fp.ID;
+                      
+                      // Resolver ícono
+                      let Icon = DollarSign;
+                      if (ClaveStr === '01') Icon = Banknote;
+                      else if (ClaveStr === '03') Icon = ArrowRightLeft;
+                      else if (ClaveStr === '04' || ClaveStr === '28' || ClaveStr === '29') Icon = CreditCard;
+
+                      // Nombre
+                      const name = fp.Nombre === 'Efectivo' ? 'Efectivo' :
+                                   fp.Nombre === 'Tarjeta' ? 'Tarjeta' :
+                                   fp.Nombre === 'Transferencia' ? 'Transferencia' : fp.Nombre;
+
+                      return (
+                        <button
+                          key={fp.ID}
+                          type="button"
+                          onClick={() => handleSelectFormaPago(fp)}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-3 rounded-xl border-2 gap-2 text-center transition-all duration-200",
+                            isSelected
+                              ? "border-primary bg-primary/5 text-primary shadow-sm"
+                              : "border-border hover:border-border/80 bg-surface text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Icon className="size-5" />
+                          <span className="text-xs font-bold whitespace-nowrap">{name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Input de monto recibido */}
                   <div className="relative">
                     <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <input

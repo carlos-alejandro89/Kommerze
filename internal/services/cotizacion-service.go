@@ -362,11 +362,12 @@ func (s *CotizacionService) ConvertirAVenta(
 		// 3. Cambiar tipo a Venta (1) y estatus a Completado (2)
 		tipoPedidoVenta := uint(1)
 		estatusCompletado := uint(2)
-		if err := tx.Model(&pedido).Updates(map[string]any{
-			"tipo_pedido_id":    tipoPedidoVenta,
-			"estatus_id":        estatusCompletado,
-			"sucursal_origen_id": sucursalOrigenID,
-		}).Error; err != nil {
+		
+		pedido.TipoPedidoID = &tipoPedidoVenta
+		pedido.EstatusID = &estatusCompletado
+		pedido.SucursalOrigenID = sucursalOrigenID
+		
+		if err := tx.Select("TipoPedidoID", "EstatusID", "SucursalOrigenID").Updates(&pedido).Error; err != nil {
 			return fmt.Errorf("actualizando pedido: %w", err)
 		}
 
@@ -374,7 +375,7 @@ func (s *CotizacionService) ConvertirAVenta(
 		for _, p := range pagos {
 			pago := models.Pago{
 				PedidoID: pedido.ID,
-				FormaID:  1,
+				FormaID:  uint(p.ID),
 				Monto:    p.Monto.InexactFloat64(),
 				Fecha:    time.Now(),
 				Saldo:    p.Monto.InexactFloat64(),
