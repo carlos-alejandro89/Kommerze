@@ -317,3 +317,52 @@ func (c *CajaProxyService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotizac
 	}
 	return &result.Data, nil
 }
+
+// ── OperacionesSucursal (proxy al Servidor Local) ─────────────────────────────
+
+// ObtenerOperacionSucursalActiva consulta la jornada activa al Servidor Local.
+func (c *CajaProxyService) ObtenerOperacionSucursalActiva(sucursalID uint) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.get(fmt.Sprintf("/local/sucursal/operacion/activa?sucursalId=%d", sucursalID), &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}
+
+// ── OperacionesCaja (proxy al Servidor Local) ─────────────────────────────────
+
+// AbrirCaja delega la apertura de turno al Servidor Local.
+func (c *CajaProxyService) AbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.post("/local/cajero/turno/abrir", datos, &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}
+
+// CerrarCaja delega el cierre de turno al Servidor Local.
+func (c *CajaProxyService) CerrarCaja(datos dto.CerrarCajaDto) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.post("/local/cajero/turno/cerrar", datos, &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}
+
+// ObtenerOperacionCajeroActiva consulta el turno activo del cajero al Servidor Local.
+func (c *CajaProxyService) ObtenerOperacionCajeroActiva(responsableID uint) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.get(fmt.Sprintf("/local/cajero/turno/activo?responsableId=%d", responsableID), &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}
+
+// ObtenerOperacionesCajero lista los turnos de una jornada de sucursal.
+func (c *CajaProxyService) ObtenerOperacionesCajero(operacionSucursalID uint) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.get(fmt.Sprintf("/local/cajero/turnos?operacionSucursalId=%d", operacionSucursalID), &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}

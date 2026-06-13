@@ -31,6 +31,9 @@ const CreateProductPage     = lazy(() => import('@/features/products/pages/Creat
 const HistoryPage           = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const SettingsPage          = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const SyncPage              = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
+const AperturaCajaPage      = lazy(() => import('@/features/pos/pages/AperturaCajaPage').then(m => ({ default: m.AperturaCajaPage })));
+const CierreCajaPage        = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
+const CortesSucursalPage    = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -133,6 +136,23 @@ export const router = createBrowserRouter(
           element: (
             <ServerOnlyGuard>
               <SuspensePage><SyncPage /></SuspensePage>
+            </ServerOnlyGuard>
+          ),
+        },
+        // ── Operaciones de Caja y Sucursal ──────────────────────────────
+        {
+          path: '/caja/apertura',
+          element: <SuspensePage><AperturaCajaPage /></SuspensePage>,
+        },
+        {
+          path: '/caja/cierre',
+          element: <SuspensePage><CierreCajaPage /></SuspensePage>,
+        },
+        {
+          path: '/sucursal/cortes',
+          element: (
+            <ServerOnlyGuard>
+              <SuspensePage><CortesSucursalPage /></SuspensePage>
             </ServerOnlyGuard>
           ),
         },

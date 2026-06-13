@@ -28,3 +28,13 @@ func (o *OperacionesSucursalService) ObtenerValorInventario() *dto.ResponseDto {
 func (o *OperacionesSucursalService) SucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
 	return o.operacionesSucursalRepo.SucursalInicioOperacion(datos)
 }
+
+// ObtenerOperacionSucursalActiva devuelve la jornada activa de la sucursal.
+func (o *OperacionesSucursalService) ObtenerOperacionSucursalActiva(sucursalID uint) *dto.ResponseDto {
+	return o.operacionesSucursalRepo.ObtenerOperacionSucursalActiva(sucursalID)
+}
+
+// CerrarOperacionSucursal calcula acumulados automáticamente y cierra la jornada.
+func (o *OperacionesSucursalService) CerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDto) *dto.ResponseDto {
+	return o.operacionesSucursalRepo.CerrarOperacionSucursal(datos)
+}

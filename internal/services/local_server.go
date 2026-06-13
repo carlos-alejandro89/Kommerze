@@ -53,23 +53,27 @@ func (h *wsHub) broadcast(msg []byte) {
 // como una API REST HTTP en :8989 para que las Cajas los consuman.
 // No contiene lógica de negocio propia — solo wrappers JSON.
 type LocalServerService struct {
-	pos        *PosService
-	auth       *AuthService
-	catalogos  *CatalogosService
-	clientes   *ClientesService
-	cotizacion *CotizacionService
-	hub        *wsHub
-	server     *http.Server
+	pos                 *PosService
+	auth                *AuthService
+	catalogos           *CatalogosService
+	clientes            *ClientesService
+	cotizacion          *CotizacionService
+	operacionesSucursal *OperacionesSucursalService
+	operacionesCaja     *OperacionesCajaService
+	hub                 *wsHub
+	server              *http.Server
 }
 
-func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService) *LocalServerService {
+func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
-		pos:        pos,
-		auth:       auth,
-		catalogos:  cat,
-		clientes:   clientes,
-		cotizacion: cotizacion,
-		hub:        newWsHub(),
+		pos:                 pos,
+		auth:                auth,
+		catalogos:           cat,
+		clientes:            clientes,
+		cotizacion:          cotizacion,
+		operacionesSucursal: opSucursal,
+		operacionesCaja:     opCaja,
+		hub:                 newWsHub(),
 	}
 }
 
@@ -108,6 +112,14 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/cotizaciones/convertir-venta",        l.handleConvertirVenta)
 	mux.HandleFunc("/local/cotizaciones/detalle",                l.handleDetalleCotizacion)
 	mux.HandleFunc("/local/ws",                                  l.handleCajaWs)
+	// Operaciones sucursal
+	mux.HandleFunc("/local/sucursal/operacion/activa",           l.handleOperacionSucursalActiva)
+	mux.HandleFunc("/local/sucursal/operacion/cerrar",           l.handleCerrarOperacionSucursal)
+	// Turnos de cajero
+	mux.HandleFunc("/local/cajero/turno/abrir",                  l.handleAbrirCaja)
+	mux.HandleFunc("/local/cajero/turno/cerrar",                 l.handleCerrarCaja)
+	mux.HandleFunc("/local/cajero/turno/activo",                 l.handleOperacionCajeroActiva)
+	mux.HandleFunc("/local/cajero/turnos",                       l.handleOperacionesCajero)
 
 	l.server = &http.Server{
 		Addr:    addr,
@@ -494,4 +506,101 @@ func (l *LocalServerService) handleDetalleCotizacion(w http.ResponseWriter, r *h
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+// ── Handlers: Operaciones de Sucursal ────────────────────────────────────────
+
+func (l *LocalServerService) handleOperacionSucursalActiva(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var sucursalID uint
+	fmt.Sscanf(r.URL.Query().Get("sucursalId"), "%d", &sucursalID)
+	if sucursalID == 0 {
+		writeError(w, http.StatusBadRequest, "sucursalId requerido")
+		return
+	}
+	result := l.operacionesSucursal.ObtenerOperacionSucursalActiva(sucursalID)
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleCerrarOperacionSucursal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body struct {
+		OperacionID     uint `json:"operacionId"`
+		UsuarioCierreID uint `json:"usuarioCierreId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result := l.operacionesSucursal.CerrarOperacionSucursal(dto.CerrarOperacionSucursalDto{
+		OperacionID:     body.OperacionID,
+		UsuarioCierreID: body.UsuarioCierreID,
+	})
+	writeJSON(w, http.StatusOK, result)
+}
+
+// ── Handlers: Turnos de Cajero ────────────────────────────────────────────────
+
+func (l *LocalServerService) handleAbrirCaja(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body dto.AbrirCajaDto
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result := l.operacionesCaja.AbrirCaja(body)
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleCerrarCaja(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body dto.CerrarCajaDto
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result := l.operacionesCaja.CerrarCaja(body)
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleOperacionCajeroActiva(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var responsableID uint
+	fmt.Sscanf(r.URL.Query().Get("responsableId"), "%d", &responsableID)
+	if responsableID == 0 {
+		writeError(w, http.StatusBadRequest, "responsableId requerido")
+		return
+	}
+	result := l.operacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleOperacionesCajero(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var operacionSucursalID uint
+	fmt.Sscanf(r.URL.Query().Get("operacionSucursalId"), "%d", &operacionSucursalID)
+	if operacionSucursalID == 0 {
+		writeError(w, http.StatusBadRequest, "operacionSucursalId requerido")
+		return
+	}
+	result := l.operacionesCaja.ObtenerOperacionesCajero(operacionSucursalID)
+	writeJSON(w, http.StatusOK, result)
 }

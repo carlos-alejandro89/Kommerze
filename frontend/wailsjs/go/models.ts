@@ -1,5 +1,132 @@
 export namespace dto {
 	
+	export class AbrirCajaDto {
+	    OperacionSucursalID: number;
+	    ResponsableCajaID: number;
+	    CajaNombre: string;
+	    FondoCajaApertura: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AbrirCajaDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.OperacionSucursalID = source["OperacionSucursalID"];
+	        this.ResponsableCajaID = source["ResponsableCajaID"];
+	        this.CajaNombre = source["CajaNombre"];
+	        this.FondoCajaApertura = source["FondoCajaApertura"];
+	    }
+	}
+	export class CerrarCajaDto {
+	    OperacionCajeroID: number;
+	    FondoCajaCierre: number;
+	    RetirosEfectivo: number;
+	    IngresoEfectivo: number;
+	    IngresoTarjetas: number;
+	    IngresoCheques: number;
+	    IngresoTransferencia: number;
+	    IngresoOtros: number;
+	    Bloqueada: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CerrarCajaDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.OperacionCajeroID = source["OperacionCajeroID"];
+	        this.FondoCajaCierre = source["FondoCajaCierre"];
+	        this.RetirosEfectivo = source["RetirosEfectivo"];
+	        this.IngresoEfectivo = source["IngresoEfectivo"];
+	        this.IngresoTarjetas = source["IngresoTarjetas"];
+	        this.IngresoCheques = source["IngresoCheques"];
+	        this.IngresoTransferencia = source["IngresoTransferencia"];
+	        this.IngresoOtros = source["IngresoOtros"];
+	        this.Bloqueada = source["Bloqueada"];
+	    }
+	}
+	export class CerrarOperacionSucursalDto {
+	    OperacionID: number;
+	    UsuarioCierreID: number;
+	    // Go type: decimal
+	    ValorFinalInventario: any;
+	    // Go type: decimal
+	    ValorVentas: any;
+	    // Go type: decimal
+	    DescuentosAplicados: any;
+	    // Go type: decimal
+	    AjusteInventario: any;
+	    // Go type: decimal
+	    IngresoEfectivo: any;
+	    // Go type: decimal
+	    IngresoTarjetas: any;
+	    // Go type: decimal
+	    IngresoCheques: any;
+	    // Go type: decimal
+	    IngresoTransferencia: any;
+	    // Go type: decimal
+	    IngresoOtros: any;
+	    // Go type: decimal
+	    Creditos: any;
+	    // Go type: decimal
+	    ValesSalida: any;
+	    // Go type: decimal
+	    ValesEntrantes: any;
+	    CFDIEfectivo: number;
+	    CFDITarjetas: number;
+	    CFDICheques: number;
+	    CFDITransferencia: number;
+	    CFDIOtros: number;
+	    // Go type: decimal
+	    BajasMercancia: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new CerrarOperacionSucursalDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.OperacionID = source["OperacionID"];
+	        this.UsuarioCierreID = source["UsuarioCierreID"];
+	        this.ValorFinalInventario = this.convertValues(source["ValorFinalInventario"], null);
+	        this.ValorVentas = this.convertValues(source["ValorVentas"], null);
+	        this.DescuentosAplicados = this.convertValues(source["DescuentosAplicados"], null);
+	        this.AjusteInventario = this.convertValues(source["AjusteInventario"], null);
+	        this.IngresoEfectivo = this.convertValues(source["IngresoEfectivo"], null);
+	        this.IngresoTarjetas = this.convertValues(source["IngresoTarjetas"], null);
+	        this.IngresoCheques = this.convertValues(source["IngresoCheques"], null);
+	        this.IngresoTransferencia = this.convertValues(source["IngresoTransferencia"], null);
+	        this.IngresoOtros = this.convertValues(source["IngresoOtros"], null);
+	        this.Creditos = this.convertValues(source["Creditos"], null);
+	        this.ValesSalida = this.convertValues(source["ValesSalida"], null);
+	        this.ValesEntrantes = this.convertValues(source["ValesEntrantes"], null);
+	        this.CFDIEfectivo = source["CFDIEfectivo"];
+	        this.CFDITarjetas = source["CFDITarjetas"];
+	        this.CFDICheques = source["CFDICheques"];
+	        this.CFDITransferencia = source["CFDITransferencia"];
+	        this.CFDIOtros = source["CFDIOtros"];
+	        this.BajasMercancia = this.convertValues(source["BajasMercancia"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ClienteDto {
 	    ID: number;
 	    Guid: string;

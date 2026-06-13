@@ -414,6 +414,56 @@ func (a *App) ServiceSucursalInicioOperacion(datos dto.SucursalInicioOperaciones
 	return a.services.OperacionesSucursal.SucursalInicioOperacion(datos)
 }
 
+// ServiceObtenerOperacionSucursalActiva devuelve la jornada activa de la sucursal.
+func (a *App) ServiceObtenerOperacionSucursalActiva(sucursalID uint) *dto.ResponseDto {
+	if a.services.OperacionesSucursal == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesSucursal.ObtenerOperacionSucursalActiva(sucursalID)
+}
+
+// ServiceCerrarOperacionSucursal calcula acumulados y cierra la jornada.
+func (a *App) ServiceCerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDto) *dto.ResponseDto {
+	if a.services.OperacionesSucursal == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesSucursal.CerrarOperacionSucursal(datos)
+}
+
+// ── Operaciones de Caja ───────────────────────────────────────────────────────
+
+// ServiceAbrirCaja inicia el turno de un cajero. Solo disponible en Servidor Local.
+func (a *App) ServiceAbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
+	if a.services.OperacionesCaja == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesCaja.AbrirCaja(datos)
+}
+
+// ServiceCerrarCaja finaliza el turno del cajero. Solo disponible en Servidor Local.
+func (a *App) ServiceCerrarCaja(datos dto.CerrarCajaDto) *dto.ResponseDto {
+	if a.services.OperacionesCaja == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesCaja.CerrarCaja(datos)
+}
+
+// ServiceObtenerOperacionesCajero devuelve los turnos de una jornada de sucursal.
+func (a *App) ServiceObtenerOperacionesCajero(operacionSucursalID uint) *dto.ResponseDto {
+	if a.services.OperacionesCaja == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesCaja.ObtenerOperacionesCajero(operacionSucursalID)
+}
+
+// ServiceObtenerOperacionCajeroActiva devuelve el turno activo del cajero.
+func (a *App) ServiceObtenerOperacionCajeroActiva(responsableID uint) *dto.ResponseDto {
+	if a.services.OperacionesCaja == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.OperacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
+}
+
 // ── Catálogos ─────────────────────────────────────────────────────────────────
 
 func (a *App) ServiceGetEmpaques() (*dto.ResponseDto, error) {

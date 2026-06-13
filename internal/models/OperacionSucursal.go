@@ -51,6 +51,9 @@ type OperacionSucursal struct {
 	CFDIOtros         decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
 	BajasMercancia decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
+
+	// ☁ Sincronización con la nube (nil = pendiente de sync)
+	SyncedAt *time.Time `gorm:"type:timestamp"`
 }
 
 func (OperacionSucursal) TableName() string {

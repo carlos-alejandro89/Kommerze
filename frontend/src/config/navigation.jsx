@@ -5,14 +5,23 @@ import {
   Package,
   RefreshCw,
   Settings,
+  Wallet,
+  X,
+  Building2,
 } from 'lucide-react';
 
 /**
  * Main navigation items for the sidebar.
- * path: absolute route path
- * id:   unique identifier for active state matching
+ *
+ * Fields:
+ *  path:        absolute route path
+ *  id:          unique identifier for active state matching
+ *  serverOnly:  if true, only shown in Servidor Local mode
+ *  cajaOnly:    if true, only shown in Caja mode
+ *  group:       optional label for visual grouping (divider + label)
  */
 export const MAIN_NAV = [
+  // ── POS General ──────────────────────────────────────────────────────────
   {
     id: 'dashboard',
     title: 'Dashboard',
@@ -36,14 +45,39 @@ export const MAIN_NAV = [
     title: 'Productos',
     icon: Package,
     path: '/products',
-    badge: '3',
+    serverOnly: true,
   },
+
+  // ── Operaciones de Caja ────────────────────────────────────────────────
+  {
+    id: 'caja-apertura',
+    title: 'Apertura de Caja',
+    icon: Wallet,
+    path: '/caja/apertura',
+    group: 'Caja',
+  },
+  {
+    id: 'caja-cierre',
+    title: 'Cierre de Caja',
+    icon: X,
+    path: '/caja/cierre',
+  },
+  {
+    id: 'sucursal-cortes',
+    title: 'Cortes Sucursal',
+    icon: Building2,
+    path: '/sucursal/cortes',
+    serverOnly: true,
+  },
+
+  // ── Administración ────────────────────────────────────────────────────
   {
     id: 'sync',
     title: 'Sincronización',
     icon: RefreshCw,
     path: '/sync',
-    serverOnly: true, // Solo visible en modo Servidor Local
+    serverOnly: true,
+    group: 'Admin',
   },
   {
     id: 'settings',

@@ -37,8 +37,11 @@ export function Header({ onMenuToggle }) {
   const [dark, setDark] = useDarkMode();
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Resolve current page title from route
-  const currentNav = MAIN_NAV.find(n => location.pathname.startsWith(n.path));
+  // Resolver el título de la página actual desde la ruta.
+  // Usa el match más largo para evitar colisiones entre rutas padre/hijo (e.g. /caja vs /caja/apertura).
+  const currentNav = MAIN_NAV
+    .filter(n => location.pathname.startsWith(n.path))
+    .sort((a, b) => b.path.length - a.path.length)[0];
   const pageTitle = currentNav?.title ?? 'Kommerze POS';
 
   // User initials avatar
