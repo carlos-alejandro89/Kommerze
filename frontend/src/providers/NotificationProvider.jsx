@@ -1,0 +1,134 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { toast } from 'sonner';
+
+const NotificationContext = createContext();
+
+export function useNotifications() {
+  return useContext(NotificationContext);
+}
+
+export function NotificationProvider({ children }) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Mute state in local storage
+  const [isMuted, setIsMuted] = useState(() => {
+    return localStorage.getItem('notifications-muted') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('notifications-muted', isMuted);
+  }, [isMuted]);
+
+  const toggleMute = () => setIsMuted(prev => !prev);
+
+  const playDing = useCallback(() => {
+    if (isMuted) return;
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      // Sine wave gives a smooth bell/ding sound
+      oscillator.type = 'sine';
+      // Start high frequency and drop it slightly
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+      oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
+      
+      // Volume envelope
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05); // Attack
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5); // Decay
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.warn('AudioContext no soportado o bloqueado', e);
+    }
+  }, [isMuted]);
+
+  const addNotification = useCallback((type, title, description, timestamp = new Date()) => {
+    const newNotif = {
+      id: Math.random().toString(36).substring(7),
+      type, // 'success', 'error', 'info'
+      title,
+      description,
+      timestamp,
+      read: false
+    };
+
+    setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep max 50
+    setUnreadCount(prev => prev + 1);
+    
+    // Play sound
+    playDing();
+
+    // Show toast
+    if (type === 'success') {
+      toast.success(title, { description, duration: 5000 });
+    } else if (type === 'error') {
+      toast.error(title, { description, duration: 5000 });
+    } else {
+      toast(title, { description, duration: 5000 });
+    }
+  }, [playDing]);
+
+  const markAllAsRead = useCallback(() => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }, []);
+
+  const markAsRead = useCallback((id) => {
+    setNotifications(prev => prev.map(n => {
+      if (n.id === id && !n.read) {
+        setUnreadCount(c => Math.max(0, c - 1));
+        return { ...n, read: true };
+      }
+      return n;
+    }));
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setNotifications([]);
+    setUnreadCount(0);
+  }, []);
+
+  // ── Global WebSocket Listeners ──
+  useEffect(() => {
+    const handleCotizacionResuelta = (data) => {
+      if (!data) return;
+      const isApproved = data.estatus === 'autorizada';
+      const title = isApproved ? 'Descuento Autorizado' : 'Descuento Rechazado';
+      const description = data.observaciones 
+        ? `${data.autorizadoPor || 'Admin'}: ${data.observaciones}`
+        : `La solicitud del pedido #${data.pedidoGuid?.slice(0,8)} fue ${data.estatus}.`;
+      
+      addNotification(isApproved ? 'success' : 'error', title, description);
+    };
+
+    EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
+
+    return () => {
+      EventsOff('cotizacion_resuelta', handleCotizacionResuelta);
+    };
+  }, [addNotification]);
+
+  return (
+    <NotificationContext.Provider value={{
+      notifications,
+      unreadCount,
+      isMuted,
+      toggleMute,
+      addNotification,
+      markAllAsRead,
+      markAsRead,
+      clearAll
+    }}>
+      {children}
+    </NotificationContext.Provider>
+  );
+}

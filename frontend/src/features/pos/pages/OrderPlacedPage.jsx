@@ -1,1 +1,1 @@
-export { CartOrderPlaced as OrderPlacedPage } from '@/crm/pages/pos/cart-order-placed';
+export { CartOrderPlaced as OrderPlacedPage } from '@/features/pos/cart-order-placed';

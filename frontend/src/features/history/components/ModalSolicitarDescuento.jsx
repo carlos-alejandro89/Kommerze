@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Tag, AlertCircle, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePosService } from '../../../crm/pages/pos/usePosService';
+import { usePosService } from '@/features/pos/usePosService';
 import { ServiceGetSucursalGuid } from '../../../../wailsjs/go/main/App';
 import { useAuth } from '@/providers/AuthProvider';
 

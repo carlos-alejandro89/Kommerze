@@ -1,1 +1,1 @@
-export { CartStepThree as PaymentPage } from '@/crm/pages/pos/cart-step-three';
+export { CartStepThree as PaymentPage } from '@/features/pos/cart-step-three';

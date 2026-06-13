@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { EventsOn, EventsOff } from '../../../../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime';
 import { useAuth } from '@/providers/AuthProvider';
 import { toast } from 'sonner';
 import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
@@ -115,18 +115,8 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             setStatusAutorizacion(data?.estatus || 'sin_solicitud');
             setAutorizadoPor(data?.autorizadoPor || '');
             setObsAutorizacion(data?.observaciones || '');
-
-            if (data?.estatus) {
-                const isApproved = data.estatus === 'autorizada';
-                const msg = isApproved
-                    ? `La solicitud de descuento ha sido AUTORIZADA.`
-                    : `La solicitud de descuento ha sido RECHAZADA.`;
-                if (isApproved) {
-                    toast.success(msg, { duration: 5000 });
-                } else {
-                    toast.error(msg, { duration: 5000 });
-                }
-            }
+            
+            // Notification is now handled globally by NotificationProvider
         };
         EventsOn('cotizacion_resuelta', handler);
         return () => EventsOff('cotizacion_resuelta', handler);

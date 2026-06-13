@@ -6,6 +6,7 @@ import { AuthGuard } from '@/components/AuthGuard';
 import { DeviceGuard } from '@/components/DeviceGuard';
 import { ScreenLoader } from '@/components/ScreenLoader';
 import { useActivation } from '@/providers/ActivationProvider';
+import { NotificationProvider } from '@/providers/NotificationProvider';
 
 // Guard para rutas exclusivas del Servidor Local
 function ServerOnlyGuard({ children }) {
@@ -83,7 +84,9 @@ export const router = createBrowserRouter(
       element: (
         <DeviceGuard>
           <AuthGuard>
-            <AppLayout />
+            <NotificationProvider>
+              <AppLayout />
+            </NotificationProvider>
           </AuthGuard>
         </DeviceGuard>
       ),

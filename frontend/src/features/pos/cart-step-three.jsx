@@ -10,8 +10,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Content } from '@/crm/layout/components/content';
-import { ContentHeader } from '@/crm/layout/components/content-header';
+import { Content } from '@/components/layout/content';
+import { ContentHeader } from '@/components/layout/content-header';
 import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
 import { ModalFormaPago } from './modal-forma-pago';

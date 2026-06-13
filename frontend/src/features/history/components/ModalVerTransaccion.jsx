@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FileText, AlertCircle, Loader2, Calendar, User, Hash, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePosService } from '../../../crm/pages/pos/usePosService';
+import { usePosService } from '@/features/pos/usePosService';
 
 /**
  * ModalVerTransaccion

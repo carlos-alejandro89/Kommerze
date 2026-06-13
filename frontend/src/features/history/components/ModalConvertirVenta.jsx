@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ShoppingCart, AlertCircle, Loader2, CreditCard, Banknote, CheckCircle2, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePosService } from '../../../crm/pages/pos/usePosService';
+import { usePosService } from '@/features/pos/usePosService';
 import { toast } from 'sonner';
 
 /**

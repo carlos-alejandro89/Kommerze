@@ -15,8 +15,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Content } from '@/crm/layout/components/content';
-import { ContentHeader } from '@/crm/layout/components/content-header';
+import { Content } from '@/components/layout/content';
+import { ContentHeader } from '@/components/layout/content-header';
 import { cn } from '@/lib/utils';
 import { Pattern as NoProducts } from './no-products';
 import { ProductDetailsSheet } from './product-details-sheet';

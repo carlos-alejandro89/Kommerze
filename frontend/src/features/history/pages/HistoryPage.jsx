@@ -6,7 +6,7 @@ import {
   LayoutList, BadgeCheck, BadgeX, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePosService } from '../../../crm/pages/pos/usePosService';
+import { usePosService } from '@/features/pos/usePosService';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import { ModalSolicitarDescuento } from '../components/ModalSolicitarDescuento';
 import { ModalConvertirVenta } from '../components/ModalConvertirVenta';

@@ -14,8 +14,8 @@ import {
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Content } from '@/crm/layout/components/content';
-import { ContentHeader } from '@/crm/layout/components/content-header';
+import { Content } from '@/components/layout/content';
+import { ContentHeader } from '@/components/layout/content-header';
 import { Steps } from './steps';
 import { moneyFormat } from '@/lib/helpers';
 import { ItemPagos } from './components/item-pagos';

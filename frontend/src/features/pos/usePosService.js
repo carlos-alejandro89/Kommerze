@@ -35,7 +35,7 @@ import {
     ServiceCotizacionConvertirAVenta,
     ServiceCotizacionObtenerDetalle,
     ServiceGetTiposAutorizacion,
-} from '../../../../wailsjs/go/main/App';
+} from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
 

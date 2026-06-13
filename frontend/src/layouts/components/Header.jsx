@@ -4,6 +4,7 @@ import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
+import { NotificationBell } from '@/components/NotificationBell';
 
 const THEME_KEY = 'kommerze-theme';
 
@@ -86,10 +87,7 @@ export function Header({ onMenuToggle }) {
         </button>
 
         {/* Notifications */}
-        <button className="relative flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-          <Bell className="size-4" />
-          <span className="absolute top-1 right-1 size-1.5 rounded-full bg-danger" />
-        </button>
+        <NotificationBell />
 
         {/* Avatar */}
         <div className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white select-none">
