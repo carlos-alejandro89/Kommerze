@@ -110,10 +110,12 @@ export function NotificationProvider({ children }) {
       addNotification(isApproved ? 'success' : 'error', title, description);
     };
 
-    EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
+    const unsub = EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
 
     return () => {
-      EventsOff('cotizacion_resuelta', handleCotizacionResuelta);
+      if (typeof unsub === 'function') {
+        unsub();
+      }
     };
   }, [addNotification]);
 

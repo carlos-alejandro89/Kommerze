@@ -118,8 +118,10 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             
             // Notification is now handled globally by NotificationProvider
         };
-        EventsOn('cotizacion_resuelta', handler);
-        return () => EventsOff('cotizacion_resuelta', handler);
+        const unsub = EventsOn('cotizacion_resuelta', handler);
+        return () => {
+            if (typeof unsub === 'function') unsub();
+        };
     }, [pedidoGuid]);
 
     // ── Helpers ──────────────────────────────────────────────────────────────

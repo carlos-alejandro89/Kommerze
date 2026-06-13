@@ -151,21 +151,28 @@ export function HistoryPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  /* ── Listener WebSocket: el backend emite este evento cuando llega una resolución ── */
   useEffect(() => {
     const unsub = EventsOn('cotizacion_resuelta', (data) => {
-      cargar(); // recarga la tabla automáticamente
-      if (data) {
-        const isApproved = data.estatus === 'autorizada';
-        const msg = isApproved
-          ? `La solicitud de descuento para la cotización ha sido AUTORIZADA.`
-          : `La solicitud de descuento para la cotización ha sido RECHAZADA.`;
-        if (isApproved) {
-          toast.success(msg, { duration: 5000 });
-        } else {
-          toast.error(msg, { duration: 5000 });
+      if (!data || !data.pedidoGuid) return;
+      
+      // Actualizar la lista silenciosamente si el pedido está visible
+      setTransacciones(prev => prev.map(t => {
+        if (t.Guid === data.pedidoGuid) {
+          const isApproved = data.estatus === 'autorizada';
+          const msg = isApproved
+            ? `La solicitud de descuento para la cotización ha sido AUTORIZADA.`
+            : `La solicitud de descuento para la cotización ha sido RECHAZADA.`;
+          
+          if (isApproved) {
+            toast.success(msg, { duration: 5000 });
+          } else {
+            toast.error(msg, { duration: 5000 });
+          }
+          
+          return { ...t, EstatusAutorizacion: data.estatus };
         }
-      }
+        return t;
+      }));
     });
     return () => { if (typeof unsub === 'function') unsub(); };
   }, [cargar]);
