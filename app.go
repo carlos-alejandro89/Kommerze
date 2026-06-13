@@ -584,6 +584,33 @@ func (a *App) ServiceGetSucursalGuid() string {
 	return cfg.License.Sucursal.Guid
 }
 
+// ServiceObtenerSucursalLocal busca la sucursal en la base de datos local usando el GUID
+// guardado en la licencia (kommerze_config.json). Retorna el objeto Sucursal con su ID local.
+// Úsalo para obtener el sucursalID necesario para las operaciones de jornada.
+func (a *App) ServiceObtenerSucursalLocal() *dto.ResponseDto {
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil || cfg.License == nil {
+		return dto.NewResponseDto(false, "Sin licencia configurada", nil, nil)
+	}
+
+	guid := cfg.License.Sucursal.Guid
+	if guid == "" {
+		return dto.NewResponseDto(false, "GUID de sucursal no encontrado en la licencia", nil, nil)
+	}
+
+	var sucursal models.Sucursal
+	err = a.db.Where("guid = ?", guid).First(&sucursal).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return dto.NewResponseDto(false, "Sucursal no encontrada en la base de datos local. Sincronice primero.", nil, nil)
+		}
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	return dto.NewResponseDto(true, "Sucursal encontrada", sucursal, nil)
+}
+
+
 // ServiceTestLocalServerConnection verifica que el Servidor Local responda.
 func (a *App) ServiceTestLocalServerConnection(serverURL string) *dto.ResponseDto {
 	data, err := services.TestLocalServerConnection(serverURL)

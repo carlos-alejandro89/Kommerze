@@ -4,6 +4,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { AuthGuard } from '@/components/AuthGuard';
 import { DeviceGuard } from '@/components/DeviceGuard';
+import { TurnoGuard } from '@/components/TurnoGuard';
 import { ScreenLoader } from '@/components/ScreenLoader';
 import { useActivation } from '@/providers/ActivationProvider';
 import { NotificationProvider } from '@/providers/NotificationProvider';
@@ -38,6 +39,15 @@ const CortesSucursalPage    = lazy(() => import('@/features/pos/pages/CortesSucu
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
   return <Suspense fallback={<ScreenLoader />}>{children}</Suspense>;
+}
+
+// Guard de turno para el POS — verifica jornada + turno abierto antes de renderizar
+function PosGuard({ children }) {
+  return (
+    <TurnoGuard>
+      <SuspensePage>{children}</SuspensePage>
+    </TurnoGuard>
+  );
 }
 
 // ── Router Definition ────────────────────────────────────────────────────────
@@ -101,19 +111,19 @@ export const router = createBrowserRouter(
         },
         {
           path: '/pos',
-          element: <SuspensePage><POSPage /></SuspensePage>,
+          element: <PosGuard><POSPage /></PosGuard>,
         },
         {
           path: '/pos/transaction',
-          element: <SuspensePage><TransactionPage /></SuspensePage>,
+          element: <PosGuard><TransactionPage /></PosGuard>,
         },
         {
           path: '/pos/payment',
-          element: <SuspensePage><PaymentPage /></SuspensePage>,
+          element: <PosGuard><PaymentPage /></PosGuard>,
         },
         {
           path: '/pos/order-placed',
-          element: <SuspensePage><OrderPlacedPage /></SuspensePage>,
+          element: <PosGuard><OrderPlacedPage /></PosGuard>,
         },
         {
           path: '/products',

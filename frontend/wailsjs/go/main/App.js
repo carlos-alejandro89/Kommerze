@@ -102,6 +102,7 @@ export function ServiceGetSucursalGuid() {
   return window['go']['main']['App']['ServiceGetSucursalGuid']();
 }
 
+
 export function ServiceGetSucursales() {
   return window['go']['main']['App']['ServiceGetSucursales']();
 }
@@ -132,6 +133,10 @@ export function ServiceObtenerOperacionSucursalActiva(arg1) {
 
 export function ServiceObtenerOperacionesCajero(arg1) {
   return window['go']['main']['App']['ServiceObtenerOperacionesCajero'](arg1);
+}
+
+export function ServiceObtenerSucursalLocal() {
+  return window['go']['main']['App']['ServiceObtenerSucursalLocal']();
 }
 
 export function ServiceObtenerTiposPedido() {

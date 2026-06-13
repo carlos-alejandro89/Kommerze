@@ -3,6 +3,7 @@ import {
   ServiceVerifyLicense,
   ServiceActivateLicense,
   ServiceObtenerOperacionSucursal,
+  ServiceObtenerSucursalLocal,
   ServiceObtenerValorInventario,
   ServiceGetKommerzConfig,
   ServiceTestLocalServerConnection,
@@ -70,6 +71,12 @@ export const ActivationProvider = ({ children }) => {
             setIsStoreOpen(storeRes.data.operaciones?.length > 0);
             setOperation(storeRes.data.operaciones?.[0] || null);
             setStore(storeRes.data.sucursal);
+          } else {
+            // Fallback: buscar por GUID cuando el campo 'licencia' no está seteado en la DB local
+            const localRes = await ServiceObtenerSucursalLocal();
+            if (localRes?.success && localRes?.data) {
+              setStore(localRes.data);
+            }
           }
 
           const invRes = await ServiceObtenerValorInventario();

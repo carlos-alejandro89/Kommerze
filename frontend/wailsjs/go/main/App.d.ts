@@ -56,6 +56,7 @@ export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
 
 export function ServiceGetSucursalGuid():Promise<string>;
 
+
 export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;
@@ -71,6 +72,8 @@ export function ServiceObtenerOperacionSucursal(arg1:string):Promise<dto.Respons
 export function ServiceObtenerOperacionSucursalActiva(arg1:number):Promise<dto.ResponseDto>;
 
 export function ServiceObtenerOperacionesCajero(arg1:number):Promise<dto.ResponseDto>;
+
+export function ServiceObtenerSucursalLocal():Promise<dto.ResponseDto>;
 
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 

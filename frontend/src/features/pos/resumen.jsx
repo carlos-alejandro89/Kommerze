@@ -7,11 +7,13 @@ import { ModalDetalleInventario } from './modal-detalle-inventario';
 import { DialogAlert } from '@/components/common/dialog-alert';
 import { useActivation } from '@/providers/ActivationProvider';
 import { usePosService } from './usePosService';
+import { useTurno } from '@/providers/TurnoProvider';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
     const { store } = useActivation();
     const navigate = useNavigate();
     const posService = usePosService();
+    const { turnoActivo } = useTurno();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
     const [alertConfig, setAlertConfig] = useState({ open: false, title: '', description: '', type: 'warning' });
@@ -57,11 +59,46 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
     }
 
     const goToNextPage = async () => {
-        const rawOperationType = localStorage.getItem('operationType')
-        const operationType = rawOperationType ? JSON.parse(rawOperationType) : null
+        // ── Validación 1: Turno del cajero activo ────────────────────────────────────────
+        if (!turnoActivo) {
+            setAlertConfig({
+                open: true,
+                title: 'Sin Turno Activo',
+                description: 'No tienes un turno de caja abierto. Apertura tu turno antes de procesar ventas.',
+                type: 'warning',
+                action: () => navigate('/caja/apertura'),
+                actionLabel: 'Abrir Turno',
+            });
+            return;
+        }
 
-        let calcNextPage = (operationType <= 1) ? currentStep + 1 : currentStep + 2
-        setNextPage(calcNextPage)
+        // ── Validación 2: Carrito no vacío ────────────────────────────────────────────────
+        if (countItems === 0) {
+            setAlertConfig({
+                open: true,
+                title: 'Carrito Vacío',
+                description: 'Agrega al menos un producto antes de continuar.',
+                type: 'warning',
+            });
+            return;
+        }
+
+        // ── Validación 3: Total mayor a cero ─────────────────────────────────────────────
+        if (total <= 0) {
+            setAlertConfig({
+                open: true,
+                title: 'Total Inválido',
+                description: 'El total de la venta no puede ser cero o negativo.',
+                type: 'warning',
+            });
+            return;
+        }
+
+        const rawOperationType = localStorage.getItem('operationType');
+        const operationType = rawOperationType ? JSON.parse(rawOperationType) : null;
+
+        let calcNextPage = (operationType <= 1) ? currentStep + 1 : currentStep + 2;
+        setNextPage(calcNextPage);
 
         const validatorForCurrentStep = stepValidation[currentStep];
         if (validatorForCurrentStep) {
@@ -69,8 +106,8 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             if (!canProceed) return;
         }
 
-        return navigate(urlLinks[calcNextPage] || '#')
-    }
+        return navigate(urlLinks[calcNextPage] || '#');
+    };
 
 
     return (

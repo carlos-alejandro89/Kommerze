@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Wallet, Lock, CheckCircle, AlertCircle, RefreshCw, Store, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/AuthProvider';
+import { useActivation } from '@/providers/ActivationProvider';
 import {
   ServiceObtenerOperacionSucursalActiva,
   ServiceObtenerOperacionCajeroActiva,
@@ -9,6 +11,13 @@ import {
 } from '../../../../wailsjs/go/main/App';
 
 export function AperturaCajaPage() {
+  const { user } = useAuth();
+  const { store } = useActivation();
+
+  // SucursalID viene de store (ActivationProvider) — el Usuario no tiene ese campo.
+  const responsableID = user?.ID ?? user?.id ?? null;
+  const sucursalID    = store?.ID ?? store?.id ?? 0;
+
   const [loading, setLoading]         = useState(true);
   const [submitting, setSubmitting]   = useState(false);
   const [success, setSuccess]         = useState(false);
@@ -16,25 +25,24 @@ export function AperturaCajaPage() {
   const [opSucursal, setOpSucursal]   = useState(null);
   const [turnoActivo, setTurnoActivo] = useState(null);
 
-  const [cajaNombre, setCajaNombre]           = useState('');
-  const [fondoApertura, setFondoApertura]     = useState('');
-  const [responsableID, setResponsableID]     = useState(null);
+  const [cajaNombre, setCajaNombre]       = useState('');
+  const [fondoApertura, setFondoApertura] = useState('');
 
-  // Obtener ID del cajero logueado desde localStorage (patrón del proyecto)
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setResponsableID(user?.ID || user?.id || null);
+    // Esperar a que ActivationProvider (store) y AuthProvider (user) estén listos
+    if (!sucursalID && !responsableID) {
+      setLoading(true);
+      return;
+    }
 
     const fetchEstado = async () => {
       try {
-        const sucursalID = user?.SucursalID || user?.sucursalID || 0;
         if (sucursalID) {
           const resSuc = await ServiceObtenerOperacionSucursalActiva(sucursalID);
           setOpSucursal(resSuc?.success ? resSuc.data : null);
         }
-        const userID = user?.ID || user?.id || 0;
-        if (userID) {
-          const resCaj = await ServiceObtenerOperacionCajeroActiva(userID);
+        if (responsableID) {
+          const resCaj = await ServiceObtenerOperacionCajeroActiva(responsableID);
           setTurnoActivo(resCaj?.success && resCaj.data ? resCaj.data : null);
         }
       } catch (e) {
@@ -44,7 +52,7 @@ export function AperturaCajaPage() {
       }
     };
     fetchEstado();
-  }, []);
+  }, [sucursalID, responsableID]);
 
   const handleAbrir = async (e) => {
     e.preventDefault();

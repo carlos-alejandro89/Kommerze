@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Building2, RefreshCw, Play, Square, Users, DollarSign, Banknote, CreditCard, FileText, MoreHorizontal, BarChart3, Package, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/AuthProvider';
+import { useActivation } from '@/providers/ActivationProvider';
 import {
   ServiceObtenerOperacionSucursalActiva,
   ServiceObtenerValorInventario,
@@ -20,6 +22,13 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', c
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
 export function CortesSucursalPage() {
+  const { user } = useAuth();
+  const { store, isInitialized } = useActivation();
+
+  // SucursalID viene de store (ActivationProvider) — el Usuario no tiene ese campo.
+  const sucursalID = store?.ID ?? store?.id ?? 0;
+  const userID     = user?.ID ?? user?.id ?? 0;
+
   const [activeTab, setActiveTab]     = useState('jornada');
   const [loading, setLoading]         = useState(true);
   const [submitting, setSubmitting]   = useState(false);
@@ -27,10 +36,9 @@ export function CortesSucursalPage() {
   const [opSucursal, setOpSucursal]   = useState(null);
   const [turnos, setTurnos]           = useState([]);
   const [inventario, setInventario]   = useState(0);
-  const [sucursalID, setSucursalID]   = useState(0);
-  const [userID, setUserID]           = useState(0);
 
-  const fetchDatos = async () => {
+  const fetchDatos = useCallback(async () => {
+    if (!sucursalID) return; // Esperar a que store esté cargado
     setLoading(true);
     try {
       const res = await ServiceObtenerOperacionSucursalActiva(sucursalID);
@@ -41,6 +49,8 @@ export function CortesSucursalPage() {
         const opID = op?.ID || op?.id;
         const resTurnos = await ServiceObtenerOperacionesCajero(opID);
         setTurnos(resTurnos?.success ? (resTurnos.data || []) : []);
+      } else {
+        setTurnos([]);
       }
       const resInv = await ServiceObtenerValorInventario();
       setInventario(resInv?.success ? (resInv.data || 0) : 0);
@@ -49,22 +59,27 @@ export function CortesSucursalPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const uid = user?.ID || user?.id || 0;
-    const sid = user?.SucursalID || user?.sucursalID || 0;
-    setUserID(uid);
-    setSucursalID(sid);
-  }, []);
-
-  useEffect(() => {
-    if (sucursalID) fetchDatos();
   }, [sucursalID]);
+
+  useEffect(() => {
+    if (!isInitialized) {
+      setLoading(true);
+      return;
+    }
+    
+    if (sucursalID) {
+      fetchDatos();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchDatos, sucursalID, isInitialized]);
 
   // ── Iniciar jornada ───────────────────────────────────────────────────────
   const handleIniciarJornada = async () => {
+    if (!sucursalID) {
+      toast.error('No se ha detectado una sucursal válida.');
+      return;
+    }
     if (!confirm('¿Confirmas iniciar la jornada de esta sucursal?')) return;
     setSubmitting(true);
     try {
@@ -229,7 +244,7 @@ export function CortesSucursalPage() {
               {!jornadaActiva && (
                 <button
                   onClick={handleIniciarJornada}
-                  disabled={submitting || !!opSucursal}
+                  disabled={submitting || !!opSucursal || !sucursalID}
                   className={cn(
                     'flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all shadow-md',
                     submitting || !!opSucursal
