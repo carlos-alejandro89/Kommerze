@@ -366,3 +366,12 @@ func (c *CajaProxyService) ObtenerOperacionesCajero(operacionSucursalID uint) *d
 	}
 	return &result
 }
+
+// ObtenerResumenCajero consulta el resumen de ingresos calculado del turno al Servidor Local.
+func (c *CajaProxyService) ObtenerResumenCajero(operacionCajeroID uint) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.get(fmt.Sprintf("/local/cajero/turno/resumen?operacionCajeroId=%d", operacionCajeroID), &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}

@@ -134,6 +134,10 @@ export function ServiceObtenerOperacionesCajero(arg1) {
   return window['go']['main']['App']['ServiceObtenerOperacionesCajero'](arg1);
 }
 
+export function ServiceObtenerResumenCajero(arg1) {
+  return window['go']['main']['App']['ServiceObtenerResumenCajero'](arg1);
+}
+
 export function ServiceObtenerSucursalLocal() {
   return window['go']['main']['App']['ServiceObtenerSucursalLocal']();
 }

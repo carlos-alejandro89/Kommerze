@@ -1,42 +1,41 @@
 import { useState, useEffect } from 'react';
-import { X, RefreshCw, CheckCircle, AlertCircle, DollarSign, CreditCard, FileText, Banknote, MoreHorizontal, ArrowDownLeft } from 'lucide-react';
+import { X, RefreshCw, CheckCircle, AlertCircle, DollarSign, CreditCard, FileText, Banknote, MoreHorizontal, TrendingUp, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
 import {
   ServiceObtenerOperacionCajeroActiva,
+  ServiceObtenerResumenCajero,
   ServiceCerrarCaja,
 } from '../../../../wailsjs/go/main/App';
 
 const FORMA_FIELDS = [
-  { key: 'IngresoEfectivo',      label: 'Efectivo',        icon: Banknote,      color: 'text-emerald-500' },
-  { key: 'IngresoTarjetas',      label: 'Tarjetas',        icon: CreditCard,    color: 'text-blue-500'    },
-  { key: 'IngresoCheques',       label: 'Cheques',         icon: FileText,      color: 'text-amber-500'   },
-  { key: 'IngresoTransferencia', label: 'Transferencia',   icon: DollarSign,    color: 'text-violet-500'  },
-  { key: 'IngresoOtros',         label: 'Otros',           icon: MoreHorizontal,color: 'text-muted-foreground' },
+  { key: 'IngresoEfectivo',      label: 'Efectivo',        icon: Banknote,       color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { key: 'IngresoTarjetas',      label: 'Tarjetas',        icon: CreditCard,     color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
+  { key: 'IngresoCheques',       label: 'Cheques',         icon: FileText,       color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
+  { key: 'IngresoTransferencia', label: 'Transferencia',   icon: DollarSign,     color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
+  { key: 'IngresoOtros',         label: 'Otros',           icon: MoreHorizontal, color: 'text-muted-foreground', bg: 'bg-muted/30' },
 ];
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
 export function CierreCajaPage() {
-  const [loading, setLoading]       = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess]       = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [submitting, setSubmitting]     = useState(false);
+  const [success, setSuccess]           = useState(false);
 
-  const [turnoActivo, setTurnoActivo] = useState(null);
+  const [turnoActivo, setTurnoActivo]   = useState(null);
+  const [resumen, setResumen]           = useState(null);   // ingresos calculados por el sistema
+  const [loadingResumen, setLoadingResumen] = useState(false);
 
-  // Campos del cierre
-  const [fondoCierre, setFondoCierre]       = useState('');
-  const [retiros, setRetiros]               = useState('');
-  const [ingresos, setIngresos]             = useState({
-    IngresoEfectivo: '',      IngresoTarjetas: '',
-    IngresoCheques: '',       IngresoTransferencia: '',
-    IngresoOtros: '',
-  });
+  // Únicos campos que el cajero captura manualmente (datos físicos)
+  const [fondoCierre, setFondoCierre]   = useState('');
+  const [retiros, setRetiros]           = useState('');
 
   const { user } = useAuth();
   const userID = user?.ID ?? user?.id ?? 0;
 
+  // 1️⃣ Cargar turno activo
   useEffect(() => {
     if (!userID) {
       setLoading(false);
@@ -52,8 +51,21 @@ export function CierreCajaPage() {
       .finally(() => setLoading(false));
   }, [userID]);
 
-  const handleIngreso = (key, val) =>
-    setIngresos((prev) => ({ ...prev, [key]: val }));
+  // 2️⃣ Cargar resumen calculado en cuanto tengamos el turno
+  useEffect(() => {
+    const cajaID = turnoActivo?.ID || turnoActivo?.id;
+    if (!cajaID) return;
+
+    setLoadingResumen(true);
+    ServiceObtenerResumenCajero(cajaID)
+      .then((res) => {
+        if (res?.success && res.data) {
+          setResumen(res.data);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoadingResumen(false));
+  }, [turnoActivo]);
 
   const handleCerrar = async (e) => {
     e.preventDefault();
@@ -62,14 +74,15 @@ export function CierreCajaPage() {
     setSubmitting(true);
     try {
       const res = await ServiceCerrarCaja({
-        OperacionCajeroID:    turnoActivo?.ID || turnoActivo?.id,
-        FondoCajaCierre:      parseFloat(fondoCierre)       || 0,
-        RetirosEfectivo:      parseFloat(retiros)           || 0,
-        IngresoEfectivo:      parseFloat(ingresos.IngresoEfectivo)      || 0,
-        IngresoTarjetas:      parseFloat(ingresos.IngresoTarjetas)      || 0,
-        IngresoCheques:       parseFloat(ingresos.IngresoCheques)        || 0,
-        IngresoTransferencia: parseFloat(ingresos.IngresoTransferencia) || 0,
-        IngresoOtros:         parseFloat(ingresos.IngresoOtros)         || 0,
+        OperacionCajeroID: turnoActivo?.ID || turnoActivo?.id,
+        FondoCajaCierre:   parseFloat(fondoCierre) || 0,
+        RetirosEfectivo:   parseFloat(retiros)     || 0,
+        // Los Ingreso* ya no se envían desde el front: el backend los calcula siempre.
+        IngresoEfectivo:      0,
+        IngresoTarjetas:      0,
+        IngresoCheques:       0,
+        IngresoTransferencia: 0,
+        IngresoOtros:         0,
         Bloqueada:            false,
       });
       if (res?.success) {
@@ -84,6 +97,8 @@ export function CierreCajaPage() {
       setSubmitting(false);
     }
   };
+
+  // ── Loading / estados vacíos ───────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -117,7 +132,10 @@ export function CierreCajaPage() {
     );
   }
 
-  const totalIngresos = FORMA_FIELDS.reduce((acc, f) => acc + (parseFloat(ingresos[f.key]) || 0), 0);
+  const totalIngresos = FORMA_FIELDS.reduce((acc, f) => {
+    const val = resumen ? (resumen[f.key] ?? 0) : 0;
+    return acc + Number(val);
+  }, 0);
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden bg-bg-subtle animate-fade-in">
@@ -135,7 +153,63 @@ export function CierreCajaPage() {
 
           <form onSubmit={handleCerrar} className="space-y-5">
 
-            {/* Fondo al cierre */}
+            {/* ── Resumen calculado por el sistema ────────────────────────── */}
+            <div className="rounded-xl border border-border bg-surface shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <TrendingUp className="size-4 text-blue-500" />
+                  Ingresos por Forma de Pago
+                </h2>
+                <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  Calculado por el sistema
+                </span>
+              </div>
+
+              {loadingResumen ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <RefreshCw className="size-4 animate-spin" />
+                  <span className="text-sm">Calculando ingresos del turno...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-border">
+                    {FORMA_FIELDS.map(({ key, label, icon: Icon, color, bg }) => {
+                      const valor = resumen ? Number(resumen[key] ?? 0) : 0;
+                      return (
+                        <div key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                          <div className={cn('flex size-8 items-center justify-center rounded-lg shrink-0', bg)}>
+                            <Icon className={cn('size-4', color)} />
+                          </div>
+                          <span className="flex-1 text-sm text-foreground">{label}</span>
+                          <span className={cn(
+                            'text-sm font-semibold tabular-nums',
+                            valor > 0 ? 'text-foreground' : 'text-muted-foreground',
+                          )}>
+                            {fmt(valor)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Ventas del turno */}
+                  {resumen?.NumVentas !== undefined && (
+                    <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      <ShoppingBag className="size-3.5" />
+                      <span>{resumen.NumVentas} venta{resumen.NumVentas !== 1 ? 's' : ''} registrada{resumen.NumVentas !== 1 ? 's' : ''} en este turno</span>
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-foreground">Total Ingresos</span>
+                    <span className="text-lg font-bold text-primary">{fmt(totalIngresos)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ── Datos físicos: solo estos los captura el cajero ─────────── */}
             <div className="rounded-xl border border-border bg-surface shadow-sm p-5 space-y-4">
               <h2 className="font-semibold text-foreground flex items-center gap-2">
                 <Banknote className="size-4 text-emerald-500" />
@@ -156,48 +230,13 @@ export function CierreCajaPage() {
               </div>
             </div>
 
-            {/* Ingresos por forma de pago */}
-            <div className="rounded-xl border border-border bg-surface shadow-sm p-5 space-y-4">
-              <h2 className="font-semibold text-foreground flex items-center gap-2">
-                <CreditCard className="size-4 text-blue-500" />
-                Ingresos por Forma de Pago
-              </h2>
-
-              <div className="divide-y divide-border">
-                {FORMA_FIELDS.map(({ key, label, icon: Icon, color }) => (
-                  <div key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-muted shrink-0">
-                      <Icon className={cn('size-4', color)} />
-                    </div>
-                    <span className="flex-1 text-sm text-foreground">{label}</span>
-                    <div className="relative w-32">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                      <input
-                        type="number" min="0" step="0.01" placeholder="0.00"
-                        value={ingresos[key]}
-                        onChange={(e) => handleIngreso(key, e.target.value)}
-                        disabled={submitting}
-                        className="w-full rounded-lg border border-border bg-bg-subtle pl-5 pr-2 py-2 text-sm text-right text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Total */}
-              <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">Total Ingresos</span>
-                <span className="text-lg font-bold text-primary">{fmt(totalIngresos)}</span>
-              </div>
-            </div>
-
             {/* Submit */}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || loadingResumen}
               className={cn(
                 'w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all shadow-md',
-                submitting
+                submitting || loadingResumen
                   ? 'bg-rose-400 cursor-not-allowed'
                   : 'bg-rose-600 hover:bg-rose-500 active:scale-[0.98]',
               )}

@@ -122,6 +122,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/cajero/turno/abrir",                  l.handleAbrirCaja)
 	mux.HandleFunc("/local/cajero/turno/cerrar",                 l.handleCerrarCaja)
 	mux.HandleFunc("/local/cajero/turno/activo",                 l.handleOperacionCajeroActiva)
+	mux.HandleFunc("/local/cajero/turno/resumen",                l.handleResumenCajero)
 	mux.HandleFunc("/local/cajero/turnos",                       l.handleOperacionesCajero)
 
 	l.server = &http.Server{
@@ -626,5 +627,21 @@ func (l *LocalServerService) handleOperacionesCajero(w http.ResponseWriter, r *h
 		return
 	}
 	result := l.operacionesCaja.ObtenerOperacionesCajero(operacionSucursalID)
+	writeJSON(w, http.StatusOK, result)
+}
+
+// handleResumenCajero devuelve el resumen de ingresos calculado del turno del cajero.
+func (l *LocalServerService) handleResumenCajero(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var operacionCajeroID uint
+	fmt.Sscanf(r.URL.Query().Get("operacionCajeroId"), "%d", &operacionCajeroID)
+	if operacionCajeroID == 0 {
+		writeError(w, http.StatusBadRequest, "operacionCajeroId requerido")
+		return
+	}
+	result := l.operacionesCaja.ObtenerResumenCajero(operacionCajeroID)
 	writeJSON(w, http.StatusOK, result)
 }

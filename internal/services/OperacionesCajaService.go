@@ -37,3 +37,9 @@ func (s *OperacionesCajaService) ObtenerOperacionesCajero(operacionSucursalID ui
 func (s *OperacionesCajaService) ObtenerOperacionCajeroActiva(responsableID uint) *dto.ResponseDto {
 	return s.repo.ObtenerOperacionCajeroActiva(responsableID)
 }
+
+// ObtenerResumenCajero calcula y devuelve el resumen de ingresos del turno
+// para mostrarlo en el formulario de cierre antes de confirmar.
+func (s *OperacionesCajaService) ObtenerResumenCajero(operacionCajeroID uint) *dto.ResponseDto {
+	return s.repo.ObtenerResumenCajero(operacionCajeroID)
+}

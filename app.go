@@ -458,10 +458,25 @@ func (a *App) ServiceObtenerOperacionesCajero(operacionSucursalID uint) *dto.Res
 
 // ServiceObtenerOperacionCajeroActiva devuelve el turno activo del cajero.
 func (a *App) ServiceObtenerOperacionCajeroActiva(responsableID uint) *dto.ResponseDto {
+	if a.services.OperacionesCaja == nil && a.services.CajaProxy == nil {
+		return dto.NewResponseDto(false, "No disponible", nil, nil)
+	}
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.ObtenerOperacionCajeroActiva(responsableID)
+	}
+	return a.services.OperacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
+}
+
+// ServiceObtenerResumenCajero calcula y devuelve el resumen de ingresos del turno del cajero.
+// Los montos son calculados desde la tabla de pagos; no requieren entrada del usuario.
+func (a *App) ServiceObtenerResumenCajero(operacionCajeroID uint) *dto.ResponseDto {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.ObtenerResumenCajero(operacionCajeroID)
+	}
 	if a.services.OperacionesCaja == nil {
 		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
 	}
-	return a.services.OperacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
+	return a.services.OperacionesCaja.ObtenerResumenCajero(operacionCajeroID)
 }
 
 // ── Catálogos ─────────────────────────────────────────────────────────────────

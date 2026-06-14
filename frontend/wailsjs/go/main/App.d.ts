@@ -72,6 +72,8 @@ export function ServiceObtenerOperacionSucursalActiva(arg1:number):Promise<dto.R
 
 export function ServiceObtenerOperacionesCajero(arg1:number):Promise<dto.ResponseDto>;
 
+export function ServiceObtenerResumenCajero(arg1:number):Promise<dto.ResponseDto>;
+
 export function ServiceObtenerSucursalLocal():Promise<dto.ResponseDto>;
 
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
