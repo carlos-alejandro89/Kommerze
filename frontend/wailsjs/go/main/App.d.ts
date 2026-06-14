@@ -56,7 +56,6 @@ export function ServiceGetSatUsosCFDI():Promise<dto.ResponseDto>;
 
 export function ServiceGetSucursalGuid():Promise<string>;
 
-
 export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;

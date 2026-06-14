@@ -48,6 +48,17 @@ export const ActivationProvider = ({ children }) => {
               setIsValid(!!ping?.success);
               if (ping?.success && ping?.data?.branchName) {
                 setLicense({ sucursal: { nombreSucursal: ping.data.branchName } });
+                
+                // Set a mock store object so components like AperturaCajaPage
+                // have the sucursalID to send requests
+                setStore({
+                  ID: ping.data.branchId || 0,
+                  id: ping.data.branchId || 0,
+                  Guid: ping.data.branchGuid || '',
+                  guid: ping.data.branchGuid || '',
+                  Nombre: ping.data.branchName,
+                  nombre: ping.data.branchName,
+                });
               }
             } catch {
               setIsValid(false);

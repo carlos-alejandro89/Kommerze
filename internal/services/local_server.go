@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 // wsHub gestiona las conexiones WebSocket activas de las Cajas.
@@ -53,6 +54,7 @@ func (h *wsHub) broadcast(msg []byte) {
 // como una API REST HTTP en :8989 para que las Cajas los consuman.
 // No contiene lógica de negocio propia — solo wrappers JSON.
 type LocalServerService struct {
+	db                  *gorm.DB
 	pos                 *PosService
 	auth                *AuthService
 	catalogos           *CatalogosService
@@ -64,8 +66,9 @@ type LocalServerService struct {
 	server              *http.Server
 }
 
-func NewLocalServerService(pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
+		db:                  db,
 		pos:                 pos,
 		auth:                auth,
 		catalogos:           cat,
@@ -167,14 +170,29 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 
 func (l *LocalServerService) handleHealth(w http.ResponseWriter, r *http.Request) {
 	branchName := "Kommerze POS"
+	branchID := uint(0)
+	branchGuid := ""
+
 	cfg, err := LoadKommerzConfig()
 	if err == nil && cfg.License != nil && cfg.License.Sucursal.NombreSucursal != "" {
 		branchName = cfg.License.Sucursal.NombreSucursal
+		branchGuid = cfg.License.Sucursal.Guid
+
+		// Buscar el ID numérico en la BD si tenemos el GUID
+		if branchGuid != "" && l.db != nil {
+			var sucursal models.Sucursal
+			if err := l.db.Where("guid = ?", branchGuid).First(&sucursal).Error; err == nil {
+				branchID = sucursal.ID
+			}
+		}
 	}
+	
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":    true,
 		"message":    "Servidor Local activo",
 		"branchName": branchName,
+		"branchId":   branchID,
+		"branchGuid": branchGuid,
 	})
 }
 
@@ -380,12 +398,18 @@ func TestLocalServerConnection(serverURL string) (map[string]any, error) {
 		Success    bool   `json:"success"`
 		Message    string `json:"message"`
 		BranchName string `json:"branchName"`
+		BranchId   uint   `json:"branchId"`
+		BranchGuid string `json:"branchGuid"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&result)
 	if !result.Success {
 		return nil, fmt.Errorf("respuesta inesperada del Servidor Local")
 	}
-	return map[string]any{"branchName": result.BranchName}, nil
+	return map[string]any{
+		"branchName": result.BranchName,
+		"branchId":   result.BranchId,
+		"branchGuid": result.BranchGuid,
+	}, nil
 }
 
 // Asegurar que models se importa (Usuario se usa en handleLogin)

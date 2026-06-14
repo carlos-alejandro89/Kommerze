@@ -66,7 +66,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	operacionesSucursal := NewOperacionesSucursalService(db)
 
 	// Levantar servidor HTTP interno para que las Cajas se conecten
-	localServer := NewLocalServerService(pos, auth, catalogos, clientes, cotizacion, operacionesSucursal, operacionesCaja)
+	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, cotizacion, operacionesSucursal, operacionesCaja)
 	cotizacion.SetBroadcast(localServer.BroadcastToClients)
 	go localServer.Start(":8989")
 	log.Printf("[Services] Modo SERVIDOR LOCAL — API interna activa en :8989")

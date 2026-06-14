@@ -102,7 +102,6 @@ export function ServiceGetSucursalGuid() {
   return window['go']['main']['App']['ServiceGetSucursalGuid']();
 }
 
-
 export function ServiceGetSucursales() {
   return window['go']['main']['App']['ServiceGetSucursales']();
 }

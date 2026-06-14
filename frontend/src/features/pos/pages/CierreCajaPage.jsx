@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, RefreshCw, CheckCircle, AlertCircle, DollarSign, CreditCard, FileText, Banknote, MoreHorizontal, ArrowDownLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/AuthProvider';
 import {
   ServiceObtenerOperacionCajeroActiva,
   ServiceCerrarCaja,
@@ -33,10 +34,14 @@ export function CierreCajaPage() {
     IngresoOtros: '',
   });
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const userID = user?.ID || user?.id || 0;
+  const { user } = useAuth();
+  const userID = user?.ID ?? user?.id ?? 0;
 
+  useEffect(() => {
+    if (!userID) {
+      setLoading(false);
+      return;
+    }
     ServiceObtenerOperacionCajeroActiva(userID)
       .then((res) => {
         if (res?.success && res.data) {
@@ -45,7 +50,7 @@ export function CierreCajaPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [userID]);
 
   const handleIngreso = (key, val) =>
     setIngresos((prev) => ({ ...prev, [key]: val }));
