@@ -415,19 +415,33 @@ func (a *App) ServiceSucursalInicioOperacion(datos dto.SucursalInicioOperaciones
 }
 
 // ServiceObtenerOperacionSucursalActiva devuelve la jornada activa de la sucursal.
+// Funciona en ambos modos: Servidor Local (BD directa) y Caja (proxy HTTP).
 func (a *App) ServiceObtenerOperacionSucursalActiva(sucursalID uint) *dto.ResponseDto {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.ObtenerOperacionSucursalActiva(sucursalID)
+	}
 	if a.services.OperacionesSucursal == nil {
-		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+		return dto.NewResponseDto(false, "No disponible", nil, nil)
 	}
 	return a.services.OperacionesSucursal.ObtenerOperacionSucursalActiva(sucursalID)
 }
 
 // ServiceCerrarOperacionSucursal calcula acumulados y cierra la jornada.
+// Tras el cierre emite el evento "jornada:cerrada" al frontend local (Wails)
+// y hace broadcast WebSocket a todas las Cajas conectadas.
 func (a *App) ServiceCerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDto) *dto.ResponseDto {
 	if a.services.OperacionesSucursal == nil {
 		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
 	}
-	return a.services.OperacionesSucursal.CerrarOperacionSucursal(datos)
+	res := a.services.OperacionesSucursal.CerrarOperacionSucursal(datos)
+	if res != nil && res.Success {
+		payload := map[string]any{"operacionID": datos.OperacionID}
+		runtime.EventsEmit(a.ctx, "jornada:cerrada", payload)
+		if a.services.LocalServer != nil {
+			a.services.LocalServer.BroadcastToClients("jornada:cerrada", payload)
+		}
+	}
+	return res
 }
 
 // ── Operaciones de Caja ───────────────────────────────────────────────────────
@@ -441,11 +455,27 @@ func (a *App) ServiceAbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
 }
 
 // ServiceCerrarCaja finaliza el turno del cajero. Solo disponible en Servidor Local.
+// Tras el cierre emite el evento "turno:cerrado" al frontend local (Wails)
+// y hace broadcast WebSocket a todas las Cajas conectadas.
 func (a *App) ServiceCerrarCaja(datos dto.CerrarCajaDto) *dto.ResponseDto {
-	if a.services.OperacionesCaja == nil {
-		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	if a.services.CajaProxy != nil {
+		// En modo Caja: delegar al Servidor Local
+		res := a.services.CajaProxy.CerrarCaja(datos)
+		// No necesitamos broadcast: el Servidor Local lo hace al procesar la petición HTTP
+		return res
 	}
-	return a.services.OperacionesCaja.CerrarCaja(datos)
+	if a.services.OperacionesCaja == nil {
+		return dto.NewResponseDto(false, "No disponible", nil, nil)
+	}
+	res := a.services.OperacionesCaja.CerrarCaja(datos)
+	if res != nil && res.Success {
+		payload := map[string]any{"operacionCajeroID": datos.OperacionCajeroID}
+		runtime.EventsEmit(a.ctx, "turno:cerrado", payload)
+		if a.services.LocalServer != nil {
+			a.services.LocalServer.BroadcastToClients("turno:cerrado", payload)
+		}
+	}
+	return res
 }
 
 // ServiceObtenerOperacionesCajero devuelve los turnos de una jornada de sucursal.

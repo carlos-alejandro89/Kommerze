@@ -13,7 +13,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
     const { store } = useActivation();
     const navigate = useNavigate();
     const posService = usePosService();
-    const { turnoActivo } = useTurno();
+    const { turnoActivo, jornadaActiva } = useTurno();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [invalidItems, setInvalidItems] = useState([]);
     const [alertConfig, setAlertConfig] = useState({ open: false, title: '', description: '', type: 'warning' });
@@ -59,7 +59,18 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
     }
 
     const goToNextPage = async () => {
-        // ── Validación 1: Turno del cajero activo ────────────────────────────────────────
+        // ── Validación 1: Jornada de sucursal activa ─────────────────────────────────────
+        if (!jornadaActiva) {
+            setAlertConfig({
+                open: true,
+                title: 'Sucursal Cerrada',
+                description: 'La jornada de la sucursal ha sido cerrada. No es posible procesar ventas hasta que un supervisor inicie una nueva jornada.',
+                type: 'error',
+            });
+            return;
+        }
+
+        // ── Validación 2: Turno del cajero activo ────────────────────────────────────────
         if (!turnoActivo) {
             setAlertConfig({
                 open: true,
@@ -72,7 +83,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             return;
         }
 
-        // ── Validación 2: Carrito no vacío ────────────────────────────────────────────────
+        // ── Validación 3: Carrito no vacío ────────────────────────────────────────────────
         if (countItems === 0) {
             setAlertConfig({
                 open: true,
@@ -83,7 +94,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             return;
         }
 
-        // ── Validación 3: Total mayor a cero ─────────────────────────────────────────────
+        // ── Validación 4: Total mayor a cero ─────────────────────────────────────────────
         if (total <= 0) {
             setAlertConfig({
                 open: true,

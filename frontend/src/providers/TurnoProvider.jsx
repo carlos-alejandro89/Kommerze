@@ -5,25 +5,27 @@
  *   turnoActivo:   OperacionCajero | null  — null si no hay turno abierto
  *   jornadaActiva: boolean                 — si hay jornada de sucursal activa
  *   turnoLoading:  boolean                 — cargando estado inicial
- *   refreshTurno:  () => Promise<void>     — re-consultar (tras apertura/cierre)
+ *   refreshTurno:  () => Promise<void>     — re-consultar manualmente (tras apertura)
  *
- * Estrategia:
- *   - Se inicializa al montar el AppLayout (con el user ya autenticado).
- *   - Hace refresh automático cada 2 minutos para detectar cierres externos.
- *   - El userID lo toma de AuthProvider (opción 1 del plan).
+ * Estrategia de detección de cierres (sin polling):
+ *   - En Modo Servidor Local: app.go emite "turno:cerrado" / "jornada:cerrada"
+ *     vía runtime.EventsEmit después de cada cierre exitoso. También hace
+ *     BroadcastToClients para notificar a las Cajas conectadas.
+ *   - En Modo Caja: CajaProxy.listenWS recibe el broadcast WebSocket del Servidor
+ *     Local y lo reemite localmente con runtime.EventsEmit → este mismo EventsOn
+ *     lo captura. Latencia < 50ms, sin ningún costo de polling.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   ServiceObtenerOperacionCajeroActiva,
   ServiceObtenerOperacionSucursalActiva,
 } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import { useAuth } from './AuthProvider';
 import { useActivation } from './ActivationProvider';
 
 const TurnoContext = createContext(undefined);
-
-const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutos
 
 export function TurnoProvider({ children }) {
   const { user }  = useAuth();
@@ -37,7 +39,6 @@ export function TurnoProvider({ children }) {
   const [turnoActivo, setTurnoActivo]     = useState(undefined); // undefined = no cargado aún
   const [jornadaActiva, setJornadaActiva] = useState(false);
   const [turnoLoading, setTurnoLoading]   = useState(true);
-  const intervalRef = useRef(null);
 
   const fetchTurno = useCallback(async () => {
     if (!userID) {
@@ -53,7 +54,10 @@ export function TurnoProvider({ children }) {
       const turno = resCajero?.success && resCajero?.data ? resCajero.data : null;
       setTurnoActivo(turno);
 
-      // Consultar jornada de sucursal (solo si tenemos sucursalID)
+      // Consultar jornada de sucursal.
+      // Funciona en ambos modos:
+      //   Servidor Local → BD directa (OperacionesSucursalService)
+      //   Caja           → proxy HTTP a /local/sucursal/operacion/activa (CajaProxy)
       if (sucursalID) {
         const resSucursal = await ServiceObtenerOperacionSucursalActiva(sucursalID);
         setJornadaActiva(!!(resSucursal?.success && resSucursal?.data));
@@ -68,9 +72,9 @@ export function TurnoProvider({ children }) {
     } finally {
       setTurnoLoading(false);
     }
-  }, [userID, sucursalID]); // ← primitivos estables, no el objeto user
+  }, [userID, sucursalID]);
 
-  // Carga inicial + refresh periódico
+  // ── Carga inicial ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!userID) {
       setTurnoActivo(null);
@@ -78,15 +82,26 @@ export function TurnoProvider({ children }) {
       setTurnoLoading(false);
       return;
     }
-
     setTurnoLoading(true);
     fetchTurno();
-
-    // Refresh automático cada 2 min
-    intervalRef.current = setInterval(fetchTurno, REFRESH_INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
   }, [userID, fetchTurno]);
 
+  // ── Suscripción a eventos Wails (reemplaza el polling) ───────────────────────
+  // Los eventos son emitidos por app.go vía runtime.EventsEmit al cerrar operaciones.
+  // En Modo Caja, CajaProxy.listenWS recibe el broadcast WebSocket del Servidor Local
+  // y lo reemite localmente con runtime.EventsEmit → este handler los captura igual.
+  // Resultado: detección de cierres en tiempo real, sin costo de polling.
+  useEffect(() => {
+    if (!userID) return;
+
+    EventsOn('turno:cerrado',   () => fetchTurno());
+    EventsOn('jornada:cerrada', () => fetchTurno());
+
+    return () => {
+      EventsOff('turno:cerrado');
+      EventsOff('jornada:cerrada');
+    };
+  }, [userID, fetchTurno]);
 
   return (
     <TurnoContext.Provider

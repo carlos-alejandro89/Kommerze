@@ -9,7 +9,7 @@
  */
 
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Lock, Wallet, RefreshCw, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Lock, Wallet, RefreshCw, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useTurno } from '@/providers/TurnoProvider';
 import { ScreenLoader } from '@/components/ScreenLoader';
 import { cn } from '@/lib/utils';
@@ -69,10 +69,11 @@ function SinTurnoScreen({ onRefresh }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => navigate('/caja/apertura')}
-            className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-[0.98] px-6 py-3 text-sm font-semibold text-white transition-all shadow-lg shadow-amber-600/30"
+            className="group flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] px-6 py-3 text-sm font-semibold text-white transition-all shadow-lg shadow-amber-500/30"
           >
             <Wallet className="size-4" />
             Abrir Turno
+            <ArrowRight className="size-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </button>
           <RefreshButton onRefresh={onRefresh} label="Ya lo abrí, actualizar" variant="ghost" />
         </div>
@@ -83,66 +84,175 @@ function SinTurnoScreen({ onRefresh }) {
 
 // ── Base: BlockScreen ─────────────────────────────────────────────────────────
 
+const VARIANTS = {
+  danger: {
+    // Orbs de fondo
+    orb1:       'bg-rose-600/25',
+    orb2:       'bg-rose-400/15',
+    // Card
+    cardBorder: 'border-rose-500/20',
+    cardBg:     'bg-rose-950/40',
+    // Accent bar
+    accentBar:  'from-rose-500 via-rose-400 to-pink-400',
+    // Icon
+    iconBg:     'bg-rose-500/10',
+    iconRing:   'ring-rose-500/25',
+    iconColor:  'text-rose-400',
+    // Badge
+    badgeBg:    'bg-rose-500/10 border-rose-500/25 text-rose-300',
+    // Title
+    titleColor: 'text-white',
+    // Pulse dot
+    pulseDot:   'bg-rose-400',
+  },
+  warning: {
+    orb1:       'bg-amber-600/25',
+    orb2:       'bg-orange-400/15',
+    cardBorder: 'border-amber-500/20',
+    cardBg:     'bg-amber-950/40',
+    accentBar:  'from-amber-500 via-amber-400 to-yellow-400',
+    iconBg:     'bg-amber-500/10',
+    iconRing:   'ring-amber-500/25',
+    iconColor:  'text-amber-400',
+    badgeBg:    'bg-amber-500/10 border-amber-500/25 text-amber-300',
+    titleColor: 'text-white',
+    pulseDot:   'bg-amber-400',
+  },
+};
+
 function BlockScreen({ variant, icon: Icon, title, subtitle, description, actions }) {
-  const colors = {
-    danger: {
-      bg:      'from-rose-950/60 to-rose-900/30',
-      ring:    'ring-rose-500/20',
-      iconBg:  'bg-rose-500/15',
-      icon:    'text-rose-400',
-      badge:   'bg-rose-500/10 text-rose-400 border-rose-500/20',
-      title:   'text-rose-100',
-    },
-    warning: {
-      bg:      'from-amber-950/50 to-amber-900/20',
-      ring:    'ring-amber-500/20',
-      iconBg:  'bg-amber-500/15',
-      icon:    'text-amber-400',
-      badge:   'bg-amber-500/10 text-amber-400 border-amber-500/20',
-      title:   'text-amber-100',
-    },
-  }[variant];
+  const c = VARIANTS[variant];
 
   return (
-    <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-bg-subtle p-4 animate-fade-in">
+    <div className="turnoguard-root flex h-[calc(100vh-56px)] items-center justify-center p-4 relative overflow-hidden">
+
+      {/* ── Animated background ── */}
+      <div className="absolute inset-0 bg-[#0f0f14]" />
+      <div className={cn('turnoguard-orb turnoguard-orb-1 absolute rounded-full blur-[80px]', c.orb1)} />
+      <div className={cn('turnoguard-orb turnoguard-orb-2 absolute rounded-full blur-[100px]', c.orb2)} />
+
+      {/* Subtle grid */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* ── Card ── */}
       <div
         className={cn(
-          'w-full max-w-lg rounded-2xl border bg-gradient-to-b shadow-2xl overflow-hidden',
-          'dark:border-white/5 border-black/5',
-          colors.ring,
+          'turnoguard-card relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden',
+          c.cardBorder,
+          c.cardBg,
         )}
+        style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
       >
-        {/* Top accent bar */}
-        <div
-          className={cn(
-            'h-1 w-full',
-            variant === 'danger' ? 'bg-gradient-to-r from-rose-600 to-rose-400' : 'bg-gradient-to-r from-amber-600 to-amber-400',
-          )}
-        />
+        {/* Top accent bar with animated shimmer */}
+        <div className={cn('relative h-[3px] w-full overflow-hidden bg-gradient-to-r', c.accentBar)}>
+          <div className="turnoguard-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+        </div>
 
-        <div className={cn('p-8 text-center space-y-6 bg-gradient-to-b', colors.bg)}>
-          {/* Icon */}
-          <div className={cn('mx-auto flex size-20 items-center justify-center rounded-2xl ring-1', colors.iconBg, colors.ring)}>
-            <Icon className={cn('size-9', colors.icon)} />
-          </div>
+        <div className="p-8 text-center space-y-7">
 
-          {/* Texts */}
-          <div className="space-y-2">
-            <span className={cn('inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border', colors.badge)}>
-              <AlertTriangle className="size-3" />
+          {/* ── Icon area ── */}
+          <div className="flex flex-col items-center gap-4">
+            <div className={cn(
+              'turnoguard-icon relative flex size-[72px] items-center justify-center rounded-[20px] ring-1',
+              c.iconBg, c.iconRing,
+            )}>
+              <Icon className={cn('size-8', c.iconColor)} />
+              {/* Pulse ring */}
+              <span className={cn('absolute inset-0 rounded-[20px] ring-1 animate-ping opacity-30', c.iconRing)} />
+            </div>
+
+            {/* Status badge */}
+            <span className={cn(
+              'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide px-3 py-1 rounded-full border',
+              c.badgeBg,
+            )}>
+              <span className={cn('size-1.5 rounded-full', c.pulseDot)} />
               Acceso restringido
             </span>
-            <h1 className={cn('text-2xl font-bold', colors.title)}>{title}</h1>
-            <p className="text-sm font-medium text-foreground/80">{subtitle}</p>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+          </div>
+
+          {/* ── Texts ── */}
+          <div className="space-y-2.5">
+            <h1 className={cn('text-[26px] font-bold tracking-tight', c.titleColor)}>
+              {title}
+            </h1>
+            <p className="text-sm font-medium text-white/70">
+              {subtitle}
+            </p>
+            <p className="text-[13px] text-white/45 leading-relaxed max-w-xs mx-auto">
               {description}
             </p>
           </div>
 
-          {/* Actions */}
+          {/* ── Divider ── */}
+          <div className="h-px bg-white/5 mx-4" />
+
+          {/* ── Actions ── */}
           <div>{actions}</div>
         </div>
       </div>
+
+      <style>{`
+        .turnoguard-root {
+          animation: tg-fade-in 0.4s ease both;
+        }
+        @keyframes tg-fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+
+        .turnoguard-card {
+          animation: tg-slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+        }
+        @keyframes tg-slide-up {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .turnoguard-orb {
+          pointer-events: none;
+        }
+        .turnoguard-orb-1 {
+          width: 480px; height: 480px;
+          top: -140px; left: -100px;
+          animation: tg-float1 9s ease-in-out infinite;
+        }
+        .turnoguard-orb-2 {
+          width: 360px; height: 360px;
+          bottom: -80px; right: -80px;
+          animation: tg-float2 11s ease-in-out infinite;
+        }
+        @keyframes tg-float1 {
+          0%,100% { transform: translate(0, 0) scale(1); }
+          50%      { transform: translate(30px, 20px) scale(1.05); }
+        }
+        @keyframes tg-float2 {
+          0%,100% { transform: translate(0, 0) scale(1); }
+          50%      { transform: translate(-20px, -25px) scale(1.04); }
+        }
+
+        .turnoguard-icon {
+          animation: tg-icon-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+        }
+        @keyframes tg-icon-in {
+          from { opacity: 0; transform: scale(0.5) rotate(-12deg); }
+          to   { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        .turnoguard-shimmer {
+          animation: tg-shimmer 3s ease-in-out 1s infinite;
+        }
+        @keyframes tg-shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -152,8 +262,8 @@ function BlockScreen({ variant, icon: Icon, title, subtitle, description, action
 function RefreshButton({ onRefresh, label, variant = 'outline' }) {
   const base = 'flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-medium transition-all active:scale-[0.98]';
   const styles = {
-    outline: 'border border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground',
-    ghost:   'text-muted-foreground hover:text-foreground hover:bg-muted',
+    outline: 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/90',
+    ghost:   'text-white/50 hover:text-white/80 hover:bg-white/5',
   };
 
   return (

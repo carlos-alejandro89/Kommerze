@@ -567,6 +567,10 @@ func (l *LocalServerService) handleCerrarOperacionSucursal(w http.ResponseWriter
 		OperacionID:     body.OperacionID,
 		UsuarioCierreID: body.UsuarioCierreID,
 	})
+	// Notificar a todas las Cajas conectadas
+	if result != nil && result.Success {
+		l.BroadcastToClients("jornada:cerrada", map[string]any{"operacionID": body.OperacionID})
+	}
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -597,6 +601,10 @@ func (l *LocalServerService) handleCerrarCaja(w http.ResponseWriter, r *http.Req
 		return
 	}
 	result := l.operacionesCaja.CerrarCaja(body)
+	// Notificar a todas las Cajas conectadas
+	if result != nil && result.Success {
+		l.BroadcastToClients("turno:cerrado", map[string]any{"operacionCajeroID": body.OperacionCajeroID})
+	}
 	writeJSON(w, http.StatusOK, result)
 }
 
