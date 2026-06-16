@@ -86,13 +86,13 @@ export function ServiceRestartApp():Promise<void>;
 
 export function ServiceSaveCloudCredentials(arg1:string,arg2:string):Promise<void>;
 
-export function ServiceSaveDBConfig(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<void>;
+export function ServiceSaveDBConfig(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<void>;
 
 export function ServiceSaveKommerzConfig(arg1:services.KommerzConfig):Promise<void>;
 
 export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
 
-export function ServiceTestDBConnection(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<dto.ResponseDto>;
+export function ServiceTestDBConnection(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<dto.ResponseDto>;
 
 export function ServiceTestLocalServerConnection(arg1:string):Promise<dto.ResponseDto>;
 

@@ -16,7 +16,7 @@ import (
 var migrationsFS embed.FS
 
 func RunMigrationsV2(db *gorm.DB, cfg *services.KommerzConfig) error {
-	host, port, user, pass, name, ssl := cfg.EffectiveDBConfig()
+	host, port, user, pass, name, ssl, _ := cfg.EffectiveDBConfig()
 
 	d, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {

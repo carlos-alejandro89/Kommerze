@@ -162,8 +162,8 @@ export function ServiceSaveCloudCredentials(arg1, arg2) {
   return window['go']['main']['App']['ServiceSaveCloudCredentials'](arg1, arg2);
 }
 
-export function ServiceSaveDBConfig(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['ServiceSaveDBConfig'](arg1, arg2, arg3, arg4, arg5, arg6);
+export function ServiceSaveDBConfig(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ServiceSaveDBConfig'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function ServiceSaveKommerzConfig(arg1) {
@@ -174,8 +174,8 @@ export function ServiceSucursalInicioOperacion(arg1) {
   return window['go']['main']['App']['ServiceSucursalInicioOperacion'](arg1);
 }
 
-export function ServiceTestDBConnection(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['ServiceTestDBConnection'](arg1, arg2, arg3, arg4, arg5, arg6);
+export function ServiceTestDBConnection(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ServiceTestDBConnection'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function ServiceTestLocalServerConnection(arg1) {

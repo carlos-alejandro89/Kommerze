@@ -918,6 +918,7 @@ export namespace services {
 	    dbPassword?: string;
 	    dbName?: string;
 	    dbSslMode?: string;
+	    timeZone?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new KommerzConfig(source);
@@ -936,6 +937,7 @@ export namespace services {
 	        this.dbPassword = source["dbPassword"];
 	        this.dbName = source["dbName"];
 	        this.dbSslMode = source["dbSslMode"];
+	        this.timeZone = source["timeZone"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
