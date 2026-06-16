@@ -43,7 +43,7 @@ func (a *App) startup(ctx context.Context) {
 
 // posService devuelve el servicio POS correcto según el rol del dispositivo.
 func (a *App) posService() interface {
-	ConsultaProductos(string) ([]dto.ProductoDto, error)
+	ConsultaProductos(string, bool) ([]dto.ProductoDto, error)
 	ObtenerTiposPedido() ([]models.TipoPedido, error)
 	ConsultarExistenciaProductos([]uuid.UUID) ([]dto.InventarioDto, error)
 	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint) (*dto.ResponseDto, error)
@@ -310,8 +310,8 @@ func (a *App) SyncEstatus() (string, error) {
 
 // ── POS ───────────────────────────────────────────────────────────────────────
 
-func (a *App) ServiceConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
-	return a.posService().ConsultaProductos(busqueda)
+func (a *App) ServiceConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
+	return a.posService().ConsultaProductos(busqueda, conExistencia)
 }
 
 func (a *App) ServiceObtenerTiposPedido() ([]models.TipoPedido, error) {

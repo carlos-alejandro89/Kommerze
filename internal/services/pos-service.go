@@ -26,8 +26,8 @@ func NewPosService(db *gorm.DB, ctx context.Context) *PosService {
 	}
 }
 
-func (s *PosService) ConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
-	response, err := s.posRepository.ConsultaProductos(busqueda)
+func (s *PosService) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
+	response, err := s.posRepository.ConsultaProductos(busqueda, conExistencia)
 	return response, err
 }
 

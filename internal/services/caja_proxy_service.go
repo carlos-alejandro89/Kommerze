@@ -73,12 +73,12 @@ func (c *CajaProxyService) post(path string, body any, out any) error {
 
 // ── PosService equivalentes ───────────────────────────────────────────────────
 
-func (c *CajaProxyService) ConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
+func (c *CajaProxyService) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
 	var result struct {
-		Success bool             `json:"success"`
+		Success bool              `json:"success"`
 		Data    []dto.ProductoDto `json:"data"`
 	}
-	if err := c.get(fmt.Sprintf("/local/productos?q=%s", busqueda), &result); err != nil {
+	if err := c.get(fmt.Sprintf("/local/productos?q=%s&existencia=%t", busqueda, conExistencia), &result); err != nil {
 		return nil, err
 	}
 	return result.Data, nil

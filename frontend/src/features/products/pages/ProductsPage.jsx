@@ -16,6 +16,7 @@ export function ProductsPage() {
   const [dbMarcas, setDbMarcas] = useState([]);
   const [selectedLineas, setSelectedLineas] = useState(new Set());
   const [selectedMarcas, setSelectedMarcas] = useState(new Set());
+  const [showOnlyWithStock, setShowOnlyWithStock] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -33,22 +34,23 @@ export function ProductsPage() {
   const clearAllFilters = () => {
     setSelectedLineas(new Set());
     setSelectedMarcas(new Set());
+    setShowOnlyWithStock(false);
   };
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedLineas, selectedMarcas]);
+  }, [search, selectedLineas, selectedMarcas, showOnlyWithStock]);
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [showOnlyWithStock]);
 
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
       setError(null);
       const [data, lineasRes, marcasRes] = await Promise.all([
-        ServiceConsultaProductos(''),
+        ServiceConsultaProductos('', showOnlyWithStock),
         ServiceGetLineas(),
         ServiceGetMarcas()
       ]);
@@ -72,8 +74,11 @@ export function ProductsPage() {
 
     const matchesLinea = selectedLineas.size === 0 || selectedLineas.has(pLinea);
     const matchesMarca = selectedMarcas.size === 0 || selectedMarcas.has(pMarca);
+    
+    const stock = Number(p.Existencia || 0);
+    const matchesStock = showOnlyWithStock ? stock > 0 : true;
 
-    return matchesSearch && matchesLinea && matchesMarca;
+    return matchesSearch && matchesLinea && matchesMarca && matchesStock;
   });
 
   const lineasCounts = products.reduce((acc, p) => {
@@ -127,7 +132,7 @@ export function ProductsPage() {
       <div className="w-[280px] shrink-0 border-r border-border bg-surface flex flex-col overflow-hidden hidden md:block">
         <div className="p-5 flex items-center justify-between border-b border-border">
           <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">FILTROS</h3>
-          {(selectedLineas.size > 0 || selectedMarcas.size > 0) && (
+          {(selectedLineas.size > 0 || selectedMarcas.size > 0 || showOnlyWithStock) && (
             <button onClick={clearAllFilters} className="text-xs font-medium text-primary hover:text-brand-600 transition-colors">
               Limpiar
             </button>
@@ -135,6 +140,21 @@ export function ProductsPage() {
         </div>
         
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {/* Existencia */}
+          <div className="space-y-3">
+            <label className="flex items-center cursor-pointer group">
+              <input 
+                type="checkbox" 
+                className="rounded border-border text-primary focus:ring-primary/30 size-3.5 mr-2" 
+                checked={showOnlyWithStock}
+                onChange={(e) => setShowOnlyWithStock(e.target.checked)}
+              />
+              <span className="text-[11px] font-bold text-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
+                Sólo con existencia
+              </span>
+            </label>
+          </div>
+
           {/* Líneas */}
           {allLineas.length > 0 && (
             <div className="space-y-3">
@@ -280,10 +300,18 @@ export function ProductsPage() {
           </div>
 
           {/* Active Filters Bar */}
-          {(selectedLineas.size > 0 || selectedMarcas.size > 0) && (
+          {(selectedLineas.size > 0 || selectedMarcas.size > 0 || showOnlyWithStock) && (
             <div className="flex items-center gap-3 pt-2">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Filtros Activos:</span>
               <div className="flex flex-wrap gap-2">
+                {showOnlyWithStock && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 uppercase tracking-wide">
+                    Con Existencia
+                    <button onClick={() => setShowOnlyWithStock(false)} className="hover:text-primary-600 transition-colors">
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                )}
                 {Array.from(selectedLineas).map(linea => (
                   <span key={linea} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 uppercase tracking-wide">
                     {linea}

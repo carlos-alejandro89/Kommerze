@@ -31,7 +31,7 @@ func (r *PosRepository) SetContext(ctx context.Context) {
 	r.ctx = ctx
 }
 
-func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, error) {
+func (r *PosRepository) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
 	var productos []dto.ProductoDto
 
 	guid, err := uuid.Parse(busqueda)
@@ -39,7 +39,7 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
 		guid = uuid.New()
 	}
 
-	err = r.db.Raw(`select nv.codigo,p.descripcion,e.empaque ,e.contenido ,
+	query := `select nv.codigo,p.descripcion,e.empaque ,e.contenido ,
 	                 p.fraccionable ,nv.codigo_barra ,nv.img_referencia , nivel_id,
 					 precio_compra,precio_venta, descuento ,existencia ,
 	                 p.informacion_producto,p.caracteristicas,p.instrucciones_uso,
@@ -52,10 +52,16 @@ func (r *PosRepository) ConsultaProductos(busqueda string) ([]dto.ProductoDto, e
                      left join productos pb on p.producto_base_id = pb.id
 					 left join lineas l on p.linea_id = l.id
 					 left join marcas m on p.marca_id = m.id
-					 where p.descripcion like @busqueda 
+					 where (p.descripcion like @busqueda 
 					 or codigo like @busqueda 
 					 or codigo_barra = @buscar
-					 or nv.guid = @guid`,
+					 or nv.guid = @guid)`
+
+	if conExistencia {
+		query += " and existencia > 0"
+	}
+
+	err = r.db.Raw(query,
 		sql.Named("busqueda", "%"+busqueda+"%"),
 		sql.Named("buscar", busqueda),
 		sql.Named("guid", guid)).Scan(&productos).Error

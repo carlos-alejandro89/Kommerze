@@ -46,7 +46,7 @@ export function usePosService() {
      * @param {string} q — término de búsqueda
      * @returns {Promise<ProductoDto[]>}
      */
-    const buscarProductos = (q) => ServiceConsultaProductos(q);
+    const buscarProductos = (q, conExistencia = false) => ServiceConsultaProductos(q, conExistencia);
 
     /**
      * Consulta la existencia actual de una lista de productos por sus GUIDs.

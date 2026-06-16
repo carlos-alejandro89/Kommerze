@@ -20,7 +20,7 @@ export function ServiceCerrarOperacionSucursal(arg1:dto.CerrarOperacionSucursalD
 
 export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>,arg4:any,arg5:any):Promise<dto.ResponseDto>;
 
-export function ServiceConsultaProductos(arg1:string):Promise<Array<dto.ProductoDto>>;
+export function ServiceConsultaProductos(arg1:string,arg2:boolean):Promise<Array<dto.ProductoDto>>;
 
 export function ServiceConsultaTransacciones(arg1:any,arg2:any):Promise<dto.ResponseDto>;
 

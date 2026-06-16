@@ -30,8 +30,8 @@ export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5);
 }
 
-export function ServiceConsultaProductos(arg1) {
-  return window['go']['main']['App']['ServiceConsultaProductos'](arg1);
+export function ServiceConsultaProductos(arg1, arg2) {
+  return window['go']['main']['App']['ServiceConsultaProductos'](arg1, arg2);
 }
 
 export function ServiceConsultaTransacciones(arg1, arg2) {

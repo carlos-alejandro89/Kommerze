@@ -224,7 +224,8 @@ func (l *LocalServerService) handleProductos(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	q := r.URL.Query().Get("q")
-	productos, err := l.pos.ConsultaProductos(q)
+	conExistencia := r.URL.Query().Get("existencia") == "true"
+	productos, err := l.pos.ConsultaProductos(q, conExistencia)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
