@@ -5,6 +5,7 @@ import (
 	"BitComercio/internal/services"
 	"embed"
 	"log"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -22,6 +23,18 @@ func main() {
 		cfg = &services.KommerzConfig{}
 	}
 	log.Printf("[main] Rol del dispositivo: '%s'", cfg.Role)
+
+	// Configurar Zona Horaria Global
+	tz := cfg.TimeZone
+	if tz == "" {
+		tz = "America/Mexico_City"
+	}
+	if loc, err := time.LoadLocation(tz); err == nil {
+		time.Local = loc
+		log.Printf("[main] Zona horaria establecida a: %s", tz)
+	} else {
+		log.Printf("[main] Error cargando zona horaria %s: %v", tz, err)
+	}
 
 	var app *App
 

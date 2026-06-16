@@ -15,6 +15,15 @@ import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
 
 const SSL_MODES = ['disable', 'require', 'verify-ca', 'verify-full'];
+const TIMEZONES = [
+  'America/Mexico_City',
+  'America/Tijuana',
+  'America/Cancun',
+  'America/Chihuahua',
+  'America/Mazatlan',
+  'America/Monterrey',
+  'America/Hermosillo',
+];
 
 const defaultForm = {
   host: '127.0.0.1',
@@ -23,6 +32,7 @@ const defaultForm = {
   password: '',
   name: 'kommerze_db',
   sslMode: 'disable',
+  timeZone: 'America/Mexico_City',
 };
 
 export function DatabaseSetupPage() {
@@ -50,6 +60,7 @@ export function DatabaseSetupPage() {
         form.password,
         form.name,
         form.sslMode,
+        form.timeZone,
       );
       if (result?.success) {
         setConnectionStatus('ok');
@@ -80,6 +91,7 @@ export function DatabaseSetupPage() {
         form.password,
         form.name,
         form.sslMode,
+        form.timeZone,
       );
       setRestarting(true);
       await new Promise((r) => setTimeout(r, 1500));
@@ -183,28 +195,55 @@ export function DatabaseSetupPage() {
             <Field label="Nombre de la base de datos" id="dbName" value={form.name} onChange={handleChange('name')} placeholder="kommerze_db" />
 
             {/* SSL Mode */}
-            <div className="space-y-1.5">
-              <label htmlFor="dbSslMode" className="text-sm font-medium text-foreground">
-                Modo SSL
-              </label>
-              <div className="relative">
-                <select
-                  id="dbSslMode"
-                  value={form.sslMode}
-                  onChange={handleChange('sslMode')}
-                  className="w-full appearance-none rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-9 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition cursor-pointer"
-                >
-                  {SSL_MODES.map((m) => (
-                    <option key={m} value={m} className="bg-background text-foreground">
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                {/* Chevron icon */}
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+            <div className="grid grid-cols-[1fr_1fr] gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="dbSslMode" className="text-sm font-medium text-foreground">
+                  Modo SSL
+                </label>
+                <div className="relative">
+                  <select
+                    id="dbSslMode"
+                    value={form.sslMode}
+                    onChange={handleChange('sslMode')}
+                    className="w-full appearance-none rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-9 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition cursor-pointer"
+                  >
+                    {SSL_MODES.map((m) => (
+                      <option key={m} value={m} className="bg-background text-foreground">
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* TimeZone */}
+              <div className="space-y-1.5">
+                <label htmlFor="dbTimeZone" className="text-sm font-medium text-foreground">
+                  Zona Horaria
+                </label>
+                <div className="relative">
+                  <select
+                    id="dbTimeZone"
+                    value={form.timeZone}
+                    onChange={handleChange('timeZone')}
+                    className="w-full appearance-none rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-9 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition cursor-pointer"
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz} value={tz} className="bg-background text-foreground">
+                        {tz.split('/')[1]?.replace('_', ' ') || tz}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>

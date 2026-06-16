@@ -10,8 +10,8 @@ import (
 type BaseModel struct {
 	ID        uint           `gorm:"primaryKey"`
 	Guid      uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();uniqueIndex"`
-	CreatedAt time.Time      `gorm:"type:timestamp;not null;default:now()"`
-	UpdatedAt time.Time      `gorm:"type:timestamp;not null;default:now()"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;not null;default:now()"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 

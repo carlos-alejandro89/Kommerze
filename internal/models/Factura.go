@@ -33,7 +33,7 @@ type Factura struct {
 	PAC string `gorm:"size:150"`
 	VersionTFD string `gorm:"size:20"`
 
-	FechaFactura time.Time `gorm:"type:timestamp;not null;index"`
+	FechaFactura time.Time `gorm:"type:timestamptz;not null;index"`
 
 	EsGlobal bool `gorm:"default:false"`
 

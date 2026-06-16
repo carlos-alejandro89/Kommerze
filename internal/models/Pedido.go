@@ -24,7 +24,7 @@ type Pedido struct {
 
 	// Datos comerciales
 	Folio     int       `gorm:"index"`
-	Fecha     time.Time `gorm:"type:timestamp;not null;default:now();index"`
+	Fecha     time.Time `gorm:"type:timestamptz;not null;default:now();index"`
 	EsCredito bool      `gorm:"default:false"`
 	Sync      bool      `gorm:"default:false"`
 
@@ -39,7 +39,7 @@ type Pedido struct {
 	DescuentosAutorizados string     `gorm:"type:text;default:null"`
 	AutorizadoPor         string     `gorm:"size:255;default:null"`
 	ObsAutorizacion       string     `gorm:"type:text;default:null"`
-	FechaResolucion       *time.Time `gorm:"type:timestamp;default:null"`
+	FechaResolucion       *time.Time `gorm:"type:timestamptz;default:null"`
 	CloudSolicitudGuid    string     `gorm:"size:36;default:null;index"`
 }
 

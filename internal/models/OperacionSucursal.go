@@ -22,8 +22,8 @@ type OperacionSucursal struct {
 	Estatus   Estatus `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	// Control de jornada
-	FechaInicio time.Time  `gorm:"type:timestamp;not null;index"`
-	FechaFin    *time.Time `gorm:"type:timestamp"`
+	FechaInicio time.Time  `gorm:"type:timestamptz;not null;index"`
+	FechaFin    *time.Time `gorm:"type:timestamptz"`
 
 	// Inventario
 	ValorInicialInventario decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
@@ -53,7 +53,7 @@ type OperacionSucursal struct {
 	BajasMercancia decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
 	// ☁ Sincronización con la nube (nil = pendiente de sync)
-	SyncedAt *time.Time `gorm:"type:timestamp"`
+	SyncedAt *time.Time `gorm:"type:timestamptz"`
 }
 
 func (OperacionSucursal) TableName() string {

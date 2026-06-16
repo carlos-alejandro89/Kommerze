@@ -30,8 +30,8 @@ type OperacionCajero struct {
 	Estatus   Estatus
 
 	// ⏱ Control de tiempo
-	FechaInicio time.Time  `gorm:"type:timestamp;not null;index"`
-	FechaFin    *time.Time `gorm:"type:timestamp"`
+	FechaInicio time.Time  `gorm:"type:timestamptz;not null;index"`
+	FechaFin    *time.Time `gorm:"type:timestamptz"`
 
 	// 💰 Control financiero (alineado con KommerzeApiCloud OperacionCajero.cs)
 	FondoCajaApertura    decimal.Decimal  `gorm:"type:decimal(18,6);default:0"`
@@ -47,7 +47,7 @@ type OperacionCajero struct {
 	Bloqueada bool `gorm:"default:false"`
 
 	// ☁ Sincronización con la nube (nil = pendiente de sync)
-	SyncedAt *time.Time `gorm:"type:timestamp"`
+	SyncedAt *time.Time `gorm:"type:timestamptz"`
 }
 
 func (OperacionCajero) TableName() string {

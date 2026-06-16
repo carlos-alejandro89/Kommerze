@@ -55,18 +55,22 @@ type KommerzConfig struct {
 	DBPassword string `json:"dbPassword,omitempty"`
 	DBName     string `json:"dbName,omitempty"`
 	DBSSLMode  string `json:"dbSslMode,omitempty"`
+	
+	// Zona horaria para el servidor Go y la conexión PostgreSQL
+	TimeZone   string `json:"timeZone,omitempty"`
 }
 
 // EffectiveDBConfig devuelve los valores de conexión a la BD aplicando
 // defaults para una instalación estándar de PostgreSQL cuando los campos
 // del config están vacíos.
-func (c *KommerzConfig) EffectiveDBConfig() (host, port, user, password, name, sslMode string) {
+func (c *KommerzConfig) EffectiveDBConfig() (host, port, user, password, name, sslMode, timeZone string) {
 	host     = defaultStr(c.DBHost,    "127.0.0.1")
 	port     = defaultStr(c.DBPort,    "5432")
 	user     = defaultStr(c.DBUser,    "postgres")
 	password = c.DBPassword // sin default, PostgreSQL local suele no tener contraseña
 	name     = defaultStr(c.DBName,    "kommerze_db")
 	sslMode  = defaultStr(c.DBSSLMode, "disable")
+	timeZone = defaultStr(c.TimeZone,  "America/Mexico_City")
 	return
 }
 

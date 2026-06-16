@@ -72,11 +72,18 @@ func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.Sucurs
 	var usuario = uint(datos.Usuario)
 	var sucursal = uint(datos.Sucursal)
 
+	fechaInicio := time.Now()
+	if datos.FechaInicio != "" {
+		if parsed, err := time.Parse(time.RFC3339, datos.FechaInicio); err == nil {
+			fechaInicio = parsed
+		}
+	}
+
 	var operacion = models.OperacionSucursal{
 		UsuarioAperturaID:      &usuario,
 		EstatusID:              &estatus,
 		SucursalID:             sucursal,
-		FechaInicio:            time.Now(),
+		FechaInicio:            fechaInicio,
 		ValorInicialInventario: decimal.NewFromFloat(datos.ValorInventarioInicial),
 	}
 

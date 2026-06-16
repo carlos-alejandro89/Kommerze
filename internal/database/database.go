@@ -10,17 +10,18 @@ import (
 )
 
 func buildDSN(cfg *services.KommerzConfig) string {
-	host, port, user, pass, name, ssl := cfg.EffectiveDBConfig()
+	host, port, user, pass, name, ssl, timeZone := cfg.EffectiveDBConfig()
 
 	// Formato clásico key=value (más seguro que URL si hay caracteres especiales)
 	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		host,
 		port,
 		url.QueryEscape(user),
 		url.QueryEscape(pass),
 		name,
 		ssl,
+		timeZone,
 	)
 }
 

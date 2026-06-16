@@ -588,7 +588,7 @@ func (a *App) ServiceSaveKommerzConfig(cfg services.KommerzConfig) error {
 // ServiceTestDBConnection prueba una conexión a PostgreSQL con los valores
 // proporcionados sin modificar la configuración guardada.
 // Usada por DatabaseSetupPage para validar credenciales antes de guardar.
-func (a *App) ServiceTestDBConnection(host, port, user, password, name, sslMode string) *dto.ResponseDto {
+func (a *App) ServiceTestDBConnection(host, port, user, password, name, sslMode, timeZone string) *dto.ResponseDto {
 	testCfg := &services.KommerzConfig{
 		DBHost:     host,
 		DBPort:     port,
@@ -596,6 +596,7 @@ func (a *App) ServiceTestDBConnection(host, port, user, password, name, sslMode 
 		DBPassword: password,
 		DBName:     name,
 		DBSSLMode:  sslMode,
+		TimeZone:   timeZone,
 	}
 	if err := database.TestDBConnection(testCfg); err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
@@ -605,7 +606,7 @@ func (a *App) ServiceTestDBConnection(host, port, user, password, name, sslMode 
 
 // ServiceSaveDBConfig persiste solo los campos de BD en KommerzConfig
 // haciendo merge con la configuración existente para no perder otros campos.
-func (a *App) ServiceSaveDBConfig(host, port, user, password, name, sslMode string) error {
+func (a *App) ServiceSaveDBConfig(host, port, user, password, name, sslMode, timeZone string) error {
 	cfg, err := services.LoadKommerzConfig()
 	if err != nil {
 		return err
@@ -616,6 +617,7 @@ func (a *App) ServiceSaveDBConfig(host, port, user, password, name, sslMode stri
 	cfg.DBPassword = password
 	cfg.DBName     = name
 	cfg.DBSSLMode  = sslMode
+	cfg.TimeZone   = timeZone
 	return services.SaveKommerzConfig(cfg)
 }
 

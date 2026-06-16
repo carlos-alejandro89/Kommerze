@@ -87,6 +87,7 @@ export function CortesSucursalPage() {
         Sucursal:               sucursalID,
         Usuario:                userID,
         ValorInventarioInicial: inventario,
+        FechaInicio:            new Date().toISOString(),
       });
       if (res?.success) {
         toast.success('Jornada iniciada correctamente');

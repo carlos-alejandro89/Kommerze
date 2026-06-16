@@ -11,7 +11,7 @@ type Pago struct {
 	PedidoID uint
 	Pedido   Pedido
 
-	Fecha time.Time `gorm:"type:timestamp;not null;default:now();index"`
+	Fecha time.Time `gorm:"type:timestamptz;not null;default:now();index"`
 	Monto float64
 	Saldo float64
 	Sync  bool
