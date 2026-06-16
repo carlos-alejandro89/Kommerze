@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
+import { DialogAlert } from '@/components/common/dialog-alert';
 import {
   ServiceObtenerOperacionSucursalActiva,
   ServiceObtenerValorInventario,
@@ -36,6 +37,8 @@ export function CortesSucursalPage() {
   const [opSucursal, setOpSucursal]   = useState(null);
   const [turnos, setTurnos]           = useState([]);
   const [inventario, setInventario]   = useState(0);
+
+  const [alertAction, setAlertAction] = useState(null);
 
   const fetchDatos = useCallback(async () => {
     if (!sucursalID) return; // Esperar a que store esté cargado
@@ -80,7 +83,11 @@ export function CortesSucursalPage() {
       toast.error('No se ha detectado una sucursal válida.');
       return;
     }
-    if (!confirm('¿Confirmas iniciar la jornada de esta sucursal?')) return;
+    setAlertAction('iniciar');
+  };
+
+  const confirmIniciarJornada = async () => {
+    setAlertAction(null);
     setSubmitting(true);
     try {
       const res = await ServiceSucursalInicioOperacion({
@@ -105,7 +112,11 @@ export function CortesSucursalPage() {
   // ── Cerrar jornada ────────────────────────────────────────────────────────
   const handleCerrarJornada = async () => {
     if (!opSucursal) return;
-    if (!confirm('¿Confirmas cerrar la jornada? Los acumulados se calcularán automáticamente.')) return;
+    setAlertAction('cerrar');
+  };
+
+  const confirmCerrarJornada = async () => {
+    setAlertAction(null);
     setSubmitting(true);
     try {
       const res = await ServiceCerrarOperacionSucursal({
@@ -392,6 +403,16 @@ export function CortesSucursalPage() {
           </div>
         )}
       </div>
+
+      <DialogAlert 
+        open={alertAction !== null} 
+        onOpenChange={(open) => !open && setAlertAction(null)}
+        title={alertAction === 'iniciar' ? 'Iniciar Jornada' : 'Cerrar Jornada'}
+        description={alertAction === 'iniciar' ? '¿Confirmas iniciar la jornada de esta sucursal?' : '¿Confirmas cerrar la jornada? Los acumulados se calcularán automáticamente.'}
+        onConfirm={alertAction === 'iniciar' ? confirmIniciarJornada : confirmCerrarJornada}
+        onCancel={() => setAlertAction(null)}
+        type={alertAction === 'iniciar' ? 'success' : 'warning'}
+      />
     </div>
   );
 }

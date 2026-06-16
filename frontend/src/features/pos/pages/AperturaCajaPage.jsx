@@ -9,6 +9,7 @@ import {
   ServiceObtenerOperacionCajeroActiva,
   ServiceAbrirCaja,
 } from '../../../../wailsjs/go/main/App';
+import { Alert, AlertIcon, AlertContent, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export function AperturaCajaPage() {
   const { user } = useAuth();
@@ -121,13 +122,17 @@ export function AperturaCajaPage() {
   if (!opSucursal) {
     return (
       <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-bg-subtle p-4">
-        <div className="w-full max-w-md rounded-2xl border border-warning/30 bg-surface shadow-lg p-8 text-center space-y-4">
-          <AlertCircle className="mx-auto size-12 text-warning" />
-          <h1 className="text-xl font-bold text-foreground">Sin Jornada Activa</h1>
-          <p className="text-sm text-muted-foreground">
-            No hay una jornada de sucursal activa. El supervisor debe iniciar la jornada antes de abrir cajas.
-          </p>
-        </div>
+        <Alert variant="warning" appearance="light" size="lg" className="w-full max-w-md shadow-lg">
+          <AlertIcon>
+            <AlertCircle />
+          </AlertIcon>
+          <AlertContent>
+            <AlertTitle>Sin Jornada Activa</AlertTitle>
+            <AlertDescription>
+              No hay una jornada de sucursal activa. El supervisor debe iniciar la jornada antes de abrir cajas.
+            </AlertDescription>
+          </AlertContent>
+        </Alert>
       </div>
     );
   }
@@ -152,10 +157,14 @@ export function AperturaCajaPage() {
           className="rounded-b-2xl border border-border border-t-0 bg-surface shadow-lg p-6 space-y-5"
         >
           {/* Jornada activa badge */}
-          <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 flex items-center gap-2">
-            <CheckCircle className="size-4 text-emerald-500 shrink-0" />
-            <span className="text-xs font-medium text-emerald-600">Jornada de sucursal activa</span>
-          </div>
+          <Alert variant="success" appearance="light" size="sm" className="mb-2">
+            <AlertIcon>
+              <CheckCircle />
+            </AlertIcon>
+            <AlertContent>
+              <AlertTitle>Jornada de sucursal activa</AlertTitle>
+            </AlertContent>
+          </Alert>
 
           {/* Nombre de la caja */}
           <div className="space-y-1.5">

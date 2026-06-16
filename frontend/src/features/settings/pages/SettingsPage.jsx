@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
+import { DialogAlert } from '@/components/common/dialog-alert';
 import {
   ServiceLoadCloudCredentials,
   ServiceSaveCloudCredentials,
@@ -26,6 +27,7 @@ export function SettingsPage() {
   const [testingConn, setTestingConn] = useState(false);
   const [savingConn, setSavingConn]   = useState(false);
   const [localIP, setLocalIP]         = useState('');
+  const [alertOpen, setAlertOpen]     = useState(false);
 
   useEffect(() => {
     ServiceGetLocalIP().then(setLocalIP).catch(() => {});
@@ -93,7 +95,11 @@ export function SettingsPage() {
   };
 
   const handleReconfigure = async () => {
-    if (!confirm('¿Seguro? El dispositivo deberá configurarse nuevamente.')) return;
+    setAlertOpen(true);
+  };
+
+  const confirmReconfigure = async () => {
+    setAlertOpen(false);
     try {
       await ServiceSaveKommerzConfig({ role: '' });
       toast.success('Configuración restablecida. Reinicia la aplicación.');
@@ -306,6 +312,16 @@ export function SettingsPage() {
 
         </div>
       </div>
+
+      <DialogAlert 
+        open={alertOpen} 
+        onOpenChange={setAlertOpen}
+        title="Reconfigurar Dispositivo"
+        description="¿Seguro? El dispositivo deberá configurarse nuevamente."
+        onConfirm={confirmReconfigure}
+        onCancel={() => setAlertOpen(false)}
+        type="warning"
+      />
     </div>
   );
 }
