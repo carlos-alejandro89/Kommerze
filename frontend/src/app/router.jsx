@@ -12,7 +12,7 @@ import { NotificationProvider } from '@/providers/NotificationProvider';
 // Guard para rutas exclusivas del Servidor Local
 function ServerOnlyGuard({ children }) {
   const { isCaja } = useActivation();
-  if (isCaja) return <Navigate to="/dashboard" replace />;
+  if (isCaja) return <Navigate to="/home" replace />;
   return children;
 }
 
@@ -35,6 +35,7 @@ const SyncPage              = lazy(() => import('@/features/sync/pages/SyncPage'
 const AperturaCajaPage      = lazy(() => import('@/features/pos/pages/AperturaCajaPage').then(m => ({ default: m.AperturaCajaPage })));
 const CierreCajaPage        = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
 const CortesSucursalPage    = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
+const HomePage              = lazy(() => import('@/features/home/pages/HomePage').then(m => ({ default: m.HomePage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -104,7 +105,11 @@ export const router = createBrowserRouter(
         </DeviceGuard>
       ),
       children: [
-        { index: true, element: <Navigate to="/dashboard" replace /> },
+        { index: true, element: <Navigate to="/home" replace /> },
+        {
+          path: '/home',
+          element: <SuspensePage><HomePage /></SuspensePage>,
+        },
         {
           path: '/dashboard',
           element: <SuspensePage><DashboardPage /></SuspensePage>,
@@ -172,7 +177,7 @@ export const router = createBrowserRouter(
     // ── Catch-all ─────────────────────────────────────────────────────────
     {
       path: '*',
-      element: <Navigate to="/dashboard" replace />,
+      element: <Navigate to="/home" replace />,
     },
   ],
   {

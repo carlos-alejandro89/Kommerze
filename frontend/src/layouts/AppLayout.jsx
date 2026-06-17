@@ -1,34 +1,51 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
+import { Outlet, useLocation } from 'react-router-dom';
+import { AppHeader } from './components/AppHeader';
 import { TurnoProvider } from '@/providers/TurnoProvider';
 
 /**
- * AppLayout — Protected layout with collapsible sidebar + top header.
- * Dark sidebar (always dark) + light/dark main content area.
+ * AppLayout — Layout protegido sin sidebar.
+ *
+ * Estructura para todas las rutas excepto /home:
+ *   ┌──────────────────────────────┐
+ *   │  Header (h-14, dark glass)   │
+ *   ├──────────────────────────────┤
+ *   │  <main> — contenido de ruta  │
+ *   └──────────────────────────────┘
+ *
+ * Rutas fullscreen (sin Header — layout propio):
+ *   - /home → HomePage (CarPlay launcher)
  *
  * TurnoProvider envuelve el Outlet para que todas las páginas protegidas
  * (incluyendo el POS) puedan consumir el estado del turno del cajero.
  */
-export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
+/** Rutas que renderizan sin header — tienen su propio layout fullscreen. */
+const FULLSCREEN_ROUTES = ['/home'];
+
+export function AppLayout() {
+  const { pathname } = useLocation();
+
+  const isFullscreen = FULLSCREEN_ROUTES.some(
+    r => pathname === r || pathname.startsWith(`${r}/`),
+  );
+
+  // Modo fullscreen: solo el Outlet (HomePage tiene su propio Header)
+  if (isFullscreen) {
+    return (
+      <TurnoProvider>
+        <Outlet />
+      </TurnoProvider>
+    );
+  }
+
+  // Layout estándar: Header + área de contenido
   return (
     <TurnoProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-background">
-        {/* ── Sidebar ──────────────────────────────────────────── */}
-        <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(v => !v)} />
-
-        {/* ── Main ─────────────────────────────────────────────── */}
-        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-          <Header onMenuToggle={() => setSidebarOpen(v => !v)} />
-
-          {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-bg-subtle">
-            <Outlet />
-          </main>
-        </div>
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+        <AppHeader />
+        <main className="flex-1 overflow-y-auto bg-bg-subtle">
+          <Outlet />
+        </main>
       </div>
     </TurnoProvider>
   );

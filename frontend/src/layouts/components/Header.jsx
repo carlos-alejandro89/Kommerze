@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Sun, Moon, Home, Store, Clock } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
-import { cn } from '@/lib/utils';
+import { useActivation } from '@/providers/ActivationProvider';
 import { NotificationBell } from '@/components/NotificationBell';
+import { cn } from '@/lib/utils';
 
 const THEME_KEY = 'kommerze-theme';
 
-/** Toggle dark mode by adding/removing the `dark` class on <html> */
+/** Toggle dark mode por preferencia del usuario o del sistema */
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
-    // 1) Preferencia guardada por el usuario
     const saved = localStorage.getItem(THEME_KEY);
     if (saved === 'dark') return true;
     if (saved === 'light') return false;
-    // 2) Sin preferencia guardada → usar preferencia del sistema
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
@@ -31,87 +30,139 @@ function useDarkMode() {
   return [dark, setDark];
 }
 
-export function Header({ onMenuToggle }) {
+/**
+ * Header — Barra superior adaptada al tema del sistema (claro / oscuro).
+ *
+ * Usa tokens CSS del design system via clases Tailwind:
+ *   bg-surface, border-border, text-foreground, text-muted-foreground, etc.
+ *
+ * Estructura:
+ *  - Izquierda:  Logo Kommerze + botón "← Inicio" (navega a /home)
+ *  - Centro:     Título de la página actual + sucursal · terminal
+ *  - Derecha:    Reloj en vivo + toggle tema + notificaciones + avatar
+ */
+export function Header() {
   const { user } = useAuth();
+  const { store, operation, license } = useActivation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [dark, setDark] = useDarkMode();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
 
-  // Resolver el título de la página actual desde la ruta.
-  // Usa el match más largo para evitar colisiones entre rutas padre/hijo (e.g. /caja vs /caja/apertura).
+  // Reloj en vivo — actualiza cada segundo
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Título de página desde el config de navegación
   const currentNav = MAIN_NAV
     .filter(n => location.pathname.startsWith(n.path))
     .sort((a, b) => b.path.length - a.path.length)[0];
   const pageTitle = currentNav?.title ?? 'Kommerze POS';
 
-  // User initials avatar
-  const initials = user?.nombre
-    ? user.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'US';
+  // Datos contextuales
+  const storeName = store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze';
+  const terminalName = operation?.Nombre ?? 'Terminal 01';
+  const userName = user?.Nombre ?? user?.CorreoElectronico ?? 'Usuario';
+
+  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = now.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // Iniciales para el avatar
+  const initials = userName
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase() ?? '')
+    .join('');
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-4">
-      {/* Menu toggle (mobile & desktop) */}
-      <button
-        onClick={onMenuToggle}
-        className="flex size-8 items-center justify-center rounded-lg hover:bg-muted transition-colors"
-        aria-label="Toggle menu"
-      >
-        <Menu className="size-4 text-foreground" />
-      </button>
+    <header className="relative flex h-14 shrink-0 items-center justify-between px-4 border-b border-border bg-surface">
 
-      {/* Page title */}
-      <h1 className="text-sm font-semibold text-foreground truncate flex-1">
-        {pageTitle}
-      </h1>
+      {/* ── Izquierda: Logo + Botón Inicio ─────────────── */}
+      <div className="flex items-center gap-2 shrink-0 z-10">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
+            <Store className="size-3.5 text-primary" strokeWidth={2} />
+          </div>
+          <span className="text-xs font-bold tracking-tight text-foreground hidden sm:block">
+            Kommerze
+          </span>
+        </div>
 
-      {/* ── Right Actions ─────────────────────────────────── */}
-      <div className="flex items-center gap-1.5">
-        {/* Search */}
+        {/* Separador */}
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Botón ← Inicio */}
         <button
-          onClick={() => setSearchOpen(v => !v)}
+          onClick={() => navigate('/home')}
           className={cn(
-            'flex size-8 items-center justify-center rounded-lg transition-colors',
-            'text-muted-foreground hover:bg-muted hover:text-foreground',
-            searchOpen && 'bg-muted text-foreground',
+            'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium',
+            'bg-primary/10 border border-primary/25 text-primary',
+            'hover:bg-primary/20 hover:border-primary/45',
+            'transition-all duration-150',
           )}
-          aria-label="Buscar"
+          aria-label="Volver al inicio"
         >
-          <Search className="size-4" />
+          <Home className="size-3.5" strokeWidth={2.2} />
+          <span>Inicio</span>
         </button>
+      </div>
 
-        {/* Dark mode toggle */}
+      {/* ── Centro: Título de página ────────────────────── */}
+      <div className="absolute inset-x-0 flex flex-col items-center pointer-events-none">
+        <h1 className="text-[13px] font-semibold text-foreground leading-tight">
+          {pageTitle}
+        </h1>
+        <p className="text-[10px] text-muted-foreground leading-none">
+          {storeName} · {terminalName}
+        </p>
+      </div>
+
+      {/* ── Derecha: Reloj + Tema + Notif + Avatar ───────── */}
+      <div className="flex items-center gap-1.5 shrink-0 z-10">
+        {/* Reloj */}
+        <div className="hidden md:flex items-center gap-1.5 mr-1">
+          <Clock className="size-3 shrink-0 text-muted-foreground" strokeWidth={2} />
+          <div className="text-right">
+            <p className="text-[12px] font-semibold text-foreground leading-none">
+              {timeStr}
+            </p>
+            <p className="text-[9px] text-muted-foreground leading-none capitalize">
+              {dateStr}
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle tema claro/oscuro */}
         <button
           onClick={() => setDark(v => !v)}
-          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className={cn(
+            'flex size-8 items-center justify-center rounded-lg',
+            'text-muted-foreground hover:bg-muted hover:text-foreground',
+            'transition-colors duration-150',
+          )}
           aria-label="Cambiar tema"
         >
           {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </button>
 
-        {/* Notifications */}
+        {/* Notificaciones */}
         <NotificationBell />
 
         {/* Avatar */}
-        <div className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white select-none">
-          {initials}
+        <div
+          className={cn(
+            'flex size-8 items-center justify-center rounded-full',
+            'bg-primary text-xs font-bold text-primary-foreground',
+            'select-none',
+          )}
+          title={userName}
+        >
+          {initials || '?'}
         </div>
       </div>
-
-      {/* ── Search bar (expandable) ───────────────────────── */}
-      {searchOpen && (
-        <div className="absolute top-14 left-0 right-0 z-30 border-b border-border bg-surface px-4 py-2.5 animate-slide-up">
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              autoFocus
-              type="text"
-              placeholder="Buscar productos, tickets, clientes..."
-              className="w-full rounded-lg border border-border bg-bg-subtle pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
-            />
-          </div>
-        </div>
-      )}
     </header>
   );
 }

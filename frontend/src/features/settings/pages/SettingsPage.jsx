@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Save, Server, Shield, Cloud, HardDrive, RefreshCw, Monitor, Globe, RotateCcw, Wifi, Copy, Check } from 'lucide-react';
+import {
+  Save, Server, Shield, Cloud, HardDrive, RefreshCw,
+  Monitor, Globe, RotateCcw, Wifi, Copy, Check,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -17,10 +20,12 @@ import {
 export function SettingsPage() {
   const navigate = useNavigate();
   const { deviceRole, localServerURL: ctxServerURL } = useActivation();
+
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dispositivo');
+
   // Caja: config de conexión al Servidor Local
   const [serverURL, setServerURL]     = useState(ctxServerURL || '');
   const [connStatus, setConnStatus]   = useState(null);
@@ -28,6 +33,7 @@ export function SettingsPage() {
   const [savingConn, setSavingConn]   = useState(false);
   const [localIP, setLocalIP]         = useState('');
   const [alertOpen, setAlertOpen]     = useState(false);
+  const [copiedIP, setCopiedIP]       = useState(false);
 
   useEffect(() => {
     ServiceGetLocalIP().then(setLocalIP).catch(() => {});
@@ -47,7 +53,8 @@ export function SettingsPage() {
     loadConfig();
   }, []);
 
-  const [copiedIP, setCopiedIP] = useState(false);
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
   const handleCopyIP = () => {
     const url = localIP ? `http://${localIP}:8989` : '';
     if (!url) return;
@@ -56,8 +63,6 @@ export function SettingsPage() {
     setTimeout(() => setCopiedIP(false), 2000);
     toast.success('Dirección copiada al portapapeles');
   };
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -94,9 +99,7 @@ export function SettingsPage() {
     finally { setSavingConn(false); }
   };
 
-  const handleReconfigure = async () => {
-    setAlertOpen(true);
-  };
+  const handleReconfigure = () => setAlertOpen(true);
 
   const confirmReconfigure = async () => {
     setAlertOpen(false);
@@ -107,7 +110,7 @@ export function SettingsPage() {
     } catch (err) { toast.error(String(err)); }
   };
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // ── Tabs config ────────────────────────────────────────────────────────────
 
   const allTabs = [
     { id: 'dispositivo', label: 'Dispositivo',           icon: deviceRole === 'caja' ? Monitor : Server },
@@ -115,10 +118,7 @@ export function SettingsPage() {
     { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
     { id: 'security',    label: 'Seguridad',              icon: Shield,    serverOnly: true },
   ];
-  // En modo Caja solo se muestra la pestaña de Dispositivo
-  const tabs = deviceRole === 'caja'
-    ? allTabs.filter((t) => !t.serverOnly)
-    : allTabs;
+  const tabs = deviceRole === 'caja' ? allTabs.filter(t => !t.serverOnly) : allTabs;
 
   const roleLabel      = deviceRole === 'servidor_local' ? 'Servidor Local' : deviceRole === 'caja' ? 'Caja' : 'Sin configurar';
   const roleBadgeColor = deviceRole === 'servidor_local'
@@ -128,53 +128,68 @@ export function SettingsPage() {
     : 'bg-muted text-muted-foreground border-border';
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in bg-bg-subtle">
+    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden animate-fade-in bg-bg-subtle">
 
-      {/* ── Left Sidebar ─────────────────────────────── */}
-      <div className="w-[240px] shrink-0 border-r border-border bg-surface p-5 hidden md:block">
-        <h2 className="text-lg font-bold text-foreground mb-6">Ajustes</h2>
-        <nav className="space-y-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                activeTab === tab.id
-                  ? 'bg-primary text-white'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-            >
-              <tab.icon className="size-4" />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      {/* ── Page Header ───────────────────────────────────────────────────── */}
+      <div className="shrink-0 border-b border-border bg-surface px-6 pt-6 pb-0">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-xl font-bold text-foreground mb-4">Ajustes</h1>
+
+          {/* ── Tabs ──────────────────────────────────────────────────────── */}
+          <div className="flex gap-1" role="tablist">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg',
+                    'border border-b-0 transition-all duration-150 relative',
+                    isActive
+                      ? 'bg-bg-subtle border-border text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                  )}
+                  style={isActive ? { marginBottom: '-1px' } : {}}
+                >
+                  <tab.icon className={cn('size-4', isActive ? 'text-primary' : '')} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* ── Main Content ─────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-6 lg:p-10">
+      {/* ── Tab Content ───────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl mx-auto space-y-8">
 
-          {/* ── DISPOSITIVO TAB ───────────────────────── */}
+          {/* ── DISPOSITIVO ──────────────────────────────────────────────── */}
           {activeTab === 'dispositivo' && (
             <>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">Configuración del Dispositivo</h1>
-                <p className="text-sm text-muted-foreground">Rol actual y opciones de red para este equipo.</p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Rol actual y opciones de red para este equipo.
+              </p>
 
               <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-                {/* Header */}
+                {/* Header de sección */}
                 <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
-                  <div className={`flex size-10 items-center justify-center rounded-lg ${deviceRole === 'caja' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-indigo-500/15 text-indigo-400'}`}>
+                  <div className={cn(
+                    'flex size-10 items-center justify-center rounded-lg',
+                    deviceRole === 'caja'
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-indigo-500/15 text-indigo-400',
+                  )}>
                     {deviceRole === 'caja' ? <Monitor className="size-5" /> : <Server className="size-5" />}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-foreground">Rol del Dispositivo</h3>
                     <p className="text-xs text-muted-foreground">Configurado durante la instalación inicial</p>
                   </div>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${roleBadgeColor}`}>
+                  <span className={cn('text-xs font-semibold px-3 py-1 rounded-full border', roleBadgeColor)}>
                     {roleLabel}
                   </span>
                 </div>
@@ -194,7 +209,7 @@ export function SettingsPage() {
                           className="flex size-7 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
                           title="Copiar dirección"
                         >
-                          {copiedIP ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                          {copiedIP ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
                         </button>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-2">
@@ -218,7 +233,7 @@ export function SettingsPage() {
                         />
                       </div>
                       {connStatus === 'ok'    && <p className="text-xs text-success">✓ Servidor Local alcanzable</p>}
-                      {connStatus === 'error' && <p className="text-xs text-error">✗ No se pudo conectar</p>}
+                      {connStatus === 'error' && <p className="text-xs text-danger">✗ No se pudo conectar</p>}
                       <div className="flex gap-2">
                         <button onClick={handleTestConn} disabled={testingConn}
                           className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition disabled:opacity-50">
@@ -237,7 +252,7 @@ export function SettingsPage() {
                   {/* Reconfigurar */}
                   <div className="pt-2 border-t border-border">
                     <button onClick={handleReconfigure}
-                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium text-error hover:bg-error/10 transition">
+                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium text-danger hover:bg-danger/10 transition">
                       <RotateCcw className="size-3.5" />
                       Reconfigurar dispositivo
                     </button>
@@ -250,15 +265,12 @@ export function SettingsPage() {
             </>
           )}
 
-          {/* ── CLOUD TAB ────────────────────────────── */}
+          {/* ── CLOUD ──────────────────────────────────────────────────────── */}
           {activeTab === 'cloud' && (
             <>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">Configuración de la Nube</h1>
-                <p className="text-sm text-muted-foreground">
-                  Administra la conexión y credenciales para sincronizar tu POS con el Sistema Central de Kommerze.
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Administra la conexión y credenciales para sincronizar tu POS con el Sistema Central de Kommerze.
+              </p>
 
               <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
                 <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
@@ -284,14 +296,17 @@ export function SettingsPage() {
                       <input id="password" type="password" placeholder="••••••••••••"
                         value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading}
                         className="w-full rounded-lg border border-border bg-bg-subtle px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50" />
-                      <p className="text-xs text-muted-foreground mt-1">Esta contraseña se almacena localmente de forma segura.</p>
+                      <p className="text-xs text-muted-foreground">Esta contraseña se almacena localmente de forma segura.</p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end pt-4 border-t border-border">
                     <button type="submit" disabled={isLoading}
-                      className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-60 shadow-sm">
-                      {isLoading ? <><RefreshCw className="size-4 animate-spin" />Guardando...</> : <><Save className="size-4" />Guardar Credenciales</>}
+                      className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-60 shadow-sm">
+                      {isLoading
+                        ? <><RefreshCw className="size-4 animate-spin" />Guardando...</>
+                        : <><Save className="size-4" />Guardar Credenciales</>
+                      }
                     </button>
                   </div>
                 </form>
@@ -310,11 +325,62 @@ export function SettingsPage() {
             </>
           )}
 
+          {/* ── BASE DE DATOS LOCAL ─────────────────────────────────────────── */}
+          {activeTab === 'local' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Información sobre la base de datos PostgreSQL local de este Servidor.
+              </p>
+              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                    <HardDrive className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Base de Datos Local</h3>
+                    <p className="text-xs text-muted-foreground">PostgreSQL — administrada por el Servidor Local</p>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-muted-foreground">
+                    La configuración de la base de datos se realiza durante la instalación inicial del Servidor Local.
+                    Para cambiar credenciales de BD, ve a <strong className="text-foreground">Configuración de BD</strong> en el setup.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── SEGURIDAD ──────────────────────────────────────────────────── */}
+          {activeTab === 'security' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Opciones de seguridad y acceso para el sistema.
+              </p>
+              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                    <Shield className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Seguridad del Sistema</h3>
+                    <p className="text-xs text-muted-foreground">Gestión de acceso y permisos</p>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-muted-foreground">
+                    Las opciones de seguridad avanzadas estarán disponibles en próximas versiones.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
         </div>
       </div>
 
-      <DialogAlert 
-        open={alertOpen} 
+      <DialogAlert
+        open={alertOpen}
         onOpenChange={setAlertOpen}
         title="Reconfigurar Dispositivo"
         description="¿Seguro? El dispositivo deberá configurarse nuevamente."

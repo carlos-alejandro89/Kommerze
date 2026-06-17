@@ -35,7 +35,7 @@ export function LoginPage() {
     await login(formData.username, formData.password);
     await getInventoryValue().catch(() => {});
     setLoading(false);
-    navigate('/dashboard', { replace: true });
+    navigate('/home', { replace: true });
   };
 
   return (

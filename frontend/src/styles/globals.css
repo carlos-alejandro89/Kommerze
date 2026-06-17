@@ -317,6 +317,39 @@
   border: 1px solid oklch(from var(--border) l c h / 0.5);
 }
 
+/* ─────────────────────────────────────────────
+   Home Screen — Module Accent Colors (CarPlay)
+   Usados por ModuleCard para gradientes y glows
+────────────────────────────────────────────── */
+:root {
+  --home-bg:              #0f1117;
+  --home-surface:         rgba(255, 255, 255, 0.04);
+  --home-border:          rgba(255, 255, 255, 0.08);
+  --home-border-hover:    rgba(255, 255, 255, 0.15);
+
+  /* Accentos por módulo */
+  --accent-pos:           #4f46e5;   /* indigo  — Terminal POS     */
+  --accent-dashboard:     #7c3aed;   /* violet  — Dashboard        */
+  --accent-history:       #0891b2;   /* cyan    — Historial        */
+  --accent-products:      #059669;   /* emerald — Productos        */
+  --accent-apertura:      #d97706;   /* amber   — Apertura de Caja */
+  --accent-cierre:        #e11d48;   /* rose    — Cierre de Caja   */
+  --accent-cortes:        #ea580c;   /* orange  — Cortes Sucursal  */
+  --accent-sync:          #0284c7;   /* sky     — Sincronización   */
+  --accent-settings:      #64748b;   /* slate   — Ajustes          */
+}
+
+/* Animación de ping para alerts de stock */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+@utility animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 /* shadcn card-title slot */
 [data-slot='card-title'] {
   @apply font-semibold;
