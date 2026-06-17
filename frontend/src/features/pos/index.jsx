@@ -16,7 +16,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layout/content';
-import { ContentHeader } from '@/components/layout/content-header';
 import { cn } from '@/lib/utils';
 import { Pattern as NoProducts } from './no-products';
 import { ProductDetailsSheet } from './product-details-sheet';
@@ -243,21 +242,19 @@ export default function POSPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-56px)] w-full bg-bg-subtle relative">
-            <ContentHeader className="flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
-                <div className="w-full">
-                    <Steps currentStep={0} />
-                </div>
-            </ContentHeader>
-
             <Content className="flex-1 overflow-hidden p-0">
                 <div className="flex flex-col h-full w-full overflow-hidden">
                     <div className="flex flex-1 w-full overflow-hidden">
 
                         {/* ── Left: Lista de productos en el carrito ────────── */}
-                        <div className="flex-1 flex flex-col p-4 overflow-hidden border-r bg-background/40">
+                        <div className="flex-1 flex flex-col overflow-hidden border-r bg-background/40">
+                            {/* Steps — solo en la columna izquierda */}
+                            <div className="shrink-0 border-b border-border bg-surface">
+                                <Steps currentStep={0} />
+                            </div>
 
                             {/* Barra de búsqueda */}
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between mb-4 px-4 pt-4">
                                 <div className="relative flex-1 group mr-2">
                                     {/* Icono izquierdo */}
                                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center gap-2 z-10">
@@ -320,7 +317,7 @@ export default function POSPage() {
                             </div>
 
                             {/* Lista del carrito */}
-                            <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none">
+                            <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none mx-4 mb-4">
                                 <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
                                     <ProductDetailsSheet
                                         open={open}
