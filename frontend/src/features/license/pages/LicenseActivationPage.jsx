@@ -61,7 +61,7 @@ export function LicenseActivationPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative z-10 w-full max-w-sm space-y-8"
+          className="relative z-[var(--z-layer-raised)] w-full max-w-sm space-y-8"
         >
           {/* Brand */}
           <div className="space-y-2">
@@ -184,7 +184,7 @@ export function LicenseActivationPage() {
             backgroundSize: '40px 40px',
           }}
         />
-        <div className="relative z-10 flex flex-col justify-end p-14 text-white">
+        <div className="relative z-[var(--z-layer-raised)] flex flex-col justify-end p-14 text-white">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}

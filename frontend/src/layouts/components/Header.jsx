@@ -80,7 +80,7 @@ export function Header() {
     <header className="relative flex h-14 shrink-0 items-center justify-between px-4 border-b border-border bg-surface">
 
       {/* ── Izquierda: Logo + Botón Inicio ─────────────── */}
-      <div className="flex items-center gap-2 shrink-0 z-10">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
@@ -121,7 +121,7 @@ export function Header() {
       </div>
 
       {/* ── Derecha: Reloj + Tema + Notif + Avatar ───────── */}
-      <div className="flex items-center gap-1.5 shrink-0 z-10">
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Reloj */}
         <div className="hidden md:flex items-center gap-1.5 mr-1">
           <Clock className="size-3 shrink-0 text-muted-foreground" strokeWidth={2} />

@@ -382,7 +382,7 @@ export function ProductsPage() {
                         "relative bg-muted/30 flex items-center justify-center",
                         viewMode === 'grid' ? "aspect-square w-full" : "size-24 rounded-lg shrink-0"
                       )}>
-                        <div className="absolute top-2 left-2 z-10 flex gap-1">
+                        <div className="absolute top-2 left-2 z-[var(--z-layer-raised)] flex gap-1">
                           {stock > 10 ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold text-success-600">
                               <span className="size-1.5 rounded-full bg-success-500" /> En Stock

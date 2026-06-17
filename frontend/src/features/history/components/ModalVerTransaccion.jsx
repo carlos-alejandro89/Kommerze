@@ -44,12 +44,12 @@ export function ModalVerTransaccion({ row, onClose }) {
   const authBadge = getAuthBadgeInfo(detalle?.EstatusAutorizacion);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-end">
+    <div className="fixed inset-0 z-[var(--z-layer-modal)] flex items-start justify-end">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="relative z-10 flex h-full w-full max-w-[480px] flex-col bg-background border-l border-border shadow-2xl animate-slide-in-right">
+      <div className="relative flex h-full w-full max-w-[480px] flex-col bg-background border-l border-border shadow-2xl animate-slide-in-right">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">

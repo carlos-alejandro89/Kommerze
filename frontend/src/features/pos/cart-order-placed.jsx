@@ -107,7 +107,7 @@ export function CartOrderPlaced() {
                     <div className="flex flex-col items-center text-center">
                         <div className="relative flex items-center justify-center mb-6">
                             <div className={`absolute inset-0 bg-[#0BC33F]/25 rounded-full transition-opacity duration-500 ease-out ${isPulsing ? 'animate-ping opacity-75' : 'opacity-0'}`}></div>
-                            <div className="relative w-24 h-24 bg-[#0BC33F]/10 border border-[#0BC33F]/30 rounded-full flex items-center justify-center z-10 shadow-[0_0_40px_rgba(11,195,63,0.3)]">
+                            <div className="relative w-24 h-24 bg-[#0BC33F]/10 border border-[#0BC33F]/30 rounded-full flex items-center justify-center z-[var(--z-layer-raised)] shadow-[0_0_40px_rgba(11,195,63,0.3)]">
                                 <CircleCheckBig className="size-12 text-[#0BC33F] animate-[popScale_0.6s_cubic-bezier(0.175,0.885,0.32,1.275)_forwards]" />
                             </div>
                         </div>
@@ -134,18 +134,18 @@ export function CartOrderPlaced() {
                                 <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-[0.03] blur-2xl pointer-events-none" />
                                 <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-blue-400 opacity-[0.05] blur-xl pointer-events-none" />
 
-                                <span className="text-[10px] font-bold text-blue-200/60 uppercase tracking-widest leading-none mb-1.5 relative z-10">
+                                <span className="text-[10px] font-bold text-blue-200/60 uppercase tracking-widest leading-none mb-1.5 relative z-[var(--z-layer-raised)]">
                                     Total de Venta
                                 </span>
 
-                                <div className="flex items-baseline gap-1 relative z-10">
+                                <div className="flex items-baseline gap-1 relative z-[var(--z-layer-raised)]">
                                     <span className="text-4xl font-black tabular-nums tracking-tighter leading-none text-white drop-shadow-sm">
                                         {moneyFormat(total > 0 ? total : 0)}
                                     </span>
                                 </div>
 
                                 {cambio > 0 && (
-                                    <div className="pt-4 mt-2 border-t border-white/10 relative z-10">
+                                    <div className="pt-4 mt-2 border-t border-white/10 relative z-[var(--z-layer-raised)]">
                                         <span className="text-[10px] font-bold text-blue-200/60 uppercase tracking-widest leading-none mb-1.5 block">
                                             Su Cambio
                                         </span>
@@ -194,7 +194,7 @@ export function CartOrderPlaced() {
                                     Nueva Venta
                                 </span>
                                 {/* Premium Shimmer Effect matching ResumenCuenta */}
-                                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-0" />
+                                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-[var(--z-layer-bg)]" />
                             </Button>
 
                             {/* Secondary Actions */}

@@ -48,7 +48,7 @@ export function Sidebar({ open, onToggle }) {
     <aside
       style={{ '--sidebar-w': open ? '220px' : '60px', width: open ? 220 : 60 }}
       className={cn(
-        'relative flex flex-col shrink-0 overflow-visible z-20 transition-all duration-300 ease-in-out',
+        'relative flex flex-col shrink-0 overflow-visible z-[var(--z-layer-sticky)] transition-all duration-300 ease-in-out',
         'bg-sidebar border-r border-sidebar-border',
       )}
     >
@@ -158,7 +158,7 @@ export function Sidebar({ open, onToggle }) {
       <button
         onClick={onToggle}
         className={cn(
-          'absolute -right-3 top-[52px] z-10 flex size-6 items-center justify-center rounded-full',
+          'absolute -right-3 top-[52px] z-[var(--z-layer-raised)] flex size-6 items-center justify-center rounded-full',
           'bg-sidebar-surface border border-sidebar-border text-sidebar-muted',
           'hover:text-sidebar-fg hover:border-primary transition-colors shadow-md',
         )}

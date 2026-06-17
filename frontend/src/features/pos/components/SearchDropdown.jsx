@@ -39,7 +39,7 @@ export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClos
 
     return (
         <div
-            className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-white dark:bg-zinc-900 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+            className="absolute top-full left-0 right-0 mt-1 z-[var(--z-layer-dropdown)] rounded-xl border border-border bg-white dark:bg-zinc-900 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
             onMouseDown={(e) => e.preventDefault()} // evita pérdida de foco al hacer clic
         >
             {isLoading ? (

@@ -101,7 +101,8 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
                         <DialogClose asChild>
                         <Button 
                             onClick={agregarPago}
-                            className="w-full h-11 mt-8 mb-5 rounded-lg bg-gradient-to-r from-[#002366] to-[#001233] text-white hover:from-[#001233] hover:to-[#000b1a] border-none font-black text-xs shadow-[0_4px_14px_rgba(0,35,102,0.3)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all z-10"
+                            className="w-full h-11 mt-8 mb-5 rounded-lg bg-gradient-to-r from-[#002366] to-[#001233] text-white hover:from-[#001233] hover:to-[#000b1a] border-none font-black text-xs shadow-[0_4px_14px_rgba(0,35,102,0.3)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all
+ z-[var(--z-layer-raised)]"
                         >
                             <div className="flex items-center gap-2 relative z-10 transition-transform group-hover:translate-x-1">
                                 <CheckCircle className="size-4" />
@@ -110,7 +111,7 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
                             <ChevronRight className="size-4 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
 
                             {/* Shimmer effect */}
-                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-0" />
+                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-[var(--z-layer-bg)]" />
                         </Button>
                         </DialogClose>
                     </div>

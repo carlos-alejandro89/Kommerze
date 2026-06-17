@@ -68,7 +68,7 @@ export function ModuleCard({
 
       {/* Icon container */}
       <div
-        className="relative z-10 flex items-center justify-center rounded-2xl mb-4 size-14 shrink-0"
+        className="relative z-[var(--z-layer-raised)] flex items-center justify-center rounded-2xl mb-4 size-14 shrink-0"
         style={{
           background: `${accentColor}18`,
           border: `1px solid ${accentColor}35`,
@@ -94,7 +94,7 @@ export function ModuleCard({
       </div>
 
       {/* Text */}
-      <div className="relative z-10 mt-auto">
+      <div className="relative z-[var(--z-layer-raised)] mt-auto">
         <p className="text-[15px] font-semibold text-foreground leading-tight">{title}</p>
         <p
           className="text-xs mt-0.5 font-medium leading-tight"

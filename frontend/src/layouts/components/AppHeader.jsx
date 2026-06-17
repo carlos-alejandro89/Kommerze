@@ -98,7 +98,7 @@ export function AppHeader({ showHomeButton = true, showPageTitle = true }) {
     <header className="relative flex h-14 shrink-0 items-center justify-between px-4 border-b border-border bg-surface">
 
       {/* ── Izquierda: Logo + botón Inicio ────────────── */}
-      <div className="flex items-center gap-2 shrink-0 z-10">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
             <Store className="size-3.5 text-primary" strokeWidth={2} />
@@ -144,7 +144,7 @@ export function AppHeader({ showHomeButton = true, showPageTitle = true }) {
       </div>
 
       {/* ── Derecha: Reloj + Tema + Notif + UserMenu ────── */}
-      <div className="flex items-center gap-1.5 shrink-0 z-10">
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Reloj */}
         <div className="hidden md:flex items-center gap-1.5 mr-1">
           <Clock className="size-3 shrink-0 text-muted-foreground" strokeWidth={2} />
@@ -199,7 +199,7 @@ export function AppHeader({ showHomeButton = true, showPageTitle = true }) {
           {/* Dropdown */}
           {menuOpen && (
             <div className={cn(
-              'absolute right-0 top-[calc(100%+6px)] w-56 z-50',
+              'absolute right-0 top-[calc(100%+6px)] w-56 z-[var(--z-layer-dropdown)]',
               'rounded-xl border border-border bg-surface-raised shadow-xl shadow-black/20',
               'animate-slide-up overflow-hidden',
             )}>

@@ -128,8 +128,8 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-[0.03] blur-2xl pointer-events-none" />
                 <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-blue-400 opacity-[0.05] blur-xl pointer-events-none" />
 
-                <h4 className="text-[10px] font-black uppercase text-blue-200/60 tracking-tighter relative z-10">Resumen de Cuenta</h4>
-                <div className="space-y-2 relative z-10">
+                <h4 className="text-[10px] font-black uppercase text-blue-200/60 tracking-tighter relative z-[var(--z-layer-raised)]">Resumen de Cuenta</h4>
+                <div className="space-y-2 relative z-[var(--z-layer-raised)]">
                     <div className="flex justify-between text-xs">
                         <span className="text-blue-100/70 font-medium">Subtotal</span>
                         <span className="font-bold text-white">${subtotal.toFixed(2)}</span>

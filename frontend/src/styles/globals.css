@@ -246,6 +246,27 @@
     to   { opacity: 1; transform: translateX(0); }
   }
   --animate-slide-in-right: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Z-Index Scale ────────────────────────────────────────────────────────
+     Use these semantic layer tokens instead of arbitrary z-index values.
+     Never use z-[arbitrary] — prefer the closest named layer below.
+
+     z-layer-bg        0   Decorative backgrounds (shimmer overlay, gradients behind content)
+     z-layer-base      1   Base stacking (rarely needed)
+     z-layer-raised    10  Elements above sibling content within a local stacking context
+                           (badges over images, icon overlays, absolute-positioned labels)
+     z-layer-sticky    20  Sticky/fixed structural elements (sidebar, floating action bars)
+     z-layer-dropdown  50  Floating menus, dropdowns, search suggestions, tooltips
+     z-layer-modal    100  Modals, drawers, sheet overlays
+     z-layer-toast    150  Notifications / toasts — always on top of modals
+  ── */
+  --z-layer-bg:        0;
+  --z-layer-base:      1;
+  --z-layer-raised:    10;
+  --z-layer-sticky:    20;
+  --z-layer-dropdown:  50;
+  --z-layer-modal:     100;
+  --z-layer-toast:     150;
 }
 
 /* ─────────────────────────────────────────────

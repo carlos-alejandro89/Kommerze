@@ -168,7 +168,7 @@ function TreeDragLine({ className, ...props }) {
     <div
       style={dragLine}
       className={cn(
-        'bg-primary before:bg-background before:border-primary absolute z-30 -mt-px h-0.5 w-[unset] before:absolute before:-top-[3px] before:left-0 before:size-2 before:rounded-full before:border-2',
+        'bg-primary before:bg-background before:border-primary absolute z-[var(--z-layer-raised)] -mt-px h-0.5 w-[unset] before:absolute before:-top-[3px] before:left-0 before:size-2 before:rounded-full before:border-2',
         className,
       )}
       {...props}

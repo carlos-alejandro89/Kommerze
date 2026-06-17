@@ -257,7 +257,7 @@ export default function POSPage() {
                             <div className="flex items-center justify-between mb-4 px-4 pt-4">
                                 <div className="relative flex-1 group mr-2">
                                     {/* Icono izquierdo */}
-                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center gap-2 z-10">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors flex items-center gap-2">
                                         <Search className="size-4" />
                                     </div>
 
@@ -281,7 +281,7 @@ export default function POSPage() {
                                     />
 
                                     {/* Iconos derecha */}
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors flex items-center gap-2 z-10">
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors flex items-center gap-2">
                                         <ScanBarcode className="size-4 opacity-40" />
                                         <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
                                         <Badge
@@ -393,7 +393,7 @@ export default function POSPage() {
             {toast && (
                 <div
                     className={cn(
-                        'fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold border animate-in fade-in slide-in-from-bottom-2 duration-200',
+                        'fixed bottom-6 right-6 z-[var(--z-layer-toast)] flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold border animate-in fade-in slide-in-from-bottom-2 duration-200',
                         toast.type === 'error'
                             ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
                             : 'bg-white dark:bg-zinc-900 border-border text-foreground'
@@ -465,7 +465,7 @@ function CartItem({ item, isFlashing, onChangeQuantity, onUpdateQuantity, onRemo
                         onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
                     />
                     {item.discount > 0 && (
-                        <div className="absolute top-0 right-0 bg-destructive text-destructive-foreground text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg z-10">
+                        <div className="absolute top-0 right-0 bg-destructive text-destructive-foreground text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg z-[var(--z-layer-raised)]">
                             -{item.discount}%
                         </div>
                     )}
