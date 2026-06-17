@@ -18,7 +18,7 @@ export function ServiceCerrarCaja(arg1:dto.CerrarCajaDto):Promise<dto.ResponseDt
 
 export function ServiceCerrarOperacionSucursal(arg1:dto.CerrarOperacionSucursalDto):Promise<dto.ResponseDto>;
 
-export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>,arg4:any,arg5:any):Promise<dto.ResponseDto>;
+export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>,arg4:any,arg5:any,arg6:any):Promise<dto.ResponseDto>;
 
 export function ServiceConsultaProductos(arg1:string,arg2:boolean):Promise<Array<dto.ProductoDto>>;
 

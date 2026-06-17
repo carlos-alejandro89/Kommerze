@@ -41,8 +41,8 @@ func (s *PosService) ConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	return response, err
 }
 
-func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint) (*dto.ResponseDto, error) {
-	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino)
+func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint, operacionCajeroID *uint) (*dto.ResponseDto, error) {
+	response, err := s.posRepository.ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID)
 	return response, err
 }
 

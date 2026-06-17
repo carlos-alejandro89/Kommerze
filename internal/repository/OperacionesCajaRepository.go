@@ -52,57 +52,49 @@ func (r *OperacionesCajaRepository) AbrirCaja(datos dto.AbrirCajaDto) *dto.Respo
 	return dto.NewResponseDto(true, "Caja abierta correctamente", operacion, nil)
 }
 
-// acumuladosCajero contiene los totales calculados desde los pagos del turno del cajero.
-type acumuladosCajero struct {
-	NumVentas            int
-	IngresoEfectivo      decimal.Decimal
-	IngresoTarjetas      decimal.Decimal
-	IngresoCheques       decimal.Decimal
-	IngresoTransferencia decimal.Decimal
-	IngresoOtros         decimal.Decimal
-}
-
-// CalcularResumenCajero agrega los pagos del turno indicado agrupados por clave SAT.
+// CalcularResumenCajero devuelve el desglose dinámico de ingresos del turno
+// agrupado por la forma de pago real registrada en la BD (sat_formas_pago).
 // Filtra únicamente pedidos con estatus_id=2 (completados) y no eliminados.
-func (r *OperacionesCajaRepository) CalcularResumenCajero(operacionCajeroID uint) acumuladosCajero {
-	var result acumuladosCajero
-
+func (r *OperacionesCajaRepository) CalcularResumenCajero(operacionCajeroID uint) dto.ResumenCajeroDto {
 	type pagoRow struct {
-		Clave  string
-		Total  decimal.Decimal
-		Conteo int
+		FormaID   uint    `gorm:"column:forma_id"`
+		FormaPago string  `gorm:"column:forma_pago"`
+		Clave     string  `gorm:"column:clave"`
+		Total     float64 `gorm:"column:total"`
+		Conteo    int     `gorm:"column:conteo"`
 	}
 	var pagos []pagoRow
 	r.db.Raw(`
 		SELECT
-			s.clave,
-			COALESCE(SUM(pg.monto), 0) AS total,
-			COUNT(pg.id)               AS conteo
+			s.id                           AS forma_id,
+			s.descripcion                  AS forma_pago,
+			s.clave                        AS clave,
+			COALESCE(SUM(pg.monto), 0)    AS total,
+			COUNT(DISTINCT p.id)          AS conteo
 		FROM pagos pg
 		INNER JOIN pedidos p          ON p.id = pg.pedido_id
 		INNER JOIN sat_formas_pago s  ON s.id = pg.forma_id
 		WHERE p.operacion_cajero_id = ?
 		  AND p.estatus_id = 2
 		  AND p.deleted_at IS NULL
-		GROUP BY s.clave
+		GROUP BY s.id, s.descripcion, s.clave
+		ORDER BY s.clave
 	`, operacionCajeroID).Scan(&pagos)
 
+	var result dto.ResumenCajeroDto
 	for _, p := range pagos {
 		result.NumVentas += p.Conteo
-		switch p.Clave {
-		case "01": // Efectivo
-			result.IngresoEfectivo = p.Total
-		case "04": // Tarjeta de crédito/débito
-			result.IngresoTarjetas = p.Total
-		case "02": // Cheque nominativo
-			result.IngresoCheques = p.Total
-		case "03": // Transferencia electrónica
-			result.IngresoTransferencia = p.Total
-		default: // Otros métodos
-			result.IngresoOtros = result.IngresoOtros.Add(p.Total)
-		}
+		result.TotalIngresos += p.Total
+		result.Desglose = append(result.Desglose, dto.ResumenFormaPago{
+			FormaID:   p.FormaID,
+			FormaPago: p.FormaPago,
+			Clave:     p.Clave,
+			Monto:     p.Total,
+		})
 	}
-
+	if result.Desglose == nil {
+		result.Desglose = []dto.ResumenFormaPago{}
+	}
 	return result
 }
 
@@ -119,7 +111,26 @@ func (r *OperacionesCajaRepository) CerrarCaja(datos dto.CerrarCajaDto) *dto.Res
 	}
 
 	// Calcular ingresos automáticamente desde pagos del turno
-	acum := r.CalcularResumenCajero(operacion.ID)
+	resumen := r.CalcularResumenCajero(operacion.ID)
+
+	// Mapear el desglose dinámico a los 5 campos fijos del modelo
+	// (compatibilidad con el esquema cloud KommerzeApiCloud).
+	var efectivo, tarjetas, cheques, transferencia, otros decimal.Decimal
+	for _, f := range resumen.Desglose {
+		v := decimal.NewFromFloat(f.Monto)
+		switch f.Clave {
+		case "01": // Efectivo
+			efectivo = efectivo.Add(v)
+		case "04", "28", "29": // Tarjeta crédito / débito / monedero
+			tarjetas = tarjetas.Add(v)
+		case "02": // Cheque nominativo
+			cheques = cheques.Add(v)
+		case "03": // Transferencia electrónica de fondos
+			transferencia = transferencia.Add(v)
+		default:
+			otros = otros.Add(v)
+		}
+	}
 
 	estatusID := uint(2) // cerrado
 	ahora := time.Now()
@@ -131,11 +142,11 @@ func (r *OperacionesCajaRepository) CerrarCaja(datos dto.CerrarCajaDto) *dto.Res
 		"fecha_fin":             ahora,
 		"fondo_caja_cierre":     fondoCierre,
 		"retiros_efectivo":      retiros,
-		"ingreso_efectivo":      acum.IngresoEfectivo,
-		"ingreso_tarjetas":      acum.IngresoTarjetas,
-		"ingreso_cheques":       acum.IngresoCheques,
-		"ingreso_transferencia": acum.IngresoTransferencia,
-		"ingreso_otros":         acum.IngresoOtros,
+		"ingreso_efectivo":      efectivo,
+		"ingreso_tarjetas":      tarjetas,
+		"ingreso_cheques":       cheques,
+		"ingreso_transferencia": transferencia,
+		"ingreso_otros":         otros,
 		"bloqueada":             datos.Bloqueada,
 		"updated_at":            ahora,
 	}
@@ -149,6 +160,7 @@ func (r *OperacionesCajaRepository) CerrarCaja(datos dto.CerrarCajaDto) *dto.Res
 
 	return dto.NewResponseDto(true, "Caja cerrada correctamente", operacion, nil)
 }
+
 
 // ObtenerOperacionesCajero devuelve todas las cajas (turnos) de una jornada de sucursal.
 func (r *OperacionesCajaRepository) ObtenerOperacionesCajero(operacionSucursalID uint) *dto.ResponseDto {

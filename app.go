@@ -46,7 +46,7 @@ func (a *App) posService() interface {
 	ConsultaProductos(string, bool) ([]dto.ProductoDto, error)
 	ObtenerTiposPedido() ([]models.TipoPedido, error)
 	ConsultarExistenciaProductos([]uuid.UUID) ([]dto.InventarioDto, error)
-	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint) (*dto.ResponseDto, error)
+	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint, *uint) (*dto.ResponseDto, error)
 	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
 } {
 	if a.services.CajaProxy != nil {
@@ -322,8 +322,8 @@ func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	return a.posService().ConsultarExistenciaProductos(productosGuids)
 }
 
-func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint) (*dto.ResponseDto, error) {
-	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino)
+func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint, operacionCajeroID *uint) (*dto.ResponseDto, error) {
+	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID)
 }
 
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {

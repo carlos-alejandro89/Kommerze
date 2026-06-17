@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTurno } from '@/providers/TurnoProvider';
 import { toast } from 'sonner';
 import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
 
@@ -72,6 +73,7 @@ const STATUS_CONFIG = {
 export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { turnoActivo } = useTurno();
 
     const [collapsed, setCollapsed] = React.useState(false);
 
@@ -168,6 +170,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             itemsPedido,
             null,         // sin sucursal origen
             null,         // sin sucursal destino
+            turnoActivo?.ID ?? turnoActivo?.id ?? null,
         );
 
         if (!result?.success) {

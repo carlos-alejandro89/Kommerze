@@ -37,7 +37,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
 
             if (parseInt(operationType) === 2 || parseInt(operationType) === 3) {
-                const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store)
+                const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store, turnoActivo)
                 setNextPage(currentStep + 2)
                 return transaccionValida
             }
@@ -53,7 +53,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
                 }
             }
 
-            const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store)
+            const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store, turnoActivo)
             return transaccionValida
         }
     }

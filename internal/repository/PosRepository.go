@@ -182,9 +182,13 @@ func (r *PosRepository) ActualizarExistencias(itemsPedido []dto.PedidoProductoDt
 
 func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, pedido *models.Pedido, tx *gorm.DB) error {
 	for _, item := range pagosAplicados {
+		formaID := uint(item.ID)
+		if formaID == 0 {
+			formaID = 1 // Fallback: Efectivo
+		}
 		pago := models.Pago{
 			PedidoID: pedido.ID,
-			FormaID:  1,
+			FormaID:  formaID,
 			Monto:    item.Monto.InexactFloat64(),
 			Fecha:    time.Now(),
 			Saldo:    item.Monto.InexactFloat64(),
@@ -222,6 +226,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 	itemsPedido []dto.PedidoProductoDto,
 	sucursalOrigen *uint,
 	sucursalDestino *uint,
+	operacionCajeroID *uint,
 ) (*dto.ResponseDto, error) {
 
 	var pedido models.Pedido
@@ -244,13 +249,14 @@ func (r *PosRepository) ConfirmarTransaccion(
 		var cliente uint = 1
 
 		pedido = models.Pedido{
-			EstatusID:        &estatus,
-			ClienteID:        &cliente,
-			TipoPedidoID:     tipoOperacion,
-			Fecha:            time.Now(),
-			EsCredito:        false,
-			Sync:             false,
-			SucursalOrigenID: sucursalOrigen,
+			EstatusID:         &estatus,
+			ClienteID:         &cliente,
+			TipoPedidoID:      tipoOperacion,
+			Fecha:             time.Now(),
+			EsCredito:         false,
+			Sync:              false,
+			SucursalOrigenID:  sucursalOrigen,
+			OperacionCajeroID: operacionCajeroID, // vincula la venta al turno del cajero
 		}
 
 		// 👇 IMPORTANTE: usa tx en lugar de r.db

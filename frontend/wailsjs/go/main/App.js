@@ -26,8 +26,8 @@ export function ServiceCerrarOperacionSucursal(arg1) {
   return window['go']['main']['App']['ServiceCerrarOperacionSucursal'](arg1);
 }
 
-export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5);
+export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function ServiceConsultaProductos(arg1, arg2) {

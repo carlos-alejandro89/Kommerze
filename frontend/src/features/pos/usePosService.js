@@ -107,10 +107,11 @@ export function usePosService() {
      * @param {PedidoProductoDto[]} itemsPedido
      * @param {number|null} sucursalOrigen — ID de sucursal origen (traspasos)
      * @param {number|null} sucursalDestino — ID de sucursal destino (traspasos)
+     * @param {number|null} operacionCajeroID — ID del turno activo del cajero
      * @returns {Promise<ResponseDto>}
      */
-    const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino) =>
-        ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino);
+    const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID = null) =>
+        ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID);
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 

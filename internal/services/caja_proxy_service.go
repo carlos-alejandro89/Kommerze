@@ -112,13 +112,15 @@ func (c *CajaProxyService) ConfirmarTransaccion(
 	itemsPedido []dto.PedidoProductoDto,
 	sucursalOrigen *uint,
 	sucursalDestino *uint,
+	operacionCajeroID *uint,
 ) (*dto.ResponseDto, error) {
 	body := map[string]any{
-		"tipoOperacion":   tipoOperacion,
-		"pagosAplicados":  pagosAplicados,
-		"itemsPedido":     itemsPedido,
-		"sucursalOrigen":  sucursalOrigen,
-		"sucursalDestino": sucursalDestino,
+		"tipoOperacion":     tipoOperacion,
+		"pagosAplicados":    pagosAplicados,
+		"itemsPedido":       itemsPedido,
+		"sucursalOrigen":    sucursalOrigen,
+		"sucursalDestino":   sucursalDestino,
+		"operacionCajeroID": operacionCajeroID,
 	}
 	var result dto.ResponseDto
 	if err := c.post("/local/transacciones", body, &result); err != nil {

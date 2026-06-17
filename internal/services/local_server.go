@@ -266,11 +266,12 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 		return
 	}
 	var body struct {
-		TipoOperacion   *uint                     `json:"tipoOperacion"`
-		PagosAplicados  []dto.PagosAplicadosDto   `json:"pagosAplicados"`
-		ItemsPedido     []dto.PedidoProductoDto   `json:"itemsPedido"`
-		SucursalOrigen  *uint                     `json:"sucursalOrigen"`
-		SucursalDestino *uint                     `json:"sucursalDestino"`
+		TipoOperacion     *uint                     `json:"tipoOperacion"`
+		PagosAplicados    []dto.PagosAplicadosDto   `json:"pagosAplicados"`
+		ItemsPedido       []dto.PedidoProductoDto   `json:"itemsPedido"`
+		SucursalOrigen    *uint                     `json:"sucursalOrigen"`
+		SucursalDestino   *uint                     `json:"sucursalDestino"`
+		OperacionCajeroID *uint                     `json:"operacionCajeroID"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
@@ -282,6 +283,7 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 		body.ItemsPedido,
 		body.SucursalOrigen,
 		body.SucursalDestino,
+		body.OperacionCajeroID,
 	)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

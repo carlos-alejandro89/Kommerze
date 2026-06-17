@@ -85,8 +85,9 @@ export const ConsultarExistencias = async (consultarExistenciasService, setInval
  * @param {Function} confirmarTransaccionService - posService.confirmarTransaccion
  * @param {Function} setAlertConfig
  * @param {object|null} store
+ * @param {object|null} turnoActivo - turno activo del cajero (de useTurno)
  */
-export const confirmarTransaccion = async (confirmarTransaccionService, setAlertConfig, store) => {
+export const confirmarTransaccion = async (confirmarTransaccionService, setAlertConfig, store, turnoActivo = null) => {
     const operationType = JSON.parse(localStorage.getItem('operationType'))
     const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
     const sucursalTraspaso = JSON.parse(localStorage.getItem('sucursal'))
@@ -104,8 +105,10 @@ export const confirmarTransaccion = async (confirmarTransaccionService, setAlert
         }))
     }
 
+    const cajeroID = turnoActivo?.ID ?? turnoActivo?.id ?? null;
+
     try {
-        const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null);
+        const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null, cajeroID);
 
         localStorage.setItem('folio', result.data.Folio)
         return result.success;

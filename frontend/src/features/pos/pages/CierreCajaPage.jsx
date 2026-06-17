@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, RefreshCw, CheckCircle, AlertCircle, DollarSign, CreditCard, FileText, Banknote, MoreHorizontal, TrendingUp, ShoppingBag } from 'lucide-react';
+import { X, RefreshCw, CheckCircle, AlertCircle, Banknote, TrendingUp, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -9,13 +9,26 @@ import {
   ServiceCerrarCaja,
 } from '../../../../wailsjs/go/main/App';
 
-const FORMA_FIELDS = [
-  { key: 'IngresoEfectivo',      label: 'Efectivo',        icon: Banknote,       color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { key: 'IngresoTarjetas',      label: 'Tarjetas',        icon: CreditCard,     color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
-  { key: 'IngresoCheques',       label: 'Cheques',         icon: FileText,       color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
-  { key: 'IngresoTransferencia', label: 'Transferencia',   icon: DollarSign,     color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
-  { key: 'IngresoOtros',         label: 'Otros',           icon: MoreHorizontal, color: 'text-muted-foreground', bg: 'bg-muted/30' },
-];
+// ── Mapa de íconos y colores por clave SAT ────────────────────────────────────
+// Se usa para enriquecer visualmente el desglose dinámico.
+import {
+  DollarSign, CreditCard, FileText, ArrowLeftRight, MoreHorizontal,
+  Wallet, Smartphone, Building2,
+} from 'lucide-react';
+
+const CLAVE_VISUAL = {
+  '01': { icon: Banknote,      color: 'text-emerald-500', bg: 'bg-emerald-500/10' }, // Efectivo
+  '02': { icon: FileText,      color: 'text-amber-500',   bg: 'bg-amber-500/10'   }, // Cheque nominativo
+  '03': { icon: ArrowLeftRight,color: 'text-violet-500',  bg: 'bg-violet-500/10'  }, // Transferencia
+  '04': { icon: CreditCard,    color: 'text-blue-500',    bg: 'bg-blue-500/10'    }, // Tarjeta de crédito
+  '28': { icon: CreditCard,    color: 'text-sky-500',     bg: 'bg-sky-500/10'     }, // Tarjeta de débito
+  '29': { icon: Wallet,        color: 'text-indigo-500',  bg: 'bg-indigo-500/10'  }, // Tarjeta de servicios
+  '05': { icon: DollarSign,    color: 'text-teal-500',    bg: 'bg-teal-500/10'    }, // Monedero electrónico
+  '06': { icon: Smartphone,    color: 'text-cyan-500',    bg: 'bg-cyan-500/10'    }, // Dinero electrónico
+  '08': { icon: Building2,     color: 'text-orange-500',  bg: 'bg-orange-500/10'  }, // Vales de despensa
+};
+
+const defaultVisual = { icon: MoreHorizontal, color: 'text-muted-foreground', bg: 'bg-muted/30' };
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
@@ -25,7 +38,7 @@ export function CierreCajaPage() {
   const [success, setSuccess]           = useState(false);
 
   const [turnoActivo, setTurnoActivo]   = useState(null);
-  const [resumen, setResumen]           = useState(null);   // ingresos calculados por el sistema
+  const [resumen, setResumen]           = useState(null);   // ResumenCajeroDto: { NumVentas, Desglose[], TotalIngresos }
   const [loadingResumen, setLoadingResumen] = useState(false);
 
   // Únicos campos que el cajero captura manualmente (datos físicos)
@@ -77,7 +90,7 @@ export function CierreCajaPage() {
         OperacionCajeroID: turnoActivo?.ID || turnoActivo?.id,
         FondoCajaCierre:   parseFloat(fondoCierre) || 0,
         RetirosEfectivo:   parseFloat(retiros)     || 0,
-        // Los Ingreso* ya no se envían desde el front: el backend los calcula siempre.
+        // Los Ingreso* son ignorados por el backend — los calcula automáticamente.
         IngresoEfectivo:      0,
         IngresoTarjetas:      0,
         IngresoCheques:       0,
@@ -132,10 +145,10 @@ export function CierreCajaPage() {
     );
   }
 
-  const totalIngresos = FORMA_FIELDS.reduce((acc, f) => {
-    const val = resumen ? (resumen[f.key] ?? 0) : 0;
-    return acc + Number(val);
-  }, 0);
+  // Desglose dinámico de la respuesta Go: resumen.Desglose = [{ FormaID, FormaPago, Clave, Monto }]
+  const desglose = resumen?.Desglose ?? [];
+  const totalIngresos = resumen?.TotalIngresos ?? 0;
+  const numVentas = resumen?.NumVentas ?? 0;
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden bg-bg-subtle animate-fade-in">
@@ -170,22 +183,31 @@ export function CierreCajaPage() {
                   <RefreshCw className="size-4 animate-spin" />
                   <span className="text-sm">Calculando ingresos del turno...</span>
                 </div>
+              ) : desglose.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <ShoppingBag className="size-8 opacity-40" />
+                  <p className="text-sm">Sin ventas registradas en este turno</p>
+                </div>
               ) : (
                 <>
                   <div className="divide-y divide-border">
-                    {FORMA_FIELDS.map(({ key, label, icon: Icon, color, bg }) => {
-                      const valor = resumen ? Number(resumen[key] ?? 0) : 0;
+                    {desglose.map((forma) => {
+                      const visual = CLAVE_VISUAL[forma.Clave] ?? defaultVisual;
+                      const Icon = visual.icon;
                       return (
-                        <div key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                          <div className={cn('flex size-8 items-center justify-center rounded-lg shrink-0', bg)}>
-                            <Icon className={cn('size-4', color)} />
+                        <div key={forma.FormaID} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                          <div className={cn('flex size-8 items-center justify-center rounded-lg shrink-0', visual.bg)}>
+                            <Icon className={cn('size-4', visual.color)} />
                           </div>
-                          <span className="flex-1 text-sm text-foreground">{label}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-foreground truncate block">{forma.FormaPago}</span>
+                            <span className="text-xs text-muted-foreground font-mono">Clave SAT: {forma.Clave}</span>
+                          </div>
                           <span className={cn(
                             'text-sm font-semibold tabular-nums',
-                            valor > 0 ? 'text-foreground' : 'text-muted-foreground',
+                            forma.Monto > 0 ? 'text-foreground' : 'text-muted-foreground',
                           )}>
-                            {fmt(valor)}
+                            {fmt(forma.Monto)}
                           </span>
                         </div>
                       );
@@ -193,10 +215,10 @@ export function CierreCajaPage() {
                   </div>
 
                   {/* Ventas del turno */}
-                  {resumen?.NumVentas !== undefined && (
+                  {numVentas > 0 && (
                     <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                       <ShoppingBag className="size-3.5" />
-                      <span>{resumen.NumVentas} venta{resumen.NumVentas !== 1 ? 's' : ''} registrada{resumen.NumVentas !== 1 ? 's' : ''} en este turno</span>
+                      <span>{numVentas} venta{numVentas !== 1 ? 's' : ''} registrada{numVentas !== 1 ? 's' : ''} en este turno</span>
                     </div>
                   )}
 
