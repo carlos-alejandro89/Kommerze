@@ -18,6 +18,7 @@ type Services struct {
 	Auth                *AuthService
 	Clientes            *ClientesService
 	License             *LicenseService
+	Auditoria           *AuditoriaService
 	OperacionesSucursal *OperacionesSucursalService
 	OperacionesCaja     *OperacionesCajaService
 	Catalogos           *CatalogosService
@@ -52,12 +53,14 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 
 	// ── Servidor Local (comportamiento actual) ──────────────────────────────
 	repo := repository.NewCatalogosRepository(db)
+	repoAuditoria := repository.NewAuditoriaSucursalRepository(db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
 	apiURL := apiCloudBaseURL
 	cloudClient := NewCloudHttpClient(apiURL)
 
 	pos := NewPosService(db, ctx)
+	auditoria := NewAuditoriaService(repoAuditoria)
 	auth := NewAuthService(repoUsuarios)
 	catalogos := NewCatalogosService(repo)
 	clientes := NewClientesService(db)
@@ -84,6 +87,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	return &Services{
 		Sync:                syncSvc,
 		Pos:                 pos,
+		Auditoria:           auditoria,
 		Auth:                auth,
 		Clientes:            clientes,
 		License:             NewLicenseService(db, apiURL),

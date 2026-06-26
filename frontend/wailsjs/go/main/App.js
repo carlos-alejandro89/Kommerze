@@ -138,6 +138,10 @@ export function ServiceObtenerResumenCajero(arg1) {
   return window['go']['main']['App']['ServiceObtenerResumenCajero'](arg1);
 }
 
+export function ServiceObtenerResumenInventario() {
+  return window['go']['main']['App']['ServiceObtenerResumenInventario']();
+}
+
 export function ServiceObtenerSucursalLocal() {
   return window['go']['main']['App']['ServiceObtenerSucursalLocal']();
 }

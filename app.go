@@ -5,7 +5,7 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
-	"BitComercio/internal/services/requestDto"
+	requestdto "BitComercio/internal/services/requestDto"
 	"context"
 	"fmt"
 	"log"
@@ -105,7 +105,6 @@ func (a *App) cotizacionService() interface {
 	}
 	return a.services.Cotizacion
 }
-
 
 // ── Sync (solo Servidor Local) ────────────────────────────────────────────────
 
@@ -307,7 +306,6 @@ func (a *App) SyncEstatus() (string, error) {
 	return "Sincronizado", nil
 }
 
-
 // ── POS ───────────────────────────────────────────────────────────────────────
 
 func (a *App) ServiceConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
@@ -389,6 +387,15 @@ func (a *App) ServiceActivateLicense(licenseKey requestdto.ActivateLicenseReques
 
 func (a *App) ServiceVerifyLicense() *dto.ResponseDto {
 	return services.VerifyLicense()
+}
+
+// ── Auditoria ────────────────────────────────────────────────────────────────
+
+func (a *App) ServiceObtenerResumenInventario() *dto.ResponseDto {
+	if a.services.Auditoria == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.Auditoria.ObtenerResumenInventario()
 }
 
 // ── Operaciones Sucursal (solo Servidor Local) ────────────────────────────────
@@ -555,7 +562,6 @@ func (a *App) ServiceBuscarClientes(q string) ([]dto.ClienteDto, error) {
 	return a.clientesService().BuscarClientes(q)
 }
 
-
 // ── Cloud (solo Servidor Local) ───────────────────────────────────────────────
 
 func (a *App) ServiceApiCrearProducto(producto requestdto.ProductoCreate) (*dto.ResponseDto, error) {
@@ -611,13 +617,13 @@ func (a *App) ServiceSaveDBConfig(host, port, user, password, name, sslMode, tim
 	if err != nil {
 		return err
 	}
-	cfg.DBHost     = host
-	cfg.DBPort     = port
-	cfg.DBUser     = user
+	cfg.DBHost = host
+	cfg.DBPort = port
+	cfg.DBUser = user
 	cfg.DBPassword = password
-	cfg.DBName     = name
-	cfg.DBSSLMode  = sslMode
-	cfg.TimeZone   = timeZone
+	cfg.DBName = name
+	cfg.DBSSLMode = sslMode
+	cfg.TimeZone = timeZone
 	return services.SaveKommerzConfig(cfg)
 }
 
@@ -656,7 +662,6 @@ func (a *App) ServiceObtenerSucursalLocal() *dto.ResponseDto {
 
 	return dto.NewResponseDto(true, "Sucursal encontrada", sucursal, nil)
 }
-
 
 // ServiceTestLocalServerConnection verifica que el Servidor Local responda.
 func (a *App) ServiceTestLocalServerConnection(serverURL string) *dto.ResponseDto {
