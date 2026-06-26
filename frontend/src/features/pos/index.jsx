@@ -40,7 +40,7 @@ function mapProductoToCartItem(producto) {
         discount: producto.Descuento,
         fraccionable: producto.Fraccionable,
         productoBaseGuid: producto.ProductoBaseGuid,
-        image: PLACEHOLDER_IMG,
+        image: producto.ImgReferencia ? `${import.meta.env.VITE_CLOUD_API_URL}${producto.ImgReferencia}` : PLACEHOLDER_IMG,
         caracteristicas: producto.Caracteristicas,
         instruccionesUso: producto.InstruccionesUso,
         informacionProducto: producto.InformacionProducto,

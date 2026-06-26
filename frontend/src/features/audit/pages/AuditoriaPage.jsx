@@ -1,0 +1,899 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ClipboardCheck,
+  UserCheck,
+  User,
+  Edit2,
+  Info,
+  Activity,
+  Check,
+  X,
+  Plus,
+  Search,
+  AlertTriangle,
+  TrendingDown,
+  TrendingUp,
+  RotateCcw,
+  Clock,
+  Lock
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+
+export function AuditoriaPage() {
+  const navigate = useNavigate();
+
+  // --- Core States ---
+  // status: 'setup' | 'active' | 'reconciliation'
+  const [status, setStatus] = useState('setup');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  const [managerImgError, setManagerImgError] = useState(false);
+  const [auditorImgError, setAuditorImgError] = useState(false);
+
+  // --- Setup View States ---
+  const [checklist, setChecklist] = useState([
+    { id: 1, title: 'Asegurar visibilidad de productos', desc: 'Despeje pasillos y estanterías para una lectura clara de códigos.', checked: false },
+    { id: 2, title: 'Verificar sincronización de terminales', desc: 'Confirme que el Terminal #04 tiene conexión estable a la red central.', checked: false },
+    { id: 3, title: 'Congelar movimientos de inventario', desc: 'No procese nuevas ventas o devoluciones durante el conteo.', checked: false }
+  ]);
+
+  const [auditorName, setAuditorName] = useState('Elena Valles');
+  const [auditorId, setAuditorId] = useState('#AUD-9921');
+  const [isEditingAuditor, setIsEditingAuditor] = useState(false);
+  const [editName, setEditName] = useState(auditorName);
+  const [editId, setEditId] = useState(auditorId);
+  const [startTime, setStartTime] = useState('18:46');
+
+  // --- Active View States ---
+  const [countedItems, setCountedItems] = useState([
+    { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
+    { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
+    { id: 3, name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15, counted: 17, diff: 2, status: 'Sobrante' }
+  ]);
+  const [scanSearch, setScanSearch] = useState('');
+  const [scanLogs, setScanLogs] = useState([
+    { time: '18:46:12', message: 'Sistema de terminal bloqueado de forma segura.' }
+  ]);
+
+  // Catalog for simulating scans
+  const SIMULATION_CATALOG = [
+    { name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50 },
+    { name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30 },
+    { name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15 },
+    { name: 'Leche Entera 1L', sku: '750300123456', expected: 40 },
+    { name: 'Jabón de Tocador', sku: '750400987654', expected: 20 },
+    { name: 'Pan Integral 500g', sku: '750500112233', expected: 10 }
+  ];
+
+  // Helper actions
+  const toggleCheck = (id) => {
+    setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+  };
+
+  const handleSaveAuditor = () => {
+    if (editName.trim() && editId.trim()) {
+      setAuditorName(editName);
+      setAuditorId(editId);
+    }
+    setIsEditingAuditor(false);
+  };
+
+  const handleCancelEditAuditor = () => {
+    setEditName(auditorName);
+    setEditId(auditorId);
+    setIsEditingAuditor(false);
+  };
+
+  const handleStartAudit = () => {
+    setStatus('active');
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    setStartTime(`${hrs}:${mins}`);
+
+    const timeStr = now.toTimeString().split(' ')[0];
+    setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]);
+  };
+
+  const handleSimulateScan = () => {
+    const randomProduct = SIMULATION_CATALOG[Math.floor(Math.random() * SIMULATION_CATALOG.length)];
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0];
+
+    setCountedItems(prev => {
+      const existing = prev.find(item => item.sku === randomProduct.sku);
+      if (existing) {
+        const newCount = existing.counted + 1;
+        const newDiff = newCount - existing.expected;
+        let newStatus = 'Completo';
+        if (newDiff < 0) newStatus = 'Faltante';
+        if (newDiff > 0) newStatus = 'Sobrante';
+
+        setScanLogs(logs => [
+          { time: timeStr, message: `Escaneado: ${randomProduct.name} (+1). Conteo actual: ${newCount}` },
+          ...logs
+        ]);
+
+        return prev.map(item => item.sku === randomProduct.sku
+          ? { ...item, counted: newCount, diff: newDiff, status: newStatus }
+          : item
+        );
+      } else {
+        const newCount = 1;
+        const newDiff = newCount - randomProduct.expected;
+        let newStatus = 'Completo';
+        if (newDiff < 0) newStatus = 'Faltante';
+        if (newDiff > 0) newStatus = 'Sobrante';
+
+        setScanLogs(logs => [
+          { time: timeStr, message: `Nuevo ítem detectado: ${randomProduct.name} (Conteo: 1)` },
+          ...logs
+        ]);
+
+        return [
+          ...prev,
+          {
+            id: prev.length + 1,
+            name: randomProduct.name,
+            sku: randomProduct.sku,
+            expected: randomProduct.expected,
+            counted: newCount,
+            diff: newDiff,
+            status: newStatus
+          }
+        ];
+      }
+    });
+  };
+
+  const handleManualAdd = (e) => {
+    e.preventDefault();
+    if (!scanSearch.trim()) return;
+
+    const matched = SIMULATION_CATALOG.find(
+      p => p.sku === scanSearch || p.name.toLowerCase().includes(scanSearch.toLowerCase())
+    );
+
+    const targetProduct = matched || {
+      name: scanSearch,
+      sku: `MOCK-${Math.floor(100000 + Math.random() * 900000)}`,
+      expected: 10
+    };
+
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0];
+
+    setCountedItems(prev => {
+      const existing = prev.find(item => item.sku === targetProduct.sku || item.name.toLowerCase() === targetProduct.name.toLowerCase());
+      if (existing) {
+        const newCount = existing.counted + 1;
+        const newDiff = newCount - existing.expected;
+        let newStatus = 'Completo';
+        if (newDiff < 0) newStatus = 'Faltante';
+        if (newDiff > 0) newStatus = 'Sobrante';
+
+        setScanLogs(logs => [
+          { time: timeStr, message: `Búsqueda manual: ${targetProduct.name} (+1). Conteo actual: ${newCount}` },
+          ...logs
+        ]);
+
+        return prev.map(item => item.sku === existing.sku
+          ? { ...item, counted: newCount, diff: newDiff, status: newStatus }
+          : item
+        );
+      } else {
+        const newCount = 1;
+        const newDiff = newCount - targetProduct.expected;
+        let newStatus = 'Completo';
+        if (newDiff < 0) newStatus = 'Faltante';
+        if (newDiff > 0) newStatus = 'Sobrante';
+
+        setScanLogs(logs => [
+          { time: timeStr, message: `Registro manual de: ${targetProduct.name} (Conteo: 1)` },
+          ...logs
+        ]);
+
+        return [
+          ...prev,
+          {
+            id: prev.length + 1,
+            name: targetProduct.name,
+            sku: targetProduct.sku,
+            expected: targetProduct.expected,
+            counted: newCount,
+            diff: newDiff,
+            status: newStatus
+          }
+        ];
+      }
+    });
+
+    setScanSearch('');
+  };
+
+  const totalExpected = countedItems.reduce((sum, item) => sum + item.expected, 0);
+  const totalCounted = countedItems.reduce((sum, item) => sum + item.counted, 0);
+  const totalDiscrepancies = countedItems.filter(item => item.diff !== 0).length;
+  const progressPercent = Math.min(Math.round((totalCounted / totalExpected) * 100), 100);
+  const financialImpact = countedItems.reduce((sum, item) => sum + (item.diff * 25), 0);
+
+  return (
+    <div className="container mx-auto px-6 py-8 max-w-[1200px] animate-fade-in space-y-6">
+      
+      {/* CSS Shimmer Keyframe definition */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .progress-shimmer {
+          background: linear-gradient(90deg, var(--primary) 30%, #a5b4fc 50%, var(--primary) 70%);
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite linear;
+        }
+      `}} />
+
+      {/* ========================================================================= */}
+      {/* 1. SETUP VIEW */}
+      {/* ========================================================================= */}
+      {status === 'setup' && (
+        <div className="space-y-6 animate-slide-up">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-primary tracking-tight">Nueva Auditoría de Inventario</h1>
+              <p className="text-sm text-text-secondary mt-1">Configure los parámetros iniciales para la validación de existencias.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="rounded-xl px-5 py-2"
+                onClick={() => navigate('/home')}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                className="rounded-xl px-5 py-2 shadow-sm font-semibold"
+                onClick={handleStartAudit}
+              >
+                Iniciar Auditoría
+              </Button>
+            </div>
+          </div>
+
+          {/* Bento Grid */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Side (General Data & Assignment) */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
+              {/* General Data Card */}
+              <Card className="glass shadow-sm">
+                <CardHeader className="border-b-0 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="text-primary size-5" />
+                    <CardTitle className="text-lg font-bold">Datos Generales</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Ítems Totales</span>
+                      <div className="text-3xl font-extrabold text-primary mt-1">1,240</div>
+                      <span className="text-[11px] text-text-muted mt-1 block">Unidades registradas</span>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Valor del Sistema</span>
+                      <div className="text-3xl font-extrabold text-primary mt-1">$45,200.00</div>
+                      <span className="text-[11px] text-text-muted mt-1 block">Valoración total</span>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
+                      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Último Conteo</span>
+                      <div className="text-xl font-bold text-primary mt-2">12 Oct 2023</div>
+                      <span className="text-[11px] text-text-muted mt-1 block">Hace 24 días</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Staff Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Branch Manager Card */}
+                <Card className="glass shadow-sm flex flex-row items-center gap-4 p-5">
+                  <div className="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container overflow-hidden shrink-0">
+                    {!managerImgError ? (
+                      <img
+                        className="w-full h-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCha07r_v4bVyvKIDD1TfmuOry5lK5-53419kUGCjCum5JHeH5-KF8kfU95Xn_13KnFiJ6Uo1iqeJrVeWHzpSbj7BBFpd_xwsVvertytDC_vlMJZPsELRFSJhDcA7PJNIvn3lCzL3DBGdRzgAQ3pExCB96_0VDXaHG5vMGEZaYMEphIHxbxClJ43k0rt6qOf1VKbV8hBx7LstCLXck0tXRKI0JpWmZ2x49rLU2hxAMPoEHNOs6oWPEKfwYHFL4CYAkL3SK0N0kB8HE"
+                        alt="Manager Profile"
+                        onError={() => setManagerImgError(true)}
+                      />
+                    ) : (
+                      <User className="size-8 text-text-secondary" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-xs text-text-secondary block font-medium">Gerente de Sucursal</span>
+                    <p className="text-lg font-bold text-foreground">Roberto Mendez</p>
+                    <Badge variant="success" appearance="light" size="xs" shape="circle" className="mt-1">
+                      Verificado
+                    </Badge>
+                  </div>
+                </Card>
+
+                {/* Assigned Auditor Card */}
+                <Card className="glass shadow-sm flex flex-row items-center justify-between p-5 relative overflow-hidden">
+                  <div className="flex items-center gap-4 grow">
+                    <div className="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container overflow-hidden shrink-0">
+                      {!auditorImgError ? (
+                        <img
+                          className="w-full h-full object-cover"
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK4RhhevVxPCeXE2WbBilbYdDREOg4hdtbKTDrJos2f0b2HVPI2QYan4TxTPLrorMhMWH36NRpnsI44kSR3BI13KMczeBpWS8ni127oQ6H5dMjD-vZpg-RyvEQlDEPFsIYOWLVveiVGKwVXMlnBm3A4ngLkUU0UMKI2Z67BryPJC-4h_WBxkKja1nSLJqSy6PuAgD8ACVi7YHOazY1zEK8DrlCHyUQjmaYyAMmgGNz58qOdWqpb6bfaPzleEqaMb2OBwe0C1C94sI"
+                          alt="Auditor Profile"
+                          onError={() => setAuditorImgError(true)}
+                        />
+                      ) : (
+                        <User className="size-8 text-text-secondary" />
+                      )}
+                    </div>
+
+                    {!isEditingAuditor ? (
+                      <div>
+                        <span className="text-xs text-text-secondary block font-medium">Auditor Asignado</span>
+                        <p className="text-lg font-bold text-foreground leading-tight">{auditorName}</p>
+                        <span className="text-xs font-mono text-text-muted mt-0.5 block">{auditorId}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 w-full pr-4">
+                        <Input
+                          variant="sm"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Nombre del Auditor"
+                          className="font-semibold text-xs"
+                        />
+                        <Input
+                          variant="sm"
+                          value={editId}
+                          onChange={(e) => setEditId(e.target.value)}
+                          placeholder="ID de Empleado"
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0">
+                    {!isEditingAuditor ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full hover:bg-muted"
+                        onClick={() => {
+                          setEditName(auditorName);
+                          setEditId(auditorId);
+                          setIsEditingAuditor(true);
+                        }}
+                      >
+                        <Edit2 className="size-4 text-primary" />
+                      </Button>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-full text-success hover:bg-success/10"
+                          onClick={handleSaveAuditor}
+                        >
+                          <Check className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-full text-danger hover:bg-danger/10"
+                          onClick={handleCancelEditAuditor}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {/* Right Side (Instructions Check) */}
+            <div className="col-span-12 lg:col-span-4">
+              <Card className="bg-neutral-900 dark:bg-neutral-950 text-white rounded-xl h-full flex flex-col justify-between border-0 shadow-md">
+                <CardHeader className="border-b-0 pb-4">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="text-brand-300 size-5" />
+                    <CardTitle className="text-lg font-bold text-white">Instrucciones</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-between space-y-6">
+                  {/* Checklist */}
+                  <ul className="space-y-4">
+                    {checklist.map((item) => (
+                      <li
+                        key={item.id}
+                        onClick={() => toggleCheck(item.id)}
+                        className="flex items-start gap-3 cursor-pointer group select-none"
+                      >
+                        <div
+                          className={`w-5 h-5 rounded border flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                            item.checked
+                              ? 'bg-brand-500 border-brand-500 text-white'
+                              : 'border-white/30 hover:border-white/60'
+                          }`}
+                        >
+                          {item.checked && <Check className="size-3.5 stroke-[3]" />}
+                        </div>
+                        <div>
+                          <p className={`text-sm font-semibold transition-colors ${item.checked ? 'text-white/60 line-through' : 'text-white'}`}>
+                            {item.title}
+                          </p>
+                          <p className={`text-xs mt-0.5 transition-colors ${item.checked ? 'text-white/40' : 'text-white/70'}`}>
+                            {item.desc}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Important Alert box */}
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-2 text-brand-300 mb-1">
+                      <Info className="size-4 shrink-0" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Importante</span>
+                    </div>
+                    <p className="text-xs text-white/80 leading-relaxed">
+                      Al iniciar, el sistema bloqueará temporalmente los ajustes manuales de stock y las transacciones de venta hasta completar la conciliación.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Decorative System Status */}
+          <Card className="glass shadow-sm overflow-hidden relative group">
+            <div className="p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-primary">
+                  <Activity className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Estado de Conectividad</h3>
+                  <p className="text-xs text-text-secondary">Sincronización en tiempo real activa.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto grow md:max-w-xs justify-end">
+                <span className="text-xs text-text-secondary">Señal de Red</span>
+                <div className="h-2 bg-muted rounded-full w-32 overflow-hidden">
+                  <div className="bg-success h-full rounded-full w-[100%]" />
+                </div>
+                <span className="text-xs font-bold text-success">Excelente</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. ACTIVE VIEW (COUNT IN PROGRESS - LOCK CARD DESIGN) */}
+      {/* ========================================================================= */}
+      {status === 'active' && (
+        <div 
+          className="min-h-[calc(100vh-160px)] w-full flex items-center justify-center relative py-6 animate-slide-up"
+          style={{ background: 'radial-gradient(circle at center, var(--neutral-0) 0%, var(--bg-subtle) 100%)' }}
+        >
+          {/* Background decorative glows */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden rounded-2xl">
+            <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/30 blur-[120px] rounded-full animate-pulse-slow" />
+            <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-secondary/30 blur-[120px] rounded-full animate-pulse-slow" />
+          </div>
+
+          <div className="z-10 w-full max-w-[560px] px-4">
+            <Card className="glass border border-border/80 rounded-2xl p-8 shadow-lg flex flex-col items-center text-center">
+              
+              {/* Pulsing Lock Icon */}
+              <div className="w-20 h-20 rounded-full bg-muted/80 flex items-center justify-center mb-6 relative border border-border shadow-inner">
+                <Lock className="size-10 text-primary fill-primary/10" />
+                <span className="absolute top-1 right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-primary" />
+                </span>
+              </div>
+
+              {/* Title & Subtext */}
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
+                Auditoría en Curso
+              </h1>
+              <p className="text-sm text-text-secondary max-w-[420px] mb-6">
+                El terminal se encuentra bloqueado temporalmente para garantizar la integridad del inventario. Por favor, espere a que el proceso finalice.
+              </p>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4 w-full mb-6 text-left">
+                <div className="bg-muted/40 p-4 rounded-xl flex flex-col items-start border border-border/50">
+                  <span className="text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Auditor Asignado</span>
+                  <div className="flex items-center gap-1.5">
+                    <User className="size-4 text-primary shrink-0" />
+                    <span className="text-sm font-bold text-foreground">{auditorName}</span>
+                  </div>
+                </div>
+                <div className="bg-muted/40 p-4 rounded-xl flex flex-col items-start border border-border/50">
+                  <span className="text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Hora de Inicio</span>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="size-4 text-primary shrink-0" />
+                    <span className="text-sm font-bold text-foreground font-mono">{startTime}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Indicator */}
+              <div className="w-full mb-6 text-left">
+                <div className="flex justify-between items-center mb-1.5 text-xs">
+                  <span className="font-bold text-primary">Progreso de Conteo</span>
+                  <span className="font-bold text-foreground font-mono">{progressPercent}%</span>
+                </div>
+                <div className="h-3 w-full bg-muted rounded-full overflow-hidden relative border border-border/50">
+                  <div
+                    className="h-full rounded-full progress-shimmer transition-all duration-500 ease-in-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-text-secondary mt-3 flex items-center justify-center gap-1.5 font-mono">
+                  <RotateCcw className="size-3.5 animate-spin-slow text-primary" />
+                  {scanLogs[0]?.message || 'Verificando existencias físicas de la sucursal'}
+                </p>
+              </div>
+
+              {/* Main Actions Container */}
+              <div className="w-full space-y-3 pt-2">
+                <Button
+                  variant="primary"
+                  onClick={() => setStatus('reconciliation')}
+                  className="w-full flex items-center justify-center gap-2 h-11 text-sm font-bold bg-success hover:bg-success/90 text-white rounded-xl shadow-md transition-all active:scale-95 shrink-0"
+                >
+                  <Check className="size-4.5 stroke-[3]" /> Finalizar y Conciliar
+                </Button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleSimulateScan}
+                    className="h-9.5 text-xs font-semibold rounded-lg border-border hover:bg-muted"
+                  >
+                    <Plus className="size-3.5 mr-1" /> Simular Escaneo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDetailsModal(true)}
+                    className="h-9.5 text-xs font-semibold rounded-lg border-border hover:bg-muted"
+                  >
+                    <Search className="size-3.5 mr-1" /> Ver Detalle ({countedItems.length})
+                  </Button>
+                </div>
+
+                <div className="flex justify-between items-center pt-3 mt-1 border-t border-border/50 text-[10px] text-text-muted">
+                  <button
+                    onClick={() => {
+                      if (confirm('¿Desea pausar la auditoría y regresar al panel de configuración? El conteo no se perderá.')) {
+                        setStatus('setup');
+                      }
+                    }}
+                    className="hover:underline hover:text-foreground font-medium"
+                  >
+                    Pausar Conteo
+                  </button>
+                  <span className="font-medium">Acceso restringido a personal autorizado</span>
+                </div>
+              </div>
+
+            </Card>
+
+            {/* Footer Branding */}
+            <div className="mt-8 flex flex-col items-center opacity-40 text-center">
+              <span className="text-lg font-black tracking-widest text-foreground uppercase">Kommerze</span>
+              <span className="text-[10px] text-text-muted mt-0.5">Powered by Kinetic Ledger Systems</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ACTIVE DETAILS MODAL (OVERLAY PANEL) */}
+      {/* ========================================================================= */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-sm animate-fade-in">
+          <Card className="w-full max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden bg-card border border-border shadow-2xl rounded-2xl">
+            <CardHeader className="pb-3 border-b border-border flex flex-row justify-between items-center shrink-0">
+              <div>
+                <CardTitle className="text-lg font-bold">Detalle de Conteo Físico</CardTitle>
+                <CardDescription className="text-xs">
+                  Resumen de los ítems registrados y bitácora de escaneo activa.
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDetailsModal(false)}
+                className="rounded-full hover:bg-muted"
+              >
+                <X className="size-4" />
+              </Button>
+            </CardHeader>
+
+            <CardContent className="flex-1 overflow-y-auto p-0 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
+              {/* Product list table (left) */}
+              <div className="flex-1 p-5 overflow-y-auto max-h-[50vh] md:max-h-none">
+                <div className="flex justify-between items-center mb-4 gap-4">
+                  <form onSubmit={handleManualAdd} className="flex-1 flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-text-muted" />
+                      <Input
+                        value={scanSearch}
+                        onChange={(e) => setScanSearch(e.target.value)}
+                        placeholder="Agregar SKU o producto manualmente..."
+                        className="pl-8 h-8 text-xs bg-background/50"
+                      />
+                    </div>
+                    <Button type="submit" variant="outline" size="sm" className="h-8 text-xs font-semibold px-2.5">
+                      Agregar
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="border border-border rounded-xl overflow-hidden bg-muted/10">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-muted/40 text-text-secondary text-[10px] uppercase font-bold border-b border-border">
+                        <th className="px-4 py-2.5">Producto</th>
+                        <th className="px-4 py-2.5 font-mono">SKU</th>
+                        <th className="px-4 py-2.5 text-right">Esp.</th>
+                        <th className="px-4 py-2.5 text-right">Físico</th>
+                        <th className="px-4 py-2.5 text-right">Dif.</th>
+                        <th className="px-4 py-2.5 text-center">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {countedItems.map((item) => {
+                        let badgeVar = 'success';
+                        if (item.diff < 0) badgeVar = 'destructive';
+                        if (item.diff > 0) badgeVar = 'warning';
+
+                        return (
+                          <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                            <td className="px-4 py-2.5 font-semibold text-foreground">{item.name}</td>
+                            <td className="px-4 py-2.5 font-mono text-text-secondary">{item.sku}</td>
+                            <td className="px-4 py-2.5 text-right text-text-secondary">{item.expected}</td>
+                            <td className="px-4 py-2.5 text-right font-bold">{item.counted}</td>
+                            <td className={`px-4 py-2.5 text-right font-bold ${
+                              item.diff === 0 ? 'text-text-muted' : item.diff > 0 ? 'text-warning-600' : 'text-danger-600'
+                            }`}>
+                              {item.diff > 0 ? `+${item.diff}` : item.diff}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <Badge
+                                variant={badgeVar}
+                                appearance="light"
+                                size="xs"
+                                className="font-bold px-1.5 py-0.5 rounded-md"
+                              >
+                                {item.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Bitácora de escaneo (right) */}
+              <div className="w-full md:w-[280px] p-5 shrink-0 bg-muted/5 flex flex-col justify-between max-h-[30vh] md:max-h-none">
+                <div className="space-y-3 overflow-hidden flex flex-col flex-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-text-secondary pb-2 border-b border-border">
+                    <Activity className="size-4 text-primary" />
+                    <span>Bitácora de Escaneo</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 font-mono text-[10px] leading-relaxed">
+                    {scanLogs.map((log, idx) => (
+                      <div key={idx} className="flex gap-1.5 items-start text-text-secondary">
+                        <span className="text-primary font-semibold shrink-0">[{log.time}]</span>
+                        <span>{log.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs">
+                  <span className="text-text-muted">Total Contado:</span>
+                  <span className="font-bold text-foreground font-mono">{totalCounted} u</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. RECONCILIATION VIEW */}
+      {/* ========================================================================= */}
+      {status === 'reconciliation' && (
+        <div className="space-y-6 animate-slide-up">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-primary tracking-tight">Conciliación de Ajustes</h1>
+              <p className="text-sm text-text-secondary mt-1">
+                Revise las diferencias y autorice la actualización de inventarios del sistema.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="rounded-xl px-5 py-2"
+                onClick={() => setStatus('active')}
+              >
+                Volver a Conteo
+              </Button>
+              <Button
+                variant="primary"
+                className="rounded-xl px-5 py-2 shadow-sm font-semibold bg-success hover:bg-success/90 text-white"
+                onClick={() => {
+                  alert(`Ajustes aplicados correctamente. Auditoría cerrada y finalizada.\n\nResponsable: ${auditorName}\nImpacto financiero estimado: ${financialImpact >= 0 ? '+' : ''}$${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
+                  setCountedItems([
+                    { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
+                    { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
+                    { id: 3, name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15, counted: 17, diff: 2, status: 'Sobrante' }
+                  ]);
+                  setChecklist(prev => prev.map(item => ({ ...item, checked: false })));
+                  setStatus('setup');
+                }}
+              >
+                Autorizar y Cerrar Auditoría
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left side (Summary Table of discrepancies only) */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
+              <Card className="glass shadow-sm">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-base font-bold text-danger-600">Discrepancias a Conciliar</CardTitle>
+                  <CardDescription className="text-xs">
+                    Solo se listan los productos que requieren un ajuste de stock física vs lógica
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="bg-muted/30 text-text-secondary text-xs uppercase font-bold border-b border-border">
+                          <th className="px-5 py-3">Producto</th>
+                          <th className="px-5 py-3 font-mono">SKU</th>
+                          <th className="px-5 py-3 text-right">Teórico</th>
+                          <th className="px-5 py-3 text-right">Físico</th>
+                          <th className="px-5 py-3 text-right">Ajuste</th>
+                          <th className="px-5 py-3 text-center">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {countedItems.filter(item => item.diff !== 0).map((item) => (
+                          <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                            <td className="px-5 py-3 font-semibold text-foreground">{item.name}</td>
+                            <td className="px-5 py-3 font-mono text-xs text-text-secondary">{item.sku}</td>
+                            <td className="px-5 py-3 text-right text-text-secondary">{item.expected}</td>
+                            <td className="px-5 py-3 text-right font-bold">{item.counted}</td>
+                            <td className={`px-5 py-3 text-right font-bold ${item.diff > 0 ? 'text-warning-600' : 'text-danger-600'}`}>
+                              {item.diff > 0 ? `+${item.diff}` : item.diff}
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <Badge
+                                variant={item.diff > 0 ? 'warning' : 'destructive'}
+                                appearance="outline"
+                                size="xs"
+                                className="font-bold rounded-md"
+                              >
+                                {item.diff > 0 ? 'Incrementar Stock' : 'Disminuir Stock'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                        {countedItems.filter(item => item.diff !== 0).length === 0 && (
+                          <tr>
+                            <td colSpan="6" className="text-center py-8 text-text-muted italic">
+                              No se detectaron discrepancias. ¡Inventario 100% conciliado!
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right side (Financial impact & Signoff) */}
+            <div className="col-span-12 lg:col-span-4 space-y-6">
+              {/* Financial Impact Card */}
+              <Card className="glass shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold">Resumen de Conciliación</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-text-secondary">Diferencias Totales:</span>
+                      <span className="font-bold font-mono text-foreground">{totalDiscrepancies} productos</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-text-secondary">Unidades Faltantes:</span>
+                      <span className="font-bold font-mono text-danger-600">
+                        {countedItems.filter(item => item.diff < 0).reduce((sum, item) => sum + Math.abs(item.diff), 0)} u
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-text-secondary">Unidades Sobrantes:</span>
+                      <span className="font-bold font-mono text-warning-600">
+                        {countedItems.filter(item => item.diff > 0).reduce((sum, item) => sum + item.diff, 0)} u
+                      </span>
+                    </div>
+                    <div className="border-t border-border pt-2.5 flex justify-between items-center">
+                      <span className="text-sm font-bold text-foreground">Impacto Financiero Est.:</span>
+                      <div className="flex items-center gap-1 text-base font-extrabold">
+                        {financialImpact >= 0 ? (
+                          <TrendingUp className="size-4 text-success" />
+                        ) : (
+                          <TrendingDown className="size-4 text-danger animate-pulse" />
+                        )}
+                        <span className={financialImpact >= 0 ? 'text-success' : 'text-danger'}>
+                          {financialImpact >= 0 ? '+' : ''}${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sign-off signatures */}
+                  <div className="space-y-3 pt-2">
+                    <label className="text-xs font-bold text-text-secondary block">Autorización del Auditor</label>
+                    <div className="p-3 border border-dashed border-border bg-muted/10 rounded-lg flex items-center gap-2">
+                      <UserCheck className="size-4 text-success" />
+                      <div className="text-xs">
+                        <p className="font-bold text-foreground">{auditorName}</p>
+                        <p className="text-[10px] text-text-muted font-mono">{auditorId}</p>
+                      </div>
+                      <Badge variant="success" size="xs" className="ml-auto text-[10px] font-bold">
+                        Firmado
+                      </Badge>
+                    </div>
+
+                    <label className="text-xs font-bold text-text-secondary block">Autorización del Gerente</label>
+                    <div className="p-3 border border-dashed border-border bg-muted/10 rounded-lg flex items-center gap-2">
+                      <UserCheck className="size-4 text-success" />
+                      <div className="text-xs">
+                        <p className="font-bold text-foreground">Roberto Mendez</p>
+                        <p className="text-[10px] text-text-muted font-mono">#MGR-0023</p>
+                      </div>
+                      <Badge variant="success" size="xs" className="ml-auto text-[10px] font-bold">
+                        Firmado
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

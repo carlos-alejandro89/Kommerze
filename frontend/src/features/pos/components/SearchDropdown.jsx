@@ -60,6 +60,9 @@ export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClos
             ) : (
                 <ul className="max-h-[360px] overflow-y-auto divide-y divide-border/50 py-1">
                     {suggestions.map((product, index) => {
+                        console.log("Product", product);
+                        console.log("Image Url", `${import.meta.env.VITE_CLOUD_API_URL}${product.ImagenReferencia}`);
+
                         const sinStock = (parseFloat(product.Existencia) || 0) <= 0;
 
                         return (
@@ -77,7 +80,7 @@ export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClos
                                     {/* ── Imagen ── */}
                                     <div className="size-10 rounded-lg overflow-hidden shrink-0 bg-slate-100 dark:bg-zinc-800 border border-border/40">
                                         <img
-                                            src={PLACEHOLDER_IMG}
+                                            src={product.ImgReferencia ? `${import.meta.env.VITE_CLOUD_API_URL}${product.ImgReferencia}` : PLACEHOLDER_IMG}
                                             alt={product.Descripcion}
                                             className="w-full h-full object-cover"
                                             onError={(e) => { e.currentTarget.style.opacity = 0; }}

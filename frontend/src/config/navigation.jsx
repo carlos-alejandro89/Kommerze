@@ -85,4 +85,12 @@ export const MAIN_NAV = [
     icon: Settings,
     path: '/settings',
   },
+  // ── Auditoria ────────────────────────────────────────────────────
+  {
+    id: 'auditoria',
+    title: 'Auditoria',
+    icon: Settings,
+    path: '/auditoria',
+    serverOnly: true,
+  },
 ];

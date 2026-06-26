@@ -118,6 +118,14 @@ const ALL_MODULES = [
     accentColor: '#64748b',   // slate
     to: '/settings',
   },
+  {
+    id: 'auditoria',
+    title: 'Auditoria',
+    subtitle: 'Auditoria',
+    icon: Settings,
+    accentColor: '#64748b',   // slate
+    to: '/auditoria',
+  },
 ];
 
 export function HomePage() {
@@ -148,7 +156,7 @@ export function HomePage() {
         />
 
         {/* Module Grid — 3 columns */}
-        <div className="grid grid-cols-3 gap-3 auto-rows-[160px]">
+        <div className="grid grid-cols-6 gap-3 auto-rows-[160px]">
           {modules.map((mod) => (
             <ModuleCard key={mod.id} {...mod} />
           ))}

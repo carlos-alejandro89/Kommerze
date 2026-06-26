@@ -66,15 +66,15 @@ export function ProductsPage() {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.Descripcion?.toLowerCase().includes(search.toLowerCase()) || 
-                          p.Codigo?.toLowerCase().includes(search.toLowerCase());
-    
+    const matchesSearch = p.Descripcion?.toLowerCase().includes(search.toLowerCase()) ||
+      p.Codigo?.toLowerCase().includes(search.toLowerCase());
+
     const pLinea = p.Linea || 'SIN LINEA';
     const pMarca = p.Marca || 'SIN MARCA';
 
     const matchesLinea = selectedLineas.size === 0 || selectedLineas.has(pLinea);
     const matchesMarca = selectedMarcas.size === 0 || selectedMarcas.has(pMarca);
-    
+
     const stock = Number(p.Existencia || 0);
     const matchesStock = showOnlyWithStock ? stock > 0 : true;
 
@@ -127,7 +127,7 @@ export function ProductsPage() {
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in">
-      
+
       {/* ── Left Sidebar Filters ─────────────────────── */}
       <div className="w-[280px] shrink-0 border-r border-border bg-surface flex flex-col overflow-hidden hidden md:block">
         <div className="p-5 flex items-center justify-between border-b border-border">
@@ -138,14 +138,14 @@ export function ProductsPage() {
             </button>
           )}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Existencia */}
           <div className="space-y-3">
             <label className="flex items-center cursor-pointer group">
-              <input 
-                type="checkbox" 
-                className="rounded border-border text-primary focus:ring-primary/30 size-3.5 mr-2" 
+              <input
+                type="checkbox"
+                className="rounded border-border text-primary focus:ring-primary/30 size-3.5 mr-2"
                 checked={showOnlyWithStock}
                 onChange={(e) => setShowOnlyWithStock(e.target.checked)}
               />
@@ -158,14 +158,14 @@ export function ProductsPage() {
           {/* Líneas */}
           {allLineas.length > 0 && (
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={() => toggleFilterSection('linea')}
                 className="flex items-center justify-between w-full text-left"
               >
                 <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Línea</h4>
                 {expandedFilters.linea ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
               </button>
-              
+
               {expandedFilters.linea && (
                 <div className="space-y-3">
                   <div className="relative">
@@ -184,9 +184,9 @@ export function ProductsPage() {
                       return (
                         <label key={l.Guid || l.NombreLinea} className="flex items-center justify-between cursor-pointer group py-0.5">
                           <div className="flex items-center gap-2">
-                            <input 
-                              type="checkbox" 
-                              className="rounded border-border text-primary focus:ring-primary/30 size-3.5" 
+                            <input
+                              type="checkbox"
+                              className="rounded border-border text-primary focus:ring-primary/30 size-3.5"
                               checked={selectedLineas.has(l.NombreLinea)}
                               onChange={() => toggleLinea(l.NombreLinea)}
                             />
@@ -205,14 +205,14 @@ export function ProductsPage() {
           {/* Marcas */}
           {allMarcas.length > 0 && (
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={() => toggleFilterSection('marca')}
                 className="flex items-center justify-between w-full text-left"
               >
                 <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Marca</h4>
                 {expandedFilters.marca ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
               </button>
-              
+
               {expandedFilters.marca && (
                 <div className="space-y-3">
                   <div className="relative">
@@ -231,9 +231,9 @@ export function ProductsPage() {
                       return (
                         <label key={m.Guid || m.NombreMarca} className="flex items-center justify-between cursor-pointer group py-0.5">
                           <div className="flex items-center gap-2">
-                            <input 
-                              type="checkbox" 
-                              className="rounded border-border text-primary focus:ring-primary/30 size-3.5" 
+                            <input
+                              type="checkbox"
+                              className="rounded border-border text-primary focus:ring-primary/30 size-3.5"
                               checked={selectedMarcas.has(m.NombreMarca)}
                               onChange={() => toggleMarca(m.NombreMarca)}
                             />
@@ -253,7 +253,7 @@ export function ProductsPage() {
 
       {/* ── Main Content ─────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-bg-subtle">
-        
+
         {/* Header */}
         <div className="flex flex-col gap-4 p-5 shrink-0 bg-surface border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -273,15 +273,15 @@ export function ProductsPage() {
                   className="w-full rounded-lg border border-border bg-bg-subtle pl-9 pr-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
                 />
               </div>
-              
+
               <div className="hidden sm:flex items-center rounded-lg border border-border bg-bg-subtle p-0.5">
-                <button 
+                <button
                   onClick={() => setViewMode('grid')}
                   className={cn('p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-surface shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
                 >
                   <LayoutGrid className="size-4" />
                 </button>
-                <button 
+                <button
                   onClick={() => setViewMode('list')}
                   className={cn('p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-surface shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
                 >
@@ -365,13 +365,13 @@ export function ProductsPage() {
                 {paginatedProducts.map((product) => {
                   const stock = Number(product.Existencia || 0);
                   const price = Number(product.PrecioVenta || 0);
-                  const color = '#e2e8f0'; 
+                  const color = '#e2e8f0';
                   const category = product.Linea || 'General';
                   const use = product.Marca || 'Estándar';
 
                   return (
-                    <div 
-                      key={product.Guid || product.Codigo} 
+                    <div
+                      key={product.Guid || product.Codigo}
                       className={cn(
                         "group relative rounded-xl border border-border bg-surface overflow-hidden hover:border-primary/50 hover:shadow-md transition-all duration-200",
                         viewMode === 'list' && "flex items-center p-3 gap-4"
@@ -397,11 +397,12 @@ export function ProductsPage() {
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Image Placeholder */}
                         <div className="w-2/3 h-2/3 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
                           {product.ImgReferencia ? (
-                            <img src={product.ImgReferencia} alt={product.Descripcion} className="w-full h-full object-cover rounded-lg" />
+                            <img src={`${import.meta.env.VITE_CLOUD_API_URL}${product.ImgReferencia}`} alt={product.Descripcion} className="w-full h-full object-cover rounded-lg" />
+
                           ) : (
                             <ImageIcon className="size-10 opacity-30 text-muted-foreground" />
                           )}
@@ -416,7 +417,7 @@ export function ProductsPage() {
                             <span className="size-1 rounded-full bg-border" />
                             <span>{use}</span>
                             {viewMode === 'grid' && (
-                               <div className="ml-auto size-4 rounded-full border border-border shadow-sm" style={{ backgroundColor: color }} />
+                              <div className="ml-auto size-4 rounded-full border border-border shadow-sm" style={{ backgroundColor: color }} />
                             )}
                           </div>
                           <h3 className="font-bold text-foreground text-base leading-tight group-hover:text-primary transition-colors line-clamp-2">
@@ -434,8 +435,8 @@ export function ProductsPage() {
                           </div>
                           <button className={cn(
                             "flex size-8 items-center justify-center rounded-full transition-colors",
-                            stock > 0 
-                              ? "bg-primary text-white hover:bg-brand-600 shadow-sm" 
+                            stock > 0
+                              ? "bg-primary text-white hover:bg-brand-600 shadow-sm"
                               : "bg-muted text-muted-foreground cursor-not-allowed"
                           )}>
                             <Package className="size-4" />
@@ -453,14 +454,14 @@ export function ProductsPage() {
                   Mostrando {totalItems > 0 ? startIndex + 1 : 0} a {Math.min(endIndex, totalItems)} de {totalItems} productos
                 </p>
                 <div className="flex gap-1">
-                  <button 
+                  <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <button 
+                  <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
                     className="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"

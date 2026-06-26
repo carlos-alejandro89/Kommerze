@@ -17,25 +17,26 @@ function ServerOnlyGuard({ children }) {
 }
 
 // ── Lazy Pages ──────────────────────────────────────────────────────────────
-const LoginPage             = lazy(() => import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const LicenseActivationPage = lazy(() => import('@/features/license/pages/LicenseActivationPage').then(m => ({ default: m.LicenseActivationPage })));
-const DeviceRolePage        = lazy(() => import('@/features/device-setup/pages/DeviceRolePage').then(m => ({ default: m.DeviceRolePage })));
-const LocalServerSetupPage  = lazy(() => import('@/features/device-setup/pages/LocalServerSetupPage').then(m => ({ default: m.LocalServerSetupPage })));
-const DatabaseSetupPage     = lazy(() => import('@/features/device-setup/pages/DatabaseSetupPage').then(m => ({ default: m.DatabaseSetupPage })));
-const DashboardPage         = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const POSPage               = lazy(() => import('@/features/pos/pages/POSPage'));
-const TransactionPage       = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
-const PaymentPage           = lazy(() => import('@/features/pos/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
-const OrderPlacedPage       = lazy(() => import('@/features/pos/pages/OrderPlacedPage').then(m => ({ default: m.OrderPlacedPage })));
-const ProductsPage          = lazy(() => import('@/features/products/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
-const CreateProductPage     = lazy(() => import('@/features/products/pages/CreateProductPage').then(m => ({ default: m.CreateProductPage })));
-const HistoryPage           = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const SettingsPage          = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const SyncPage              = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
-const AperturaCajaPage      = lazy(() => import('@/features/pos/pages/AperturaCajaPage').then(m => ({ default: m.AperturaCajaPage })));
-const CierreCajaPage        = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
-const CortesSucursalPage    = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
-const HomePage              = lazy(() => import('@/features/home/pages/HomePage').then(m => ({ default: m.HomePage })));
+const DeviceRolePage = lazy(() => import('@/features/device-setup/pages/DeviceRolePage').then(m => ({ default: m.DeviceRolePage })));
+const LocalServerSetupPage = lazy(() => import('@/features/device-setup/pages/LocalServerSetupPage').then(m => ({ default: m.LocalServerSetupPage })));
+const DatabaseSetupPage = lazy(() => import('@/features/device-setup/pages/DatabaseSetupPage').then(m => ({ default: m.DatabaseSetupPage })));
+const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const POSPage = lazy(() => import('@/features/pos/pages/POSPage'));
+const TransactionPage = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
+const PaymentPage = lazy(() => import('@/features/pos/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
+const OrderPlacedPage = lazy(() => import('@/features/pos/pages/OrderPlacedPage').then(m => ({ default: m.OrderPlacedPage })));
+const ProductsPage = lazy(() => import('@/features/products/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const CreateProductPage = lazy(() => import('@/features/products/pages/CreateProductPage').then(m => ({ default: m.CreateProductPage })));
+const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const SyncPage = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
+const AperturaCajaPage = lazy(() => import('@/features/pos/pages/AperturaCajaPage').then(m => ({ default: m.AperturaCajaPage })));
+const CierreCajaPage = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
+const CortesSucursalPage = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
+const HomePage = lazy(() => import('@/features/home/pages/HomePage').then(m => ({ default: m.HomePage })));
+const AuditoriaPage = lazy(() => import('@/features/audit/pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -168,6 +169,14 @@ export const router = createBrowserRouter(
           element: (
             <ServerOnlyGuard>
               <SuspensePage><CortesSucursalPage /></SuspensePage>
+            </ServerOnlyGuard>
+          ),
+        },
+        {
+          path: '/auditoria',
+          element: (
+            <ServerOnlyGuard>
+              <SuspensePage><AuditoriaPage /></SuspensePage>
             </ServerOnlyGuard>
           ),
         },
