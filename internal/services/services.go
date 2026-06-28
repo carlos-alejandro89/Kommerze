@@ -52,11 +52,12 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	}
 
 	// ── Servidor Local (comportamiento actual) ──────────────────────────────
+	apiURL := apiCloudBaseURL
 	repo := repository.NewCatalogosRepository(db)
-	repoAuditoria := repository.NewAuditoriaSucursalRepository(db)
+	repoAuditoria := repository.NewAuditoriaSucursalRepository(apiURL, db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
-	apiURL := apiCloudBaseURL
+
 	cloudClient := NewCloudHttpClient(apiURL)
 
 	pos := NewPosService(db, ctx)

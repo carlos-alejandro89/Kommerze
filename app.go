@@ -398,6 +398,13 @@ func (a *App) ServiceObtenerResumenInventario() *dto.ResponseDto {
 	return a.services.Auditoria.ObtenerResumenInventario()
 }
 
+func (a *App) ServiceIniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
+	if a.services.Auditoria == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.Auditoria.IniciarAuditoria(sucursalGuid, usuarioEncargadoGuid)
+}
+
 // ── Operaciones Sucursal (solo Servidor Local) ────────────────────────────────
 
 func (a *App) ServiceObtenerOperacionSucursal(licencia string) *dto.ResponseDto {

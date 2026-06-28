@@ -110,6 +110,10 @@ export function ServiceGetTiposAutorizacion() {
   return window['go']['main']['App']['ServiceGetTiposAutorizacion']();
 }
 
+export function ServiceIniciarAuditoria(arg1, arg2) {
+  return window['go']['main']['App']['ServiceIniciarAuditoria'](arg1, arg2);
+}
+
 export function ServiceLoadCloudCredentials() {
   return window['go']['main']['App']['ServiceLoadCloudCredentials']();
 }

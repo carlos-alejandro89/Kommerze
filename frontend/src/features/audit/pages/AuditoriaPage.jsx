@@ -22,15 +22,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+
 import { useAuth } from '@/providers/AuthProvider';
+import { useActivation } from '@/providers/ActivationProvider';
 
 import { useAuditoriaService } from '../useAuditoriaService';
 
 export function AuditoriaPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { store } = useActivation();
 
-    const { obtenerResumenInventario } = useAuditoriaService();
+    const { obtenerResumenInventario, iniciarAuditoria } = useAuditoriaService();
     const [resumenInventario, setResumenInventario] = useState(null);
 
     // Obtener el resumen del inventario
@@ -110,14 +113,26 @@ export function AuditoriaPage() {
     };
 
     const handleStartAudit = () => {
-        setStatus('active');
-        const now = new Date();
-        const hrs = String(now.getHours()).padStart(2, '0');
-        const mins = String(now.getMinutes()).padStart(2, '0');
-        setStartTime(`${hrs}:${mins}`);
+        //Iniciar auditoria
+        iniciarAuditoria(store.Guid, user.Guid)
+            .then((res) => {
+                //  console.log(res)
+                if (res.success) {
+                    setStatus('active');
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+            });
+
+        /*  setStatus('active');
+         const now = new Date();
+         const hrs = String(now.getHours()).padStart(2, '0');
+         const mins = String(now.getMinutes()).padStart(2, '0');
+         setStartTime(`${hrs}:${mins}`);
 
         const timeStr = now.toTimeString().split(' ')[0];
-        setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]);
+        setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]); */
     };
 
     const handleSimulateScan = () => {

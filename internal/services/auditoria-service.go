@@ -16,3 +16,7 @@ func NewAuditoriaService(auditoriaRepo *repository.AuditoriaSucursalRepository) 
 func (a *AuditoriaService) ObtenerResumenInventario() *dto.ResponseDto {
 	return a.auditoriaRepo.ObtenerResumenInventario()
 }
+
+func (a *AuditoriaService) IniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
+	return a.auditoriaRepo.IniciarAuditoria(sucursalGuid, usuarioEncargadoGuid)
+}
