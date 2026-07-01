@@ -36,6 +36,9 @@ func (s *Services) SetContext(ctx context.Context) {
 	if s.Cotizacion != nil {
 		s.Cotizacion.SetContext(ctx)
 	}
+	if s.Auditoria != nil {
+		s.Auditoria.SetContext(ctx)
+	}
 	if s.CajaProxy != nil {
 		s.CajaProxy.SetContext(ctx)
 	}
@@ -54,14 +57,14 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	// ── Servidor Local (comportamiento actual) ──────────────────────────────
 	apiURL := apiCloudBaseURL
 	repo := repository.NewCatalogosRepository(db)
-	repoAuditoria := repository.NewAuditoriaSucursalRepository(apiURL, db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
 
 	cloudClient := NewCloudHttpClient(apiURL)
+	repoAuditoria := repository.NewAuditoriaSucursalRepository(apiURL, db, cloudClient)
 
 	pos := NewPosService(db, ctx)
-	auditoria := NewAuditoriaService(repoAuditoria)
+	auditoria := NewAuditoriaService(repoAuditoria, apiURL, cloudClient)
 	auth := NewAuthService(repoUsuarios)
 	catalogos := NewCatalogosService(repo)
 	clientes := NewClientesService(db)

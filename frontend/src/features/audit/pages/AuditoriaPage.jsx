@@ -22,10 +22,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
-
 import { useAuditoriaService } from '../useAuditoriaService';
 
 export function AuditoriaPage() {
@@ -33,6 +34,7 @@ export function AuditoriaPage() {
     const { user } = useAuth();
     const { store } = useActivation();
 
+    const [guidAuditoria, setGuidAuditoria] = useState(null);
     const { obtenerResumenInventario, iniciarAuditoria } = useAuditoriaService();
     const [resumenInventario, setResumenInventario] = useState(null);
 
@@ -50,13 +52,26 @@ export function AuditoriaPage() {
             });
     }, []);
 
+    useEffect(() => {
+        const unsub = EventsOn('auditoria_conteo_actualizado', (data) => {
+            console.log('[AuditoriaWS] auditoria_conteo_actualizado', data);
+            setScanLogs(logs => [
+                { time: new Date().toISOString(), message: `Escaneado: ${data.Codigo} ${data.Descripcion} - ${data.Empaque} (+1). Conteo actual: ${data.Producto}` },
+                ...logs
+            ]);
+        });
+
+        return () => {
+            if (typeof unsub === 'function') unsub();
+        };
+    }, []);
+
     // --- Core States ---
     // status: 'setup' | 'active' | 'reconciliation'
     const [status, setStatus] = useState('setup');
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const [managerImgError, setManagerImgError] = useState(false);
-    const [auditorImgError, setAuditorImgError] = useState(false);
+
 
     // --- Setup View States ---
     const [checklist, setChecklist] = useState([
@@ -116,8 +131,10 @@ export function AuditoriaPage() {
         //Iniciar auditoria
         iniciarAuditoria(store.Guid, user.Guid)
             .then((res) => {
-                //  console.log(res)
+                toast.success(res.message);
+
                 if (res.success) {
+                    setGuidAuditoria(res.data.auditoria.Guid);
                     setStatus('active');
                 }
             })
@@ -135,7 +152,7 @@ export function AuditoriaPage() {
         setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]); */
     };
 
-    const handleSimulateScan = () => {
+    const handleScan = () => {
         const randomProduct = SIMULATION_CATALOG[Math.floor(Math.random() * SIMULATION_CATALOG.length)];
         const now = new Date();
         const timeStr = now.toTimeString().split(' ')[0];
@@ -361,84 +378,6 @@ export function AuditoriaPage() {
                                     </div>
                                 </Card>
 
-                                {/* Assigned Auditor Card */}
-                                <Card className="glass shadow-sm flex flex-row items-center justify-between p-5 relative overflow-hidden">
-                                    <div className="flex items-center gap-4 grow">
-                                        <div className="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container overflow-hidden shrink-0">
-                                            {!auditorImgError ? (
-                                                <img
-                                                    className="w-full h-full object-cover"
-                                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK4RhhevVxPCeXE2WbBilbYdDREOg4hdtbKTDrJos2f0b2HVPI2QYan4TxTPLrorMhMWH36NRpnsI44kSR3BI13KMczeBpWS8ni127oQ6H5dMjD-vZpg-RyvEQlDEPFsIYOWLVveiVGKwVXMlnBm3A4ngLkUU0UMKI2Z67BryPJC-4h_WBxkKja1nSLJqSy6PuAgD8ACVi7YHOazY1zEK8DrlCHyUQjmaYyAMmgGNz58qOdWqpb6bfaPzleEqaMb2OBwe0C1C94sI"
-                                                    alt="Auditor Profile"
-                                                    onError={() => setAuditorImgError(true)}
-                                                />
-                                            ) : (
-                                                <User className="size-8 text-text-secondary" />
-                                            )}
-                                        </div>
-
-                                        {!isEditingAuditor ? (
-                                            <div>
-                                                <span className="text-xs text-text-secondary block font-medium">Auditor Asignado</span>
-                                                <p className="text-lg font-bold text-foreground leading-tight">{auditorName}</p>
-                                                <span className="text-xs font-mono text-text-muted mt-0.5 block">{auditorId}</span>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-1.5 w-full pr-4">
-                                                <Input
-                                                    variant="sm"
-                                                    value={editName}
-                                                    onChange={(e) => setEditName(e.target.value)}
-                                                    placeholder="Nombre del Auditor"
-                                                    className="font-semibold text-xs"
-                                                />
-                                                <Input
-                                                    variant="sm"
-                                                    value={editId}
-                                                    onChange={(e) => setEditId(e.target.value)}
-                                                    placeholder="ID de Empleado"
-                                                    className="font-mono text-xs"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex shrink-0">
-                                        {!isEditingAuditor ? (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="rounded-full hover:bg-muted"
-                                                onClick={() => {
-                                                    setEditName(auditorName);
-                                                    setEditId(auditorId);
-                                                    setIsEditingAuditor(true);
-                                                }}
-                                            >
-                                                <Edit2 className="size-4 text-primary" />
-                                            </Button>
-                                        ) : (
-                                            <div className="flex flex-col gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-7 w-7 p-0 rounded-full text-success hover:bg-success/10"
-                                                    onClick={handleSaveAuditor}
-                                                >
-                                                    <Check className="size-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-7 w-7 p-0 rounded-full text-danger hover:bg-danger/10"
-                                                    onClick={handleCancelEditAuditor}
-                                                >
-                                                    <X className="size-4" />
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
                             </div>
                         </div>
 
@@ -507,13 +446,7 @@ export function AuditoriaPage() {
                                     <p className="text-xs text-text-secondary">Sincronización en tiempo real activa.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 w-full md:w-auto grow md:max-w-xs justify-end">
-                                <span className="text-xs text-text-secondary">Señal de Red</span>
-                                <div className="h-2 bg-muted rounded-full w-32 overflow-hidden">
-                                    <div className="bg-success h-full rounded-full w-[100%]" />
-                                </div>
-                                <span className="text-xs font-bold text-success">Excelente</span>
-                            </div>
+
                         </div>
                     </Card>
                 </div>
@@ -594,22 +527,7 @@ export function AuditoriaPage() {
                                     <Check className="size-4.5 stroke-[3]" /> Finalizar y Conciliar
                                 </Button>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleSimulateScan}
-                                        className="h-9.5 text-xs font-semibold rounded-lg border-border hover:bg-muted"
-                                    >
-                                        <Plus className="size-3.5 mr-1" /> Simular Escaneo
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setShowDetailsModal(true)}
-                                        className="h-9.5 text-xs font-semibold rounded-lg border-border hover:bg-muted"
-                                    >
-                                        <Search className="size-3.5 mr-1" /> Ver Detalle ({countedItems.length})
-                                    </Button>
-                                </div>
+
 
                                 <div className="flex justify-between items-center pt-3 mt-1 border-t border-border/50 text-[10px] text-text-muted">
                                     <button
@@ -622,7 +540,7 @@ export function AuditoriaPage() {
                                     >
                                         Pausar Conteo
                                     </button>
-                                    <span className="font-medium">Acceso restringido a personal autorizado</span>
+                                    <span className="font-medium">{guidAuditoria}</span>
                                 </div>
                             </div>
 
@@ -637,121 +555,6 @@ export function AuditoriaPage() {
                 </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* ACTIVE DETAILS MODAL (OVERLAY PANEL) */}
-            {/* ========================================================================= */}
-            {showDetailsModal && (
-                <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-sm animate-fade-in">
-                    <Card className="w-full max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden bg-card border border-border shadow-2xl rounded-2xl">
-                        <CardHeader className="pb-3 border-b border-border flex flex-row justify-between items-center shrink-0">
-                            <div>
-                                <CardTitle className="text-lg font-bold">Detalle de Conteo Físico</CardTitle>
-                                <CardDescription className="text-xs">
-                                    Resumen de los ítems registrados y bitácora de escaneo activa.
-                                </CardDescription>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowDetailsModal(false)}
-                                className="rounded-full hover:bg-muted"
-                            >
-                                <X className="size-4" />
-                            </Button>
-                        </CardHeader>
-
-                        <CardContent className="flex-1 overflow-y-auto p-0 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
-                            {/* Product list table (left) */}
-                            <div className="flex-1 p-5 overflow-y-auto max-h-[50vh] md:max-h-none">
-                                <div className="flex justify-between items-center mb-4 gap-4">
-                                    <form onSubmit={handleManualAdd} className="flex-1 flex gap-2">
-                                        <div className="relative flex-1">
-                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-text-muted" />
-                                            <Input
-                                                value={scanSearch}
-                                                onChange={(e) => setScanSearch(e.target.value)}
-                                                placeholder="Agregar SKU o producto manualmente..."
-                                                className="pl-8 h-8 text-xs bg-background/50"
-                                            />
-                                        </div>
-                                        <Button type="submit" variant="outline" size="sm" className="h-8 text-xs font-semibold px-2.5">
-                                            Agregar
-                                        </Button>
-                                    </form>
-                                </div>
-
-                                <div className="border border-border rounded-xl overflow-hidden bg-muted/10">
-                                    <table className="w-full text-left text-xs">
-                                        <thead>
-                                            <tr className="bg-muted/40 text-text-secondary text-[10px] uppercase font-bold border-b border-border">
-                                                <th className="px-4 py-2.5">Producto</th>
-                                                <th className="px-4 py-2.5 font-mono">SKU</th>
-                                                <th className="px-4 py-2.5 text-right">Esp.</th>
-                                                <th className="px-4 py-2.5 text-right">Físico</th>
-                                                <th className="px-4 py-2.5 text-right">Dif.</th>
-                                                <th className="px-4 py-2.5 text-center">Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border/60">
-                                            {countedItems.map((item) => {
-                                                let badgeVar = 'success';
-                                                if (item.diff < 0) badgeVar = 'destructive';
-                                                if (item.diff > 0) badgeVar = 'warning';
-
-                                                return (
-                                                    <tr key={item.id} className="hover:bg-muted/10 transition-colors">
-                                                        <td className="px-4 py-2.5 font-semibold text-foreground">{item.name}</td>
-                                                        <td className="px-4 py-2.5 font-mono text-text-secondary">{item.sku}</td>
-                                                        <td className="px-4 py-2.5 text-right text-text-secondary">{item.expected}</td>
-                                                        <td className="px-4 py-2.5 text-right font-bold">{item.counted}</td>
-                                                        <td className={`px-4 py-2.5 text-right font-bold ${item.diff === 0 ? 'text-text-muted' : item.diff > 0 ? 'text-warning-600' : 'text-danger-600'
-                                                            }`}>
-                                                            {item.diff > 0 ? `+${item.diff}` : item.diff}
-                                                        </td>
-                                                        <td className="px-4 py-2.5 text-center">
-                                                            <Badge
-                                                                variant={badgeVar}
-                                                                appearance="light"
-                                                                size="xs"
-                                                                className="font-bold px-1.5 py-0.5 rounded-md"
-                                                            >
-                                                                {item.status}
-                                                            </Badge>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Bitácora de escaneo (right) */}
-                            <div className="w-full md:w-[280px] p-5 shrink-0 bg-muted/5 flex flex-col justify-between max-h-[30vh] md:max-h-none">
-                                <div className="space-y-3 overflow-hidden flex flex-col flex-1">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-text-secondary pb-2 border-b border-border">
-                                        <Activity className="size-4 text-primary" />
-                                        <span>Bitácora de Escaneo</span>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 font-mono text-[10px] leading-relaxed">
-                                        {scanLogs.map((log, idx) => (
-                                            <div key={idx} className="flex gap-1.5 items-start text-text-secondary">
-                                                <span className="text-primary font-semibold shrink-0">[{log.time}]</span>
-                                                <span>{log.message}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs">
-                                    <span className="text-text-muted">Total Contado:</span>
-                                    <span className="font-bold text-foreground font-mono">{totalCounted} u</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
 
             {/* ========================================================================= */}
             {/* 3. RECONCILIATION VIEW */}

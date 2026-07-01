@@ -18,7 +18,7 @@ export function LicenseActivationPage() {
   useEffect(() => {
     ServiceGetMachineID()
       .then((id) => setFormData(prev => ({ ...prev, machineId: id })))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -44,8 +44,8 @@ export function LicenseActivationPage() {
 
   const steps = [
     { icon: Fingerprint, label: 'Verificando hardware', done: !!formData.machineId },
-    { icon: KeyRound,    label: 'Validando licencia',   done: false },
-    { icon: CheckCircle, label: 'Activación completa',  done: false },
+    { icon: KeyRound, label: 'Validando licencia', done: false },
+    { icon: CheckCircle, label: 'Activación completa', done: false },
   ];
 
   return (
@@ -85,11 +85,10 @@ export function LicenseActivationPage() {
           <div className="flex gap-2">
             {steps.map((step, i) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                <div className={`flex size-8 items-center justify-center rounded-full border-2 transition-colors ${
-                  step.done
+                <div className={`flex size-8 items-center justify-center rounded-full border-2 transition-colors ${step.done
                     ? 'border-success bg-success/10 text-success'
                     : 'border-border bg-bg-subtle text-muted-foreground'
-                }`}>
+                  }`}>
                   <step.icon className="size-3.5" />
                 </div>
                 <span className="text-[10px] text-center text-muted-foreground leading-tight">
@@ -170,7 +169,7 @@ export function LicenseActivationPage() {
           </form>
 
           <div className="flex flex-col items-center gap-2 pt-4 border-t border-border">
-            <img src={logo} alt="Softi" className="h-10 w-auto opacity-70" />
+            <img src={logo} alt="Softi" className="h-15 w-auto opacity-70" />
           </div>
         </motion.div>
       </div>
