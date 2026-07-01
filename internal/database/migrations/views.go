@@ -3,7 +3,7 @@ package migrations
 import "gorm.io/gorm"
 
 func MigrateViews(db *gorm.DB) error {
-	return db.Exec(`
+	if err := db.Exec(`
 		CREATE OR REPLACE VIEW vw_inventario_productos AS
 		SELECT 
 			nv.codigo,
@@ -35,6 +35,50 @@ func MigrateViews(db *gorm.DB) error {
 			p.guid AS producto_guid
 		FROM sucursal_producto sp
 		JOIN nivel_empaque nv ON sp.nivel_id = nv.id
+		JOIN empaques e ON nv.empaque_id = e.id
+		JOIN productos p ON nv.producto_id = p.id
+		LEFT JOIN productos pb ON p.producto_base_id = pb.id
+		LEFT JOIN nivel_empaque nvb 
+			ON nvb.producto_id = pb.id 
+			AND nvb.empaque_id IN (1,8)
+		LEFT JOIN empaques eb ON nvb.empaque_id = eb.id
+		LEFT JOIN sucursal_producto spb ON spb.nivel_id = nvb.id
+	`).Error; err != nil {
+		return err
+	}
+
+	return db.Exec(`
+		CREATE OR REPLACE VIEW vw_auditoria_producto AS
+		SELECT 
+			ap.auditoria_id,
+			nv.codigo,
+			p.descripcion,
+			e.empaque,
+			e.contenido,
+			p.fraccionable,
+			nv.codigo_barra,
+			nv.img_referencia,
+			ap.nivel_id,
+			p.informacion_producto,
+			p.caracteristicas,
+			p.instrucciones_uso,
+			ap.pcompra,
+			ap.pventa,
+			ap.en_existencia,
+			ap.conteo_fisico,
+			nvb.codigo AS codigo_base,
+			spb.existencia AS existencia_base,
+			CASE 
+				WHEN e.contenido > 0 
+				THEN (1.0 / e.contenido) * spb.existencia 
+				ELSE 0 
+			END AS existencia_fraccion,
+			nv.guid,
+			nvb.guid AS guid_base,
+			pb.guid AS producto_base_guid,
+			p.guid AS producto_guid
+		FROM auditoria_producto ap
+		JOIN nivel_empaque nv ON ap.nivel_id = nv.id
 		JOIN empaques e ON nv.empaque_id = e.id
 		JOIN productos p ON nv.producto_id = p.id
 		LEFT JOIN productos pb ON p.producto_base_id = pb.id

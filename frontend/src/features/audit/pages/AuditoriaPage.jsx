@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     ClipboardCheck,
@@ -37,6 +37,8 @@ export function AuditoriaPage() {
     const [guidAuditoria, setGuidAuditoria] = useState(null);
     const { obtenerResumenInventario, iniciarAuditoria } = useAuditoriaService();
     const [resumenInventario, setResumenInventario] = useState(null);
+    const [productosAuditoria, setProductosAuditoria] = useState([]);
+    const productosAuditoriaRef = useRef([]);
 
     // Obtener el resumen del inventario
     useEffect(() => {
@@ -55,16 +57,17 @@ export function AuditoriaPage() {
     useEffect(() => {
         const unsub = EventsOn('auditoria_conteo_actualizado', (data) => {
             console.log('[AuditoriaWS] auditoria_conteo_actualizado', data);
-            setScanLogs(logs => [
-                { time: new Date().toISOString(), message: `Escaneado: ${data.Codigo} ${data.Descripcion} - ${data.Empaque} (+1). Conteo actual: ${data.Producto}` },
-                ...logs
-            ]);
+            handleScan(data.Guid);
         });
 
         return () => {
             if (typeof unsub === 'function') unsub();
         };
     }, []);
+
+    useEffect(() => {
+        productosAuditoriaRef.current = productosAuditoria;
+    }, [productosAuditoria]);
 
     // --- Core States ---
     // status: 'setup' | 'active' | 'reconciliation'
@@ -80,52 +83,25 @@ export function AuditoriaPage() {
         { id: 3, title: 'Congelar movimientos de inventario', desc: 'No procese nuevas ventas o devoluciones durante el conteo.', checked: false }
     ]);
 
-    const [auditorName, setAuditorName] = useState('Elena Valles');
-    const [auditorId, setAuditorId] = useState('#AUD-9921');
-    const [isEditingAuditor, setIsEditingAuditor] = useState(false);
-    const [editName, setEditName] = useState(auditorName);
-    const [editId, setEditId] = useState(auditorId);
+
     const [startTime, setStartTime] = useState('18:46');
 
     // --- Active View States ---
-    const [countedItems, setCountedItems] = useState([
-        { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
-        { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
-        { id: 3, name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15, counted: 17, diff: 2, status: 'Sobrante' }
-    ]);
+    const [countedItems, setCountedItems] = useState([]);
     const [scanSearch, setScanSearch] = useState('');
     const [scanLogs, setScanLogs] = useState([
         { time: '18:46:12', message: 'Sistema de terminal bloqueado de forma segura.' }
     ]);
 
     // Catalog for simulating scans
-    const SIMULATION_CATALOG = [
-        { name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50 },
-        { name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30 },
-        { name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15 },
-        { name: 'Leche Entera 1L', sku: '750300123456', expected: 40 },
-        { name: 'Jabón de Tocador', sku: '750400987654', expected: 20 },
-        { name: 'Pan Integral 500g', sku: '750500112233', expected: 10 }
-    ];
+    const SIMULATION_CATALOG = [];
 
     // Helper actions
     const toggleCheck = (id) => {
         setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
     };
 
-    const handleSaveAuditor = () => {
-        if (editName.trim() && editId.trim()) {
-            setAuditorName(editName);
-            setAuditorId(editId);
-        }
-        setIsEditingAuditor(false);
-    };
 
-    const handleCancelEditAuditor = () => {
-        setEditName(auditorName);
-        setEditId(auditorId);
-        setIsEditingAuditor(false);
-    };
 
     const handleStartAudit = () => {
         //Iniciar auditoria
@@ -134,6 +110,9 @@ export function AuditoriaPage() {
                 toast.success(res.message);
 
                 if (res.success) {
+                    const productos = res.data?.productos ?? [];
+                    productosAuditoriaRef.current = productos;
+                    setProductosAuditoria(productos);
                     setGuidAuditoria(res.data.auditoria.Guid);
                     setStatus('active');
                 }
@@ -152,38 +131,48 @@ export function AuditoriaPage() {
         setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]); */
     };
 
-    const handleScan = () => {
-        const randomProduct = SIMULATION_CATALOG[Math.floor(Math.random() * SIMULATION_CATALOG.length)];
+    const handleScan = (guidProducto) => {
+        const catalogo = productosAuditoriaRef.current;
+
+        const producto = catalogo.find(item => (item.nivelGuid ?? item.Guid ?? item.guid) === guidProducto);
+        if (!producto) {
+            console.warn('[AuditoriaWS] Producto no encontrado en catalogo de auditoria', guidProducto);
+            return;
+        }
+
+        const productoGuid = producto.nivelGuid ?? producto.Guid ?? producto.guid;
+        const descripcion = producto.Descripcion ?? producto.descripcion;
+        const existencia = Number(producto.Existencia ?? producto.existencia ?? 0);
         const now = new Date();
         const timeStr = now.toTimeString().split(' ')[0];
 
         setCountedItems(prev => {
-            const existing = prev.find(item => item.sku === randomProduct.sku);
+            const existing = prev.find(item => item.guid === productoGuid);
             if (existing) {
                 const newCount = existing.counted + 1;
-                const newDiff = newCount - existing.expected;
+                const newDiff = newCount - existencia;
                 let newStatus = 'Completo';
                 if (newDiff < 0) newStatus = 'Faltante';
                 if (newDiff > 0) newStatus = 'Sobrante';
 
                 setScanLogs(logs => [
-                    { time: timeStr, message: `Escaneado: ${randomProduct.name} (+1). Conteo actual: ${newCount}` },
+                    { time: timeStr, message: `Escaneado: ${descripcion} (+1). Conteo actual: ${newCount}` },
                     ...logs
                 ]);
 
-                return prev.map(item => item.sku === randomProduct.sku
+                return prev.map(item => item.guid === productoGuid
                     ? { ...item, counted: newCount, diff: newDiff, status: newStatus }
                     : item
                 );
             } else {
                 const newCount = 1;
-                const newDiff = newCount - randomProduct.expected;
+                const newDiff = newCount - existencia;
                 let newStatus = 'Completo';
                 if (newDiff < 0) newStatus = 'Faltante';
                 if (newDiff > 0) newStatus = 'Sobrante';
 
                 setScanLogs(logs => [
-                    { time: timeStr, message: `Nuevo ítem detectado: ${randomProduct.name} (Conteo: 1)` },
+                    { time: timeStr, message: `Nuevo ítem detectado: ${descripcion} (Conteo: 1)` },
                     ...logs
                 ]);
 
@@ -191,9 +180,9 @@ export function AuditoriaPage() {
                     ...prev,
                     {
                         id: prev.length + 1,
-                        name: randomProduct.name,
-                        sku: randomProduct.sku,
-                        expected: randomProduct.expected,
+                        name: descripcion,
+                        guid: productoGuid,
+                        expected: existencia,
                         counted: newCount,
                         diff: newDiff,
                         status: newStatus
@@ -487,7 +476,7 @@ export function AuditoriaPage() {
                                     <span className="text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Auditor Asignado</span>
                                     <div className="flex items-center gap-1.5">
                                         <User className="size-4 text-primary shrink-0" />
-                                        <span className="text-sm font-bold text-foreground">{auditorName}</span>
+                                        <span className="text-sm font-bold text-foreground">Auditor</span>
                                     </div>
                                 </div>
                                 <div className="bg-muted/40 p-4 rounded-xl flex flex-col items-start border border-border/50">
@@ -581,7 +570,7 @@ export function AuditoriaPage() {
                                 variant="primary"
                                 className="rounded-xl px-5 py-2 shadow-sm font-semibold bg-success hover:bg-success/90 text-white"
                                 onClick={() => {
-                                    alert(`Ajustes aplicados correctamente. Auditoría cerrada y finalizada.\n\nResponsable: ${auditorName}\nImpacto financiero estimado: ${financialImpact >= 0 ? '+' : ''}$${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
+                                    alert(`Ajustes aplicados correctamente. Auditoría cerrada y finalizada.\n\nResponsable: Nombre del auditor\nImpacto financiero estimado: ${financialImpact >= 0 ? '+' : ''}$${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
                                     setCountedItems([
                                         { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
                                         { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
@@ -701,8 +690,8 @@ export function AuditoriaPage() {
                                         <div className="p-3 border border-dashed border-border bg-muted/10 rounded-lg flex items-center gap-2">
                                             <UserCheck className="size-4 text-success" />
                                             <div className="text-xs">
-                                                <p className="font-bold text-foreground">{auditorName}</p>
-                                                <p className="text-[10px] text-text-muted font-mono">{auditorId}</p>
+                                                <p className="font-bold text-foreground">Auditor</p>
+                                                <p className="text-[10px] text-text-muted font-mono">0000005825</p>
                                             </div>
                                             <Badge variant="success" size="xs" className="ml-auto text-[10px] font-bold">
                                                 Firmado

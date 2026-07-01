@@ -125,19 +125,21 @@ func (a *AuditoriaSucursalRepository) IniciarAuditoria(sucursalGuid string, usua
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
+	var productos []dto.AuditoriaProductoDto
+
 	if auditoria.Guid != uuid.Nil {
 		fmt.Println("Ya existe una auditoria en curso")
-
+		err = a.db.Raw("SELECT guid, codigo, descripcion, empaque,en_existencia as existencia, pventa as precio_venta FROM vw_auditoria_producto Where auditoria_id = ?", auditoria.ID).Scan(&productos).Error
 		return dto.NewResponseDto(
 			true,
 			"Auditoria en curso",
 			dto.AuditoriaInicioDto{
 				Auditoria: auditoria,
-				Productos: nil,
+				Productos: productos,
 			},
 			nil)
 	}
-	var productos []dto.AuditoriaProductoDto
+
 	err = a.db.Raw("SELECT guid, codigo, descripcion, empaque,existencia, precio_venta, precio_venta2 FROM vw_inventario_productos").Scan(&productos).Error
 	if err != nil {
 		fmt.Println(err.Error(), "error en la consulta de productos")
