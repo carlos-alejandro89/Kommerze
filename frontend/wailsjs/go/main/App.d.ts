@@ -100,6 +100,8 @@ export function ServiceTestDBConnection(arg1:string,arg2:string,arg3:string,arg4
 
 export function ServiceTestLocalServerConnection(arg1:string):Promise<dto.ResponseDto>;
 
+export function ServiceVerificarAuditoriasEnCurso():Promise<dto.ResponseDto>;
+
 export function ServiceVerifyLicense():Promise<dto.ResponseDto>;
 
 export function SyncEmpaques():Promise<string>;

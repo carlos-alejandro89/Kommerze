@@ -46,6 +46,16 @@ func (a *AuditoriaService) ObtenerResumenInventario() *dto.ResponseDto {
 	return a.auditoriaRepo.ObtenerResumenInventario()
 }
 
+func (a *AuditoriaService) VerificarAuditoriasEnCurso() *dto.ResponseDto {
+	res := a.auditoriaRepo.VerificarAuditoriasEnCurso()
+	if res != nil && res.Success {
+		if auditoriaGuid := auditoriaGuidFromData(res.Data); auditoriaGuid != "" {
+			a.ConnectWS(auditoriaGuid)
+		}
+	}
+	return res
+}
+
 func (a *AuditoriaService) IniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
 	res := a.auditoriaRepo.IniciarAuditoria(sucursalGuid, usuarioEncargadoGuid)
 	if res != nil && res.Success {

@@ -4,10 +4,12 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { AuthGuard } from '@/components/AuthGuard';
 import { DeviceGuard } from '@/components/DeviceGuard';
+import { AuditoriaGuard } from '@/components/AuditoriaGuard';
 import { TurnoGuard } from '@/components/TurnoGuard';
 import { ScreenLoader } from '@/components/ScreenLoader';
 import { useActivation } from '@/providers/ActivationProvider';
 import { NotificationProvider } from '@/providers/NotificationProvider';
+import { AuditoriaProvider } from '@/providers/AuditoriaProvider';
 
 // Guard para rutas exclusivas del Servidor Local
 function ServerOnlyGuard({ children }) {
@@ -99,9 +101,13 @@ export const router = createBrowserRouter(
       element: (
         <DeviceGuard>
           <AuthGuard>
-            <NotificationProvider>
-              <AppLayout />
-            </NotificationProvider>
+            <AuditoriaProvider>
+              <AuditoriaGuard>
+                <NotificationProvider>
+                  <AppLayout />
+                </NotificationProvider>
+              </AuditoriaGuard>
+            </AuditoriaProvider>
           </AuthGuard>
         </DeviceGuard>
       ),

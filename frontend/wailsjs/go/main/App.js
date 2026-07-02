@@ -190,6 +190,10 @@ export function ServiceTestLocalServerConnection(arg1) {
   return window['go']['main']['App']['ServiceTestLocalServerConnection'](arg1);
 }
 
+export function ServiceVerificarAuditoriasEnCurso() {
+  return window['go']['main']['App']['ServiceVerificarAuditoriasEnCurso']();
+}
+
 export function ServiceVerifyLicense() {
   return window['go']['main']['App']['ServiceVerifyLicense']();
 }

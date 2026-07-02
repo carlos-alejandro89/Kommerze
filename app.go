@@ -398,6 +398,13 @@ func (a *App) ServiceObtenerResumenInventario() *dto.ResponseDto {
 	return a.services.Auditoria.ObtenerResumenInventario()
 }
 
+func (a *App) ServiceVerificarAuditoriasEnCurso() *dto.ResponseDto {
+	if a.services.Auditoria == nil {
+		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+	}
+	return a.services.Auditoria.VerificarAuditoriasEnCurso()
+}
+
 func (a *App) ServiceIniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
 	if a.services.Auditoria == nil {
 		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)

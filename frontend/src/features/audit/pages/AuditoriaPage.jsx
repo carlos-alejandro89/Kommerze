@@ -22,6 +22,7 @@ import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
+import { useAuditoria } from '@/providers/AuditoriaProvider';
 import { useAuditoriaService } from '../useAuditoriaService';
 
 export function AuditoriaPage() {
@@ -29,10 +30,13 @@ export function AuditoriaPage() {
     const { user } = useAuth();
     const { store } = useActivation();
 
-    const [guidAuditoria, setGuidAuditoria] = useState(null);
-    const { obtenerResumenInventario, iniciarAuditoria } = useAuditoriaService();
+    const { obtenerResumenInventario } = useAuditoriaService();
+    const {
+        auditoriaActiva,
+        productosAuditoria,
+        iniciarAuditoria,
+    } = useAuditoria();
     const [resumenInventario, setResumenInventario] = useState(null);
-    const [productosAuditoria, setProductosAuditoria] = useState([]);
     const productosAuditoriaRef = useRef([]);
 
     // status: 'setup' | 'active' | 'reconciliation'
@@ -52,7 +56,6 @@ export function AuditoriaPage() {
             .then((res) => {
                 if (res.success) {
                     setResumenInventario(res.data);
-
                 }
             })
             .catch((err) => {
@@ -61,10 +64,16 @@ export function AuditoriaPage() {
     }, []);
 
     useEffect(() => {
+        setStatus(auditoriaActiva ? 'active' : 'setup');
+    }, [auditoriaActiva]);
+
+    useEffect(() => {
         const unsub = EventsOn('auditoria_conteo_actualizado', (data) => {
             console.log('[AuditoriaWS] auditoria_conteo_actualizado', data);
 
-            handleScan(data.Producto.Guid, data.Conteo);
+            const guidProducto = data?.Producto?.Guid ?? data?.producto?.guid ?? data?.guidNivel;
+            const conteo = data?.Conteo ?? data?.conteo ?? 0;
+            handleScan(guidProducto, conteo);
         });
 
         return () => {
@@ -84,10 +93,6 @@ export function AuditoriaPage() {
                 toast.success(res.message);
 
                 if (res.success) {
-                    const productos = res.data?.productos ?? [];
-                    productosAuditoriaRef.current = productos;
-                    setProductosAuditoria(productos);
-                    setGuidAuditoria(res.data.auditoria.Guid);
                     setStatus('active');
                 }
             })
@@ -521,7 +526,7 @@ export function AuditoriaPage() {
                                     >
                                         Pausar Conteo
                                     </button>
-                                    <span className="font-medium">{guidAuditoria}</span>
+                                    <span className="font-medium">{auditoriaActiva?.Guid ?? auditoriaActiva?.guid}</span>
                                 </div>
                             </div>
 

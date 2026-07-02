@@ -116,7 +116,7 @@ func (a *AuditoriaSucursalRepository) GuardarConteoCloud(conteo dto.AuditoriaCon
 	})
 }
 
-func (a *AuditoriaSucursalRepository) IniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
+func (a *AuditoriaSucursalRepository) VerificarAuditoriasEnCurso() *dto.ResponseDto {
 	var auditoria models.Auditoria
 	err := a.db.Model(&models.Auditoria{}).Select("*").Where("estatus_id IN ?", []int{1, 2, 4}).First(&auditoria).Error
 
@@ -129,7 +129,13 @@ func (a *AuditoriaSucursalRepository) IniciarAuditoria(sucursalGuid string, usua
 
 	if auditoria.Guid != uuid.Nil {
 		fmt.Println("Ya existe una auditoria en curso")
-		err = a.db.Raw("SELECT guid, codigo, descripcion, empaque,en_existencia as existencia, pventa as precio_venta FROM vw_auditoria_producto Where auditoria_id = ?", auditoria.ID).Scan(&productos).Error
+
+		err := a.db.Raw("SELECT guid, codigo, descripcion, empaque,en_existencia as existencia, pventa as precio_venta FROM vw_auditoria_producto Where auditoria_id = ?", auditoria.ID).Scan(&productos).Error
+		if err != nil {
+			fmt.Println("error en la consulta de productos", err.Error())
+			return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+		}
+
 		return dto.NewResponseDto(
 			true,
 			"Auditoria en curso",
@@ -140,7 +146,18 @@ func (a *AuditoriaSucursalRepository) IniciarAuditoria(sucursalGuid string, usua
 			nil)
 	}
 
-	err = a.db.Raw("SELECT guid, codigo, descripcion, empaque,existencia, precio_venta, precio_venta2 FROM vw_inventario_productos").Scan(&productos).Error
+	return dto.NewResponseDto(false, "No hay auditorias en curso", nil, nil)
+}
+
+func (a *AuditoriaSucursalRepository) IniciarAuditoria(sucursalGuid string, usuarioEncargadoGuid string) *dto.ResponseDto {
+
+	existeAuditoria := a.VerificarAuditoriasEnCurso()
+	if existeAuditoria.Success {
+		return existeAuditoria
+	}
+
+	var productos []dto.AuditoriaProductoDto
+	err := a.db.Raw("SELECT guid, codigo, descripcion, empaque,existencia, precio_venta, precio_venta2 FROM vw_inventario_productos").Scan(&productos).Error
 	if err != nil {
 		fmt.Println(err.Error(), "error en la consulta de productos")
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})

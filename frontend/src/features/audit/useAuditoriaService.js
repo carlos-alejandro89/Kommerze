@@ -1,6 +1,7 @@
 import {
     ServiceObtenerResumenInventario,
-    ServiceIniciarAuditoria
+    ServiceIniciarAuditoria,
+    ServiceVerificarAuditoriasEnCurso
 } from '../../../wailsjs/go/main/App';
 
 export const useAuditoriaService = () => {
@@ -10,9 +11,12 @@ export const useAuditoriaService = () => {
         return ServiceIniciarAuditoria(sucursalGuid, usuarioEncargadoGuid);
     };
 
+    const verificarAuditoriaEnCurso = async () => ServiceVerificarAuditoriasEnCurso();
+
     return {
         obtenerResumenInventario,
-        iniciarAuditoria
+        iniciarAuditoria,
+        verificarAuditoriaEnCurso
     }
 }
 
