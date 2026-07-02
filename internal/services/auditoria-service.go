@@ -195,10 +195,13 @@ func (a *AuditoriaService) handleWsMessage(raw []byte) {
 	}
 
 	log.Printf("[AuditoriaWS] Conteo aplicado: auditoria %s nivel %s -> %.4f", conteo.GuidAuditoria, conteo.GuidNivel, conteo.Conteo)
+
 	if a.ctx != nil {
 		producto := a.auditoriaRepo.ConsultaProductoAuditoria(conteo.GuidNivel)
 		if producto != nil {
-			runtime.EventsEmit(a.ctx, "auditoria_conteo_actualizado", producto)
+			runtime.EventsEmit(a.ctx, "auditoria_conteo_actualizado", conteo.Conteo)
+			runtime.EventsEmit(a.ctx, "auditoria_conteo_actualizado", dto.AuditoriaConteoDto{Producto: producto, Conteo: conteo.Conteo})
+
 		}
 	}
 }

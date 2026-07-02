@@ -4,14 +4,10 @@ import {
     ClipboardCheck,
     UserCheck,
     User,
-    Edit2,
     Info,
     Activity,
     Check,
     X,
-    Plus,
-    Search,
-    AlertTriangle,
     TrendingDown,
     TrendingUp,
     RotateCcw,
@@ -21,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 
@@ -40,6 +35,17 @@ export function AuditoriaPage() {
     const [productosAuditoria, setProductosAuditoria] = useState([]);
     const productosAuditoriaRef = useRef([]);
 
+    // status: 'setup' | 'active' | 'reconciliation'
+    const [status, setStatus] = useState('setup');
+    const [managerImgError, setManagerImgError] = useState(false);
+
+    // --- Setup View States ---
+    const [checklist, setChecklist] = useState([
+        { id: 1, title: 'Asegurar visibilidad de productos', desc: 'Despeje pasillos y estanterías para una lectura clara de códigos.', checked: false },
+        { id: 2, title: 'Verificar sincronización de terminales', desc: 'Confirme que el Terminal #04 tiene conexión estable a la red central.', checked: false },
+        { id: 3, title: 'Congelar movimientos de inventario', desc: 'No procese nuevas ventas o devoluciones durante el conteo.', checked: false }
+    ]);
+
     // Obtener el resumen del inventario
     useEffect(() => {
         obtenerResumenInventario()
@@ -57,7 +63,8 @@ export function AuditoriaPage() {
     useEffect(() => {
         const unsub = EventsOn('auditoria_conteo_actualizado', (data) => {
             console.log('[AuditoriaWS] auditoria_conteo_actualizado', data);
-            handleScan(data.Guid);
+
+            handleScan(data.Producto.Guid, data.Conteo);
         });
 
         return () => {
@@ -69,40 +76,7 @@ export function AuditoriaPage() {
         productosAuditoriaRef.current = productosAuditoria;
     }, [productosAuditoria]);
 
-    // --- Core States ---
-    // status: 'setup' | 'active' | 'reconciliation'
-    const [status, setStatus] = useState('setup');
-
-    const [managerImgError, setManagerImgError] = useState(false);
-
-
-    // --- Setup View States ---
-    const [checklist, setChecklist] = useState([
-        { id: 1, title: 'Asegurar visibilidad de productos', desc: 'Despeje pasillos y estanterías para una lectura clara de códigos.', checked: false },
-        { id: 2, title: 'Verificar sincronización de terminales', desc: 'Confirme que el Terminal #04 tiene conexión estable a la red central.', checked: false },
-        { id: 3, title: 'Congelar movimientos de inventario', desc: 'No procese nuevas ventas o devoluciones durante el conteo.', checked: false }
-    ]);
-
-
-    const [startTime, setStartTime] = useState('18:46');
-
-    // --- Active View States ---
-    const [countedItems, setCountedItems] = useState([]);
-    const [scanSearch, setScanSearch] = useState('');
-    const [scanLogs, setScanLogs] = useState([
-        { time: '18:46:12', message: 'Sistema de terminal bloqueado de forma segura.' }
-    ]);
-
-    // Catalog for simulating scans
-    const SIMULATION_CATALOG = [];
-
-    // Helper actions
-    const toggleCheck = (id) => {
-        setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-    };
-
-
-
+    //Operaciones de la auditoria
     const handleStartAudit = () => {
         //Iniciar auditoria
         iniciarAuditoria(store.Guid, user.Guid)
@@ -131,7 +105,7 @@ export function AuditoriaPage() {
         setScanLogs([{ time: timeStr, message: `Auditoría iniciada oficialmente por ${auditorName}.` }]); */
     };
 
-    const handleScan = (guidProducto) => {
+    const handleScan = (guidProducto, conteo) => {
         const catalogo = productosAuditoriaRef.current;
 
         const producto = catalogo.find(item => (item.nivelGuid ?? item.Guid ?? item.guid) === guidProducto);
@@ -142,40 +116,31 @@ export function AuditoriaPage() {
 
         const productoGuid = producto.nivelGuid ?? producto.Guid ?? producto.guid;
         const descripcion = producto.Descripcion ?? producto.descripcion;
+        const codigo = producto.Codigo ?? producto.codigo;
         const existencia = Number(producto.Existencia ?? producto.existencia ?? 0);
         const now = new Date();
         const timeStr = now.toTimeString().split(' ')[0];
 
         setCountedItems(prev => {
             const existing = prev.find(item => item.guid === productoGuid);
+            const newCount = conteo;
+            let newStatus = 'Completo';
+            const newDiff = newCount - existencia;
+
+            if (newDiff < 0) newStatus = 'Faltante';
+            if (newDiff > 0) newStatus = 'Sobrante';
+
+            setScanLogs(logs => [
+                { time: timeStr, message: `Escaneado: ${codigo} - ${descripcion}. Conteo: ${newCount}` },
+                ...logs
+            ]);
+
             if (existing) {
-                const newCount = existing.counted + 1;
-                const newDiff = newCount - existencia;
-                let newStatus = 'Completo';
-                if (newDiff < 0) newStatus = 'Faltante';
-                if (newDiff > 0) newStatus = 'Sobrante';
-
-                setScanLogs(logs => [
-                    { time: timeStr, message: `Escaneado: ${descripcion} (+1). Conteo actual: ${newCount}` },
-                    ...logs
-                ]);
-
                 return prev.map(item => item.guid === productoGuid
                     ? { ...item, counted: newCount, diff: newDiff, status: newStatus }
                     : item
                 );
             } else {
-                const newCount = 1;
-                const newDiff = newCount - existencia;
-                let newStatus = 'Completo';
-                if (newDiff < 0) newStatus = 'Faltante';
-                if (newDiff > 0) newStatus = 'Sobrante';
-
-                setScanLogs(logs => [
-                    { time: timeStr, message: `Nuevo ítem detectado: ${descripcion} (Conteo: 1)` },
-                    ...logs
-                ]);
-
                 return [
                     ...prev,
                     {
@@ -191,6 +156,33 @@ export function AuditoriaPage() {
             }
         });
     };
+
+
+    // --- Core States ---
+
+
+    const [startTime, setStartTime] = useState('18:46');
+
+    // --- Active View States ---
+    const [countedItems, setCountedItems] = useState([]);
+    const [scanSearch, setScanSearch] = useState('');
+    const [scanLogs, setScanLogs] = useState([
+        { time: '18:46:12', message: 'Sistema de terminal bloqueado de forma segura.' }
+    ]);
+
+    // Catalog for simulating scans
+    const SIMULATION_CATALOG = [];
+
+    // Helper actions
+    const toggleCheck = (id) => {
+        setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    };
+
+
+
+
+
+
 
     const handleManualAdd = (e) => {
         e.preventDefault();
@@ -257,10 +249,10 @@ export function AuditoriaPage() {
         setScanSearch('');
     };
 
-    const totalExpected = countedItems.reduce((sum, item) => sum + item.expected, 0);
-    const totalCounted = countedItems.reduce((sum, item) => sum + item.counted, 0);
+    const totalExpected = productosAuditoria.length;
+    const totalCounted = countedItems.length;
     const totalDiscrepancies = countedItems.filter(item => item.diff !== 0).length;
-    const progressPercent = Math.min(Math.round((totalCounted / totalExpected) * 100), 100);
+    const progressPercent = Math.round((totalCounted * 100) / totalExpected);
     const financialImpact = countedItems.reduce((sum, item) => sum + (item.diff * 25), 0);
 
     return (
