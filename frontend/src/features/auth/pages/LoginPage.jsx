@@ -1,10 +1,19 @@
 import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import {
+  BarChart3,
+  Eye,
+  EyeOff,
+  Package,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
 import logo from '@/assets/Softi.png';
+import backgroundPos from '@/assets/background-pos4.jpg';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -38,14 +47,36 @@ export function LoginPage() {
     navigate('/home', { replace: true });
   };
 
+  const featureItems = [
+    {
+      icon: Package,
+      title: 'Inventarios',
+      description: 'Control total de tus productos',
+    },
+    {
+      icon: Users,
+      title: 'Clientes y CRM',
+      description: 'Gestiona relaciones y fideliza clientes',
+    },
+    {
+      icon: BarChart3,
+      title: 'Reportes',
+      description: 'Decisiones basadas en informacion',
+    },
+    {
+      icon: RefreshCw,
+      title: 'Sincronizacion',
+      description: 'Todo actualizado en tiempo real',
+    },
+  ];
+
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full overflow-hidden bg-[#eef5ff]">
       {/* ── Left Panel — Form ──────────────────────────── */}
-      <div className="relative flex flex-col items-center justify-center w-full lg:w-[480px] xl:w-[520px] shrink-0 px-8 py-12 bg-background">
+      <div className="relative flex w-full shrink-0 flex-col items-center justify-center overflow-hidden bg-[#f5f8fc] px-8 py-12 dark:bg-background lg:w-[480px] xl:w-[520px]">
         {/* Background decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 size-96 rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-accent-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
         </div>
 
         <motion.div
@@ -56,11 +87,11 @@ export function LoginPage() {
         >
           {/* Logo & Brand */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2.5 mb-6">
+            <div className="mb-6 flex items-center gap-2.5">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/30">
                 <ShieldCheck className="size-5" />
               </div>
-              <span className="text-lg font-bold text-foreground tracking-tight">
+              <span className="text-lg font-bold tracking-tight text-foreground">
                 Kommerze POS
               </span>
             </div>
@@ -88,7 +119,7 @@ export function LoginPage() {
                 disabled={loading}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -105,12 +136,12 @@ export function LoginPage() {
                   disabled={loading}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -121,7 +152,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
@@ -135,13 +166,13 @@ export function LoginPage() {
           </form>
 
           {/* Footer */}
-          <div className="flex flex-col items-center gap-2 pt-4 border-t border-border">
+          <div className="flex flex-col items-center gap-2 border-t border-border pt-4">
             <img src={logo} alt="Softi" className="h-10 w-auto opacity-70" />
             <div className="flex gap-4">
-              <a href="#" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#" className="text-[11px] text-muted-foreground transition-colors hover:text-foreground">
                 Estado del sistema
               </a>
-              <a href="#" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#" className="text-[11px] text-muted-foreground transition-colors hover:text-foreground">
                 Privacidad
               </a>
             </div>
@@ -150,59 +181,51 @@ export function LoginPage() {
       </div>
 
       {/* ── Right Panel — Visual ───────────────────────── */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700" />
-
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: 'linear-gradient(oklch(100% 0 0 / 0.1) 1px, transparent 1px), linear-gradient(90deg, oklch(100% 0 0 / 0.1) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
+      <div className="relative hidden flex-1 overflow-hidden lg:flex">
+        <img
+          src={backgroundPos}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-right-bottom"
         />
 
-        {/* Floating orbs */}
-        <motion.div
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 left-1/4 size-64 rounded-full bg-white/5 blur-3xl"
-        />
-        <motion.div
-          animate={{ y: [0, 20, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute bottom-1/4 right-1/4 size-96 rounded-full bg-primary/20 blur-3xl"
-        />
-
-        {/* Content */}
-        <div className="relative z-[var(--z-layer-raised)] flex flex-col justify-end p-14 text-white">
+        <div className="relative z-[var(--z-layer-raised)] flex w-full flex-col justify-between px-14 py-14 xl:px-[72px]">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
+            className="mt-[14vh] max-w-[560px]"
           >
-            {/* Stats row */}
-            <div className="flex gap-8 mb-10">
-              {[
-                { label: 'Ventas hoy', value: '$42,850' },
-                { label: 'Operaciones', value: '34' },
-                { label: 'Ticket promedio', value: '$1,245' },
-              ].map((stat) => (
-                <div key={stat.label} className="space-y-0.5">
-                  <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
-                  <p className="text-sm text-white/60">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <h2 className="text-4xl font-bold tracking-tight mb-3 leading-tight">
-              Gestiona tu punto<br />de venta con poder.
+            <h2 className="max-w-[440px] text-[38px] font-bold leading-[1.12] tracking-normal text-[#061a4d] xl:text-[44px]">
+              Todo tu negocio,{' '}
+              <span className="text-primary">simplificado.</span>
             </h2>
-            <p className="text-lg text-white/70 max-w-md leading-relaxed">
-              Ventas, inventario, clientes e historial — todo en tiempo real desde una sola pantalla.
+            <p className="mt-5 max-w-[430px] text-[17px] font-medium leading-7 text-[#26375f]">
+              Administra ventas, inventario, clientes y operaciones desde un solo lugar.
             </p>
           </motion.div>
+
+          <div className="grid max-w-4xl grid-cols-4 rounded-2xl border border-white/55 bg-white/62 px-4 py-3.5 shadow-[0_18px_46px_-36px_rgba(15,23,42,0.42)] backdrop-blur-xl">
+            {featureItems.map((item, index) => (
+              <div
+                key={item.title}
+                className="flex min-w-0 items-center gap-2.5 px-3 first:pl-0 last:pr-0"
+              >
+                <item.icon className="size-6 shrink-0 text-[#586886]" strokeWidth={1.9} />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-extrabold leading-tight text-[#061a4d]">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium leading-snug text-[#5f6f8e]">
+                    {item.description}
+                  </p>
+                </div>
+                {index < featureItems.length - 1 && (
+                  <span className="ml-auto hidden h-9 w-px shrink-0 bg-slate-200 xl:block" />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

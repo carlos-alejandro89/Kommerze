@@ -10,7 +10,6 @@ import {
   Settings,
   Search,
   ClipboardCheck,
-  MapPin,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ModuleCard } from '../components/ModuleCard';
@@ -19,6 +18,7 @@ import { AppHeader } from '@/layouts/components/AppHeader';
 import { HomeStatusBar } from '../components/HomeStatusBar';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import modernPosBackground from '@/assets/retail-home-background.jpg';
 
 /**
  * HomePage — Pantalla principal del ERP Kommerze POS.
@@ -63,7 +63,6 @@ const ALL_MODULES = [
     icon: LayoutDashboard,
     accentColor: '#7c3aed',   // violet
     to: '/dashboard',
-    shortcut: 'F2',
   },
   {
     id: 'history',
@@ -72,8 +71,6 @@ const ALL_MODULES = [
     icon: History,
     accentColor: '#0891b2',   // cyan
     to: '/history',
-    shortcut: 'F4',
-    status: '25 ventas hoy',
   },
   {
     id: 'products',
@@ -83,8 +80,6 @@ const ALL_MODULES = [
     accentColor: '#059669',   // emerald
     to: '/products',
     serverOnly: true,
-    shortcut: 'F3',
-    status: '3 agotados',
   },
   {
     id: 'caja-apertura',
@@ -93,7 +88,6 @@ const ALL_MODULES = [
     icon: Wallet,
     accentColor: '#d97706',   // amber
     to: '/caja/apertura',
-    shortcut: 'F6',
   },
   {
     id: 'caja-cierre',
@@ -102,7 +96,6 @@ const ALL_MODULES = [
     icon: XCircle,
     accentColor: '#e11d48',   // rose
     to: '/caja/cierre',
-    shortcut: 'F7',
   },
   {
     id: 'sucursal-cortes',
@@ -112,7 +105,6 @@ const ALL_MODULES = [
     accentColor: '#ea580c',   // orange
     to: '/sucursal/cortes',
     serverOnly: true,
-    shortcut: 'F9',
   },
   {
     id: 'sync',
@@ -122,7 +114,6 @@ const ALL_MODULES = [
     accentColor: '#0284c7',   // sky
     to: '/sync',
     serverOnly: true,
-    shortcut: 'F11',
   },
   {
     id: 'settings',
@@ -132,7 +123,6 @@ const ALL_MODULES = [
     accentColor: '#64748b',   // slate
     to: '/settings',
     serverOnly: true,
-    shortcut: 'F12',
   },
   {
     id: 'auditoria',
@@ -142,8 +132,6 @@ const ALL_MODULES = [
     accentColor: '#0f766e',   // teal
     to: '/auditoria',
     serverOnly: true,
-    shortcut: 'F8',
-    status: '1 pendiente',
   },
 ];
 
@@ -176,24 +164,30 @@ export function HomePage() {
   const storeName = store?.Nombre ?? store?.nombre ?? store?.NombreSucursal ?? store?.nombreSucursal;
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+    <div
+      className="flex h-screen w-screen flex-col overflow-hidden bg-background"
+    >
       {/* ── Header ─────────────────────────────────── */}
       <AppHeader showHomeButton={false} showPageTitle={false} />
 
       {/* ── Main scrollable area ────────────────────── */}
-      <main className="relative flex-1 overflow-y-auto bg-[#f5f8fc] px-6 py-4 dark:bg-background">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
-        <div className="relative z-[var(--z-layer-base)] mx-auto flex w-full max-w-7xl flex-col gap-4">
-          <section className="flex flex-col gap-3">
-            <div className="min-w-0 translate-y-0.5">
-              <h1 className="text-2xl font-bold leading-tight tracking-normal text-foreground md:text-[28px]">
-                Hola, {firstName} 👋
+      <main className="relative flex-1 overflow-y-auto px-6 py-5">
+        <img
+          src={modernPosBackground}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-white/62 backdrop-blur-[1px] dark:bg-black/58" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(224,234,252,0.36),rgba(248,250,255,0.74),rgba(207,222,243,0.28))] dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.78),rgba(17,24,39,0.82),rgba(30,41,59,0.66))]" />
+        <div className="relative z-[var(--z-layer-base)] mx-auto flex w-full max-w-7xl flex-col gap-5">
+          <section className="flex flex-col gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold leading-tight tracking-normal text-foreground md:text-3xl">
+                ¡Bienvenido, {firstName}!
               </h1>
-              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium uppercase leading-5 text-muted-foreground">
-                <MapPin className="size-4 text-primary" strokeWidth={2.3} />
-                <span>{storeName ?? 'Sucursal principal'}</span>
-                <span className="text-muted-foreground/55">•</span>
-                <span>Terminal 01</span>
+              <p className="mt-1 text-sm font-medium leading-6 text-muted-foreground">
+                Kommerze POS{storeName ? ` | ${storeName}` : ''}
               </p>
             </div>
           </section>
@@ -205,8 +199,8 @@ export function HomePage() {
             alertasStock={3}
           />
 
-          <div>
-            <div className="flex items-center rounded-[1.15rem] border border-white/65 bg-white/70 px-4 py-2 shadow-sm backdrop-blur-xl transition-shadow focus-within:bg-white/82 focus-within:shadow-[0_14px_32px_-26px_rgba(15,23,42,0.34)] dark:border-white/10 dark:bg-white/[0.055] dark:focus-within:bg-white/[0.075] dark:focus-within:shadow-none">
+          <div className="max-w-xl">
+            <div className="flex items-center rounded-2xl border border-white/45 bg-white/45 px-4 py-2.5 shadow-sm backdrop-blur-md transition-shadow focus-within:bg-white/62 focus-within:shadow-[0_14px_32px_-24px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-white/[0.038] dark:focus-within:bg-white/[0.065] dark:focus-within:shadow-[0_18px_36px_-28px_rgba(0,0,0,1)]">
               <Search className="mr-3 size-4 shrink-0 text-muted-foreground" strokeWidth={2.25} />
               <input
                 value={searchTerm}
@@ -227,7 +221,7 @@ export function HomePage() {
           </div>
 
           {/* Module Grid — Bento launchpad style */}
-          <div className="grid auto-rows-[124px] grid-cols-2 gap-3 pb-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+          <div className="grid auto-rows-[142px] grid-cols-2 gap-3 pb-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
             {modules.length > 0 ? (
               modules.map((mod) => (
                 <ModuleCard key={mod.id} {...mod} />
