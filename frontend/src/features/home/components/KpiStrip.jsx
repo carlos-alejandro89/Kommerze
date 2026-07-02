@@ -42,7 +42,8 @@ export function KpiStrip({ ventasHoy = '—', operaciones = '—', alertasStock 
           key={kpi.id}
           className={cn(
             'flex items-center gap-3 rounded-2xl px-4 py-3',
-            'bg-surface border border-border',
+            'border border-white/45 bg-white/45 backdrop-blur-md',
+            'dark:border-white/10 dark:bg-white/[0.038]',
           )}
         >
           {/* Icon */}
