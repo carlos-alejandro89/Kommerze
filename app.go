@@ -320,6 +320,13 @@ func (a *App) ServiceConsultarExistenciaProductos(productosGuids []uuid.UUID) ([
 	return a.posService().ConsultarExistenciaProductos(productosGuids)
 }
 
+func (a *App) ServiceGuardarInventarioJSON(nombreArchivo string, contenido string) *dto.ResponseDto {
+	if a.services.Inventario == nil {
+		return dto.NewResponseDto(false, "Servicio de inventario no disponible", nil, nil)
+	}
+	return a.services.Inventario.GuardarArchivoJSON(nombreArchivo, contenido)
+}
+
 func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint, operacionCajeroID *uint) (*dto.ResponseDto, error) {
 	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID)
 }

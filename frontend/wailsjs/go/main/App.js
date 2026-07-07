@@ -110,6 +110,10 @@ export function ServiceGetTiposAutorizacion() {
   return window['go']['main']['App']['ServiceGetTiposAutorizacion']();
 }
 
+export function ServiceGuardarInventarioJSON(arg1, arg2) {
+  return window['go']['main']['App']['ServiceGuardarInventarioJSON'](arg1, arg2);
+}
+
 export function ServiceIniciarAuditoria(arg1, arg2) {
   return window['go']['main']['App']['ServiceIniciarAuditoria'](arg1, arg2);
 }

@@ -86,7 +86,7 @@ func (c *CajaProxyService) ConsultaProductos(busqueda string, conExistencia bool
 
 func (c *CajaProxyService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var result struct {
-		Success bool               `json:"success"`
+		Success bool                `json:"success"`
 		Data    []models.TipoPedido `json:"data"`
 	}
 	if err := c.get("/local/tipos-pedido", &result); err != nil {
@@ -97,7 +97,7 @@ func (c *CajaProxyService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 
 func (c *CajaProxyService) ConsultarExistenciaProductos(guids []uuid.UUID) ([]dto.InventarioDto, error) {
 	var result struct {
-		Success bool               `json:"success"`
+		Success bool                `json:"success"`
 		Data    []dto.InventarioDto `json:"data"`
 	}
 	if err := c.post("/local/existencias", guids, &result); err != nil {
@@ -198,15 +198,15 @@ func (c *CajaProxyService) connectWS(ctx context.Context, wsURL string) error {
 func (c *CajaProxyService) LoginService(username, password string) (*models.Usuario, error) {
 	body := map[string]string{"username": username, "password": password}
 	var result struct {
-		Success bool          `json:"success"`
-		Message string        `json:"message"`
+		Success bool            `json:"success"`
+		Message string          `json:"message"`
 		Data    *models.Usuario `json:"data"`
 	}
 	if err := c.post("/local/auth/login", body, &result); err != nil {
 		return nil, err
 	}
 	if !result.Success || result.Data == nil {
-		return nil, fmt.Errorf(result.Message)
+		return nil, fmt.Errorf("%s", result.Message)
 	}
 	return result.Data, nil
 }

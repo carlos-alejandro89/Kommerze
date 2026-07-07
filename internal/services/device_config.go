@@ -29,6 +29,12 @@ type CloudCredentials struct {
 	Password string `json:"password"`
 }
 
+type NetPayCredentials struct {
+	NetPayUser         string `json:"netPayUser"`
+	NetPayPassword     string `json:"netPayPassword"`
+	NetPayStoreId      string `json:"netPayStoreId"`
+	NetPayDeviceSerial string `json:"netPayDeviceSerial"`
+}
 
 // KommerzConfig es el único archivo de configuración del dispositivo.
 // Se persiste en ~/.config/Kommerze/kommerze_config.json
@@ -44,6 +50,12 @@ type KommerzConfig struct {
 	CloudEmail    string `json:"cloudEmail,omitempty"`
 	CloudPassword string `json:"cloudPassword,omitempty"`
 
+	// Credenciales de NetPay
+	NetPayUser         string `json:"netPayUser,omitempty"`
+	NetPayPassword     string `json:"netPayPassword,omitempty"`
+	NetPayStoreId      string `json:"netPayStoreId,omitempty"`
+	NetPayDeviceSerial string `json:"netPayDeviceSerial,omitempty"`
+
 	// Licencia de la sucursal (solo Servidor Local, escrita al activar)
 	License *LicenseData `json:"license,omitempty"`
 
@@ -55,22 +67,22 @@ type KommerzConfig struct {
 	DBPassword string `json:"dbPassword,omitempty"`
 	DBName     string `json:"dbName,omitempty"`
 	DBSSLMode  string `json:"dbSslMode,omitempty"`
-	
+
 	// Zona horaria para el servidor Go y la conexión PostgreSQL
-	TimeZone   string `json:"timeZone,omitempty"`
+	TimeZone string `json:"timeZone,omitempty"`
 }
 
 // EffectiveDBConfig devuelve los valores de conexión a la BD aplicando
 // defaults para una instalación estándar de PostgreSQL cuando los campos
 // del config están vacíos.
 func (c *KommerzConfig) EffectiveDBConfig() (host, port, user, password, name, sslMode, timeZone string) {
-	host     = defaultStr(c.DBHost,    "127.0.0.1")
-	port     = defaultStr(c.DBPort,    "5432")
-	user     = defaultStr(c.DBUser,    "postgres")
+	host = defaultStr(c.DBHost, "127.0.0.1")
+	port = defaultStr(c.DBPort, "5432")
+	user = defaultStr(c.DBUser, "postgres")
 	password = c.DBPassword // sin default, PostgreSQL local suele no tener contraseña
-	name     = defaultStr(c.DBName,    "kommerze_db")
-	sslMode  = defaultStr(c.DBSSLMode, "disable")
-	timeZone = defaultStr(c.TimeZone,  "America/Mexico_City")
+	name = defaultStr(c.DBName, "kommerze_db")
+	sslMode = defaultStr(c.DBSSLMode, "disable")
+	timeZone = defaultStr(c.TimeZone, "America/Mexico_City")
 	return
 }
 
@@ -149,4 +161,32 @@ func LoadCloudCredentials() (*CloudCredentials, error) {
 		Email:    cfg.CloudEmail,
 		Password: cfg.CloudPassword,
 	}, nil
+}
+
+func LoadNetPayCredentials() (*NetPayCredentials, error) {
+	cfg, err := LoadKommerzConfig()
+	if err != nil {
+		return nil, err
+	}
+	if cfg.NetPayUser == "" || cfg.NetPayPassword == "" || cfg.NetPayStoreId == "" || cfg.NetPayDeviceSerial == "" {
+		return nil, os.ErrNotExist
+	}
+	return &NetPayCredentials{
+		NetPayUser:         cfg.NetPayUser,
+		NetPayPassword:     cfg.NetPayPassword,
+		NetPayStoreId:      cfg.NetPayStoreId,
+		NetPayDeviceSerial: cfg.NetPayDeviceSerial,
+	}, nil
+}
+
+func SaveNetPayCredentials(user, password, storeId, deviceSerial string) error {
+	cfg, err := LoadKommerzConfig()
+	if err != nil {
+		return err
+	}
+	cfg.NetPayUser = user
+	cfg.NetPayPassword = password
+	cfg.NetPayStoreId = storeId
+	cfg.NetPayDeviceSerial = deviceSerial
+	return SaveKommerzConfig(cfg)
 }

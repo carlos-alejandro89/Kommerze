@@ -34,6 +34,7 @@ const CreateProductPage = lazy(() => import('@/features/products/pages/CreatePro
 const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const SyncPage = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
+const InventoryImportPage = lazy(() => import('@/features/inventory-import/pages/InventoryImportPage').then(m => ({ default: m.InventoryImportPage })));
 const AperturaCajaPage = lazy(() => import('@/features/pos/pages/AperturaCajaPage').then(m => ({ default: m.AperturaCajaPage })));
 const CierreCajaPage = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
 const CortesSucursalPage = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
@@ -158,6 +159,14 @@ export const router = createBrowserRouter(
           element: (
             <ServerOnlyGuard>
               <SuspensePage><SyncPage /></SuspensePage>
+            </ServerOnlyGuard>
+          ),
+        },
+        {
+          path: '/inventario/importar-json',
+          element: (
+            <ServerOnlyGuard>
+              <SuspensePage><InventoryImportPage /></SuspensePage>
             </ServerOnlyGuard>
           ),
         },

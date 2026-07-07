@@ -43,6 +43,16 @@ export function AuditoriaPage() {
     const [status, setStatus] = useState('setup');
     const [managerImgError, setManagerImgError] = useState(false);
 
+    const formatCurrency = (value) => {
+        const numericValue = Number(value ?? 0);
+        return numericValue.toLocaleString('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    };
+
     // --- Setup View States ---
     const [checklist, setChecklist] = useState([
         { id: 1, title: 'Asegurar visibilidad de productos', desc: 'Despeje pasillos y estanterías para una lectura clara de códigos.', checked: false },
@@ -261,7 +271,9 @@ export function AuditoriaPage() {
     const financialImpact = countedItems.reduce((sum, item) => sum + (item.diff * 25), 0);
 
     return (
-        <div className="container mx-auto px-6 py-8 max-w-[1200px] animate-fade-in space-y-6">
+        <div className="relative min-h-full overflow-hidden bg-[#f5f8fc] px-6 py-5 dark:bg-background">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+            <div className="relative z-[var(--z-layer-base)] mx-auto max-w-7xl animate-fade-in space-y-5">
 
             {/* CSS Shimmer Keyframe definition */}
             <style dangerouslySetInnerHTML={{
@@ -281,17 +293,20 @@ export function AuditoriaPage() {
             {/* 1. SETUP VIEW */}
             {/* ========================================================================= */}
             {status === 'setup' && (
-                <div className="space-y-6 animate-slide-up">
+                <div className="space-y-5 animate-slide-up">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h1 className="text-3xl font-extrabold text-primary tracking-tight">Nueva Auditoría de Inventario</h1>
-                            <p className="text-sm text-text-secondary mt-1">Configure los parámetros iniciales para la validación de existencias.</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
+                                Inventario
+                            </p>
+                            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-foreground md:text-[28px]">Nueva Auditoría de Inventario</h1>
+                            <p className="mt-1 text-sm font-medium text-muted-foreground">Configure los parámetros iniciales para la validación de existencias.</p>
                         </div>
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="rounded-xl px-5 py-2"
+                                className="rounded-xl border-white/65 bg-white/70 px-5 py-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]"
                                 onClick={() => navigate('/home')}
                             >
                                 Cancelar
@@ -307,43 +322,43 @@ export function AuditoriaPage() {
                     </div>
 
                     {/* Bento Grid */}
-                    <div className="grid grid-cols-12 gap-6">
+                    <div className="grid grid-cols-12 gap-4">
                         {/* Left Side (General Data & Assignment) */}
-                        <div className="col-span-12 lg:col-span-8 space-y-6">
+                        <div className="col-span-12 lg:col-span-8 space-y-4">
                             {/* General Data Card */}
-                            <Card className="glass shadow-sm">
+                            <Card className="overflow-hidden rounded-[1.35rem] border-white/65 bg-white/70 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]">
                                 <CardHeader className="border-b-0 pb-3">
                                     <div className="flex items-center gap-2">
                                         <Activity className="text-primary size-5" />
-                                        <CardTitle className="text-lg font-bold">Datos Generales</CardTitle>
+                                        <CardTitle className="text-base font-semibold">Datos Generales</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="pt-2">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Ítems Totales</span>
-                                            <div className="text-3xl font-extrabold text-primary mt-1">{resumenInventario?.TotalItems}</div>
-                                            <span className="text-[11px] text-text-muted mt-1 block">Productos</span>
+                                        <div className="rounded-[1.15rem] border border-white/65 bg-white/50 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.035]">
+                                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">Ítems Totales</span>
+                                            <div className="mt-1 text-2xl font-semibold text-foreground">{resumenInventario?.TotalItems ?? '...'}</div>
+                                            <span className="text-[11px] text-muted-foreground mt-1 block">Productos</span>
                                         </div>
-                                        <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Valor del Inventario</span>
-                                            <div className="text-3xl font-extrabold text-primary mt-1">{resumenInventario?.ValorInventario}</div>
-                                            <span className="text-[11px] text-text-muted mt-1 block">Monto total</span>
+                                        <div className="rounded-[1.15rem] border border-white/65 bg-white/50 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.035]">
+                                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">Valor del Inventario</span>
+                                            <div className="mt-1 text-2xl font-semibold text-foreground">{resumenInventario ? formatCurrency(resumenInventario?.ValorInventario) : '...'}</div>
+                                            <span className="text-[11px] text-muted-foreground mt-1 block">Monto total</span>
                                         </div>
-                                        <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Último Conteo</span>
-                                            <div className="text-xl font-bold text-primary mt-2">12 Oct 2023</div>
-                                            <span className="text-[11px] text-text-muted mt-1 block">Hace 24 días</span>
+                                        <div className="rounded-[1.15rem] border border-white/65 bg-white/50 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.035]">
+                                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">Último Conteo</span>
+                                            <div className="mt-2 text-lg font-semibold text-foreground">12 Oct 2023</div>
+                                            <span className="text-[11px] text-muted-foreground mt-1 block">Hace 24 días</span>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Staff Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Branch Manager Card */}
-                                <Card className="glass shadow-sm flex flex-row items-center gap-4 p-5">
-                                    <div className="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container overflow-hidden shrink-0">
+                                <Card className="flex flex-row items-center gap-4 rounded-[1.35rem] border-white/65 bg-white/70 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]">
+                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary overflow-hidden shrink-0">
                                         {!managerImgError ? (
                                             <img
                                                 className="w-full h-full object-cover"
@@ -352,13 +367,13 @@ export function AuditoriaPage() {
                                                 onError={() => setManagerImgError(true)}
                                             />
                                         ) : (
-                                            <User className="size-8 text-text-secondary" />
+                                            <User className="size-7 text-primary" />
                                         )}
                                     </div>
                                     <div>
-                                        <span className="text-xs text-text-secondary block font-medium">Responsable de Sucursal</span>
-                                        <p className="text-lg font-bold text-foreground">{user?.Nombre}</p>
-                                        <Badge variant="success" appearance="light" size="xs" shape="circle" className="mt-1">
+                                        <span className="text-xs text-muted-foreground block font-medium">Responsable de Sucursal</span>
+                                        <p className="text-base font-semibold text-foreground">{user?.Nombre}</p>
+                                        <Badge variant="success" appearance="light" size="xs" shape="circle" className="mt-1 font-medium">
                                             Autenticado
                                         </Badge>
                                     </div>
@@ -369,11 +384,11 @@ export function AuditoriaPage() {
 
                         {/* Right Side (Instructions Check) */}
                         <div className="col-span-12 lg:col-span-4">
-                            <Card className="bg-neutral-900 dark:bg-neutral-950 text-white rounded-xl h-full flex flex-col justify-between border-0 shadow-md">
+                            <Card className="h-full rounded-[1.35rem] border-white/65 bg-white/70 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]">
                                 <CardHeader className="border-b-0 pb-4">
                                     <div className="flex items-center gap-2">
-                                        <ClipboardCheck className="text-brand-300 size-5" />
-                                        <CardTitle className="text-lg font-bold text-white">Instrucciones</CardTitle>
+                                        <ClipboardCheck className="text-primary size-5" />
+                                        <CardTitle className="text-base font-semibold text-foreground">Instrucciones</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 flex flex-col justify-between space-y-6">
@@ -383,21 +398,21 @@ export function AuditoriaPage() {
                                             <li
                                                 key={item.id}
                                                 onClick={() => toggleCheck(item.id)}
-                                                className="flex items-start gap-3 cursor-pointer group select-none"
+                                                className="flex items-start gap-3 cursor-pointer group select-none rounded-xl p-2 transition-colors hover:bg-white/55 dark:hover:bg-white/[0.045]"
                                             >
                                                 <div
-                                                    className={`w-5 h-5 rounded border flex items-center justify-center mt-0.5 shrink-0 transition-colors ${item.checked
-                                                        ? 'bg-brand-500 border-brand-500 text-white'
-                                                        : 'border-white/30 hover:border-white/60'
+                                                    className={`w-5 h-5 rounded-md border flex items-center justify-center mt-0.5 shrink-0 transition-colors ${item.checked
+                                                        ? 'bg-primary border-primary text-primary-foreground'
+                                                        : 'border-muted-foreground/25 bg-white/60 group-hover:border-primary/45 dark:bg-white/[0.04]'
                                                         }`}
                                                 >
                                                     {item.checked && <Check className="size-3.5 stroke-[3]" />}
                                                 </div>
                                                 <div>
-                                                    <p className={`text-sm font-semibold transition-colors ${item.checked ? 'text-white/60 line-through' : 'text-white'}`}>
+                                                    <p className={`text-sm font-semibold transition-colors ${item.checked ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                                                         {item.title}
                                                     </p>
-                                                    <p className={`text-xs mt-0.5 transition-colors ${item.checked ? 'text-white/40' : 'text-white/70'}`}>
+                                                    <p className={`text-xs mt-0.5 leading-5 transition-colors ${item.checked ? 'text-muted-foreground/65' : 'text-muted-foreground'}`}>
                                                         {item.desc}
                                                     </p>
                                                 </div>
@@ -406,12 +421,12 @@ export function AuditoriaPage() {
                                     </ul>
 
                                     {/* Important Alert box */}
-                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                        <div className="flex items-center gap-2 text-brand-300 mb-1">
+                                    <div className="p-4 bg-primary/5 rounded-[1.15rem] border border-primary/10">
+                                        <div className="flex items-center gap-2 text-primary mb-1">
                                             <Info className="size-4 shrink-0" />
-                                            <span className="text-xs font-bold uppercase tracking-wider">Importante</span>
+                                            <span className="text-xs font-semibold uppercase tracking-[0.14em]">Importante</span>
                                         </div>
-                                        <p className="text-xs text-white/80 leading-relaxed">
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
                                             Al iniciar, el sistema bloqueará temporalmente los ajustes manuales de stock y las transacciones de venta hasta completar la conciliación.
                                         </p>
                                     </div>
@@ -421,15 +436,15 @@ export function AuditoriaPage() {
                     </div>
 
                     {/* Decorative System Status */}
-                    <Card className="glass shadow-sm overflow-hidden relative group">
+                    <Card className="overflow-hidden relative rounded-[1.35rem] border-white/65 bg-white/70 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]">
                         <div className="p-5 flex flex-col md:flex-row items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-primary">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                     <Activity className="size-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold text-foreground">Estado de Conectividad</h3>
-                                    <p className="text-xs text-text-secondary">Sincronización en tiempo real activa.</p>
+                                    <h3 className="text-sm font-semibold text-foreground">Estado de Conectividad</h3>
+                                    <p className="text-xs text-muted-foreground">Sincronización en tiempo real activa.</p>
                                 </div>
                             </div>
 
@@ -713,6 +728,7 @@ export function AuditoriaPage() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

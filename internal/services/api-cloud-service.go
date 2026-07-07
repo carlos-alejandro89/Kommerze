@@ -14,6 +14,7 @@ type ApiCloudService struct {
 	repo       *repository.CatalogosRepository
 	client     *CloudHttpClient
 }
+
 type ApiCloudResponse struct {
 	Success  bool        `json:"success"`
 	Mensaje  string      `json:"mensaje"`

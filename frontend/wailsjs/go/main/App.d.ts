@@ -60,6 +60,8 @@ export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;
 
+export function ServiceGuardarInventarioJSON(arg1:string,arg2:string):Promise<dto.ResponseDto>;
+
 export function ServiceIniciarAuditoria(arg1:string,arg2:string):Promise<dto.ResponseDto>;
 
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;

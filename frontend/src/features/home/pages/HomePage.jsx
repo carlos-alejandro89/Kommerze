@@ -12,7 +12,8 @@ import {
   ClipboardCheck,
   MapPin,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ModuleCard } from '../components/ModuleCard';
 import { KpiStrip } from '../components/KpiStrip';
 import { AppHeader } from '@/layouts/components/AppHeader';
@@ -148,9 +149,22 @@ const ALL_MODULES = [
 ];
 
 export function HomePage() {
+  const navigate = useNavigate();
   const { isCaja, store } = useActivation();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const handleHiddenInventoryImport = (event) => {
+      if (event.altKey && event.key === 'F3') {
+        event.preventDefault();
+        navigate('/inventario/importar-json');
+      }
+    };
+
+    window.addEventListener('keydown', handleHiddenInventoryImport);
+    return () => window.removeEventListener('keydown', handleHiddenInventoryImport);
+  }, [navigate]);
 
   // Filtrar módulos según el rol del dispositivo
   const roleModules = ALL_MODULES.filter((m) => {

@@ -911,6 +911,10 @@ export namespace services {
 	    localServerUrl?: string;
 	    cloudEmail?: string;
 	    cloudPassword?: string;
+	    netPayUser?: string;
+	    netPayPassword?: string;
+	    netPayStoreId?: string;
+	    netPayDeviceSerial?: string;
 	    license?: LicenseData;
 	    dbHost?: string;
 	    dbPort?: string;
@@ -930,6 +934,10 @@ export namespace services {
 	        this.localServerUrl = source["localServerUrl"];
 	        this.cloudEmail = source["cloudEmail"];
 	        this.cloudPassword = source["cloudPassword"];
+	        this.netPayUser = source["netPayUser"];
+	        this.netPayPassword = source["netPayPassword"];
+	        this.netPayStoreId = source["netPayStoreId"];
+	        this.netPayDeviceSerial = source["netPayDeviceSerial"];
 	        this.license = this.convertValues(source["license"], LicenseData);
 	        this.dbHost = source["dbHost"];
 	        this.dbPort = source["dbPort"];

@@ -13,14 +13,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layout/content';
-import { ContentHeader } from '@/components/layout/content-header';
 import { cn } from '@/lib/utils';
 import { Pattern as NoProducts } from './no-products';
 import { ProductDetailsSheet } from './product-details-sheet';
 import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
 import { SearchDropdown } from './components/SearchDropdown';
-import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { useCartState } from './useCartState';
 import { usePosService } from './usePosService';
 
@@ -242,119 +240,106 @@ export default function POSPage() {
     return (
         <div className="relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#f5f8fc] dark:bg-background">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
-            <ContentHeader className="relative z-[var(--z-layer-base)] flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
-                <div className="w-full">
-                    <Steps currentStep={0} />
-                </div>
-            </ContentHeader>
-
             <Content className="relative z-[var(--z-layer-base)] flex-1 overflow-hidden p-0">
-                <div className="flex flex-col h-full w-full overflow-hidden">
-                    <div className="flex flex-1 w-full overflow-hidden">
+                <div className="flex h-full w-full flex-col overflow-hidden">
+                    {/* Steps — se mantiene igual */}
+                    <div className="shrink-0 border-b border-border/70 bg-white dark:bg-zinc-950">
+                        <div className="mx-auto w-full max-w-3xl py-2">
+                            <Steps currentStep={0} />
+                        </div>
+                    </div>
 
-                        {/* ── Left: Lista de productos en el carrito ────────── */}
-                        <div className="flex-1 flex flex-col overflow-hidden border-r border-white/55 bg-white/22 dark:border-white/10 dark:bg-white/[0.025]">
-                            {/* Barra de búsqueda */}
-                            <div className="mb-4 flex items-center justify-between px-4 pt-4">
-                                <div className="group relative mr-2 flex flex-1 items-center rounded-[1.15rem] border border-white/65 bg-white/70 px-4 py-2 shadow-sm backdrop-blur-xl transition-shadow focus-within:bg-white/82 focus-within:shadow-[0_14px_32px_-26px_rgba(15,23,42,0.34)] dark:border-white/10 dark:bg-white/[0.055] dark:focus-within:bg-white/[0.075] dark:focus-within:shadow-none">
-                                    {/* Icono izquierdo */}
-                                    <Search className="mr-3 size-4 shrink-0 text-muted-foreground group-focus-within:text-primary" strokeWidth={2.25} />
+                    {/* Barra de búsqueda */}
+                    <div className="shrink-0 px-6 pt-3">
+                        <div className="relative w-full">
+                            <div className="relative flex h-10 items-center rounded-lg border border-slate-200/80 bg-white px-3 shadow-[0_8px_22px_-20px_rgba(15,23,42,0.35)] transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10 dark:border-zinc-800 dark:bg-zinc-950">
+                                <Search className="mr-2.5 size-4 shrink-0 text-primary" />
 
-                                    <input
-                                        ref={searchInputRef}
-                                        type="text"
-                                        id="pos-search-input"
-                                        placeholder="Buscar productos, SKU o código de barras..."
-                                        className="h-7 w-full min-w-0 bg-transparent pr-20 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/70"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={handleSearchKeyDown}
-                                        onFocus={() => {
-                                            if (searchQuery.trim().length >= 2) setShowSuggestions(true);
-                                        }}
-                                        onBlur={() => {
-                                            // Pequeño delay para permitir clic en sugerencias
-                                            setTimeout(() => setShowSuggestions(false), 150);
-                                        }}
-                                        autoComplete="off"
-                                    />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    id="pos-search-input"
+                                    placeholder="Buscar productos, SKU o código de barras..."
+                                    className="h-8 flex-1 border-none bg-transparent p-0 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/55 focus:ring-0"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={handleSearchKeyDown}
+                                    onFocus={() => {
+                                        if (searchQuery.trim().length >= 2) setShowSuggestions(true);
+                                    }}
+                                    onBlur={() => {
+                                        // Pequeño delay para permitir clic en sugerencias
+                                        setTimeout(() => setShowSuggestions(false), 150);
+                                    }}
+                                    autoComplete="off"
+                                />
 
-                                    {/* Iconos derecha */}
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors flex items-center gap-2">
-                                        <ScanBarcode className="size-4 text-muted-foreground/55" strokeWidth={2.2} />
-                                        <div className="mx-0.5 h-4 w-px bg-black/5 dark:bg-white/10" />
-                                        <Badge
-                                            variant="secondary"
-                                            className="cursor-default rounded border border-black/5 bg-black/5 px-2 py-1 text-[10px] font-bold text-muted-foreground/70 shadow-none dark:border-white/10 dark:bg-white/[0.06]"
-                                            title="Presiona F2 para enfocar la búsqueda"
-                                        >
-                                            F2
-                                        </Badge>
-                                    </div>
-
-                                    {/* Dropdown de sugerencias */}
-                                    {showSuggestions && (
-                                        <SearchDropdown
-                                            suggestions={suggestions}
-                                            isLoading={isSearching}
-                                            query={searchQuery}
-                                            onSelect={(producto) => addProductToCart(producto)}
-                                            onClose={() => setShowSuggestions(false)}
-                                        />
-                                    )}
+                                <div className="ml-3 flex items-center gap-2.5 border-l border-slate-200 pl-3 text-muted-foreground dark:border-zinc-800">
+                                    <ScanBarcode className="size-4 opacity-60" />
+                                    <Badge
+                                        variant="secondary"
+                                        className="rounded-md border-none bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-muted-foreground dark:bg-zinc-800"
+                                        title="Presiona F2 para enfocar la búsqueda"
+                                    >
+                                        F2
+                                    </Badge>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearCart}
+                                        className="h-7 px-2 text-[11px] font-bold text-destructive hover:bg-destructive/10"
+                                    >
+                                        <Trash2 className="mr-1 size-3" />
+                                        Borrar
+                                    </Button>
                                 </div>
-
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={clearCart}
-                                    className="text-xs text-destructive hover:bg-destructive/10 shrink-0"
-                                >
-                                    <Trash2 className="size-3.5 mr-1.5" />
-                                    Borrar
-                                </Button>
                             </div>
 
-                            {/* Lista del carrito */}
-                            <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none mx-4 mb-4">
-                                <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
-                                    <ProductDetailsSheet
-                                        open={open}
-                                        onOpenChange={() => setOpen(false)}
-                                        itemSelected={itemSelected}
-                                        addToCart={handleAddToCart}
-                                    />
-
-                                    <div className="flex flex-col gap-3">
-                                        {cart.length === 0 ? (
-                                            <NoProducts />
-                                        ) : (
-                                            cart.map((item) => (
-                                                <CartItem
-                                                    key={item.id}
-                                                    item={item}
-                                                    isFlashing={flashItemId === item.id}
-                                                    onChangeQuantity={changeQuantity}
-                                                    onUpdateQuantity={updateQuantity}
-                                                    onRemove={removeItem}
-                                                    onDetails={handleProductDetails}
-                                                />
-                                            ))
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            {/* Dropdown de sugerencias */}
+                            {showSuggestions && (
+                                <SearchDropdown
+                                    suggestions={suggestions}
+                                    isLoading={isSearching}
+                                    query={searchQuery}
+                                    onSelect={(producto) => addProductToCart(producto)}
+                                    onClose={() => setShowSuggestions(false)}
+                                />
+                            )}
                         </div>
+                    </div>
 
-                        {/* ── Right Sidebar: Promociones ────────────────────── */}
-                        <aside className="hidden w-[340px] shrink-0 overflow-hidden border-l border-border/40 bg-gradient-to-b from-white/55 to-blue-50/45 p-4 pb-44 dark:from-zinc-950 dark:to-blue-900/20 lg:flex">
-                            <PromotionsCarousel />
-                        </aside>
+                    {/* Lista del carrito */}
+                    <div className="flex-1 overflow-y-auto px-6 py-4 pb-48">
+                        <ProductDetailsSheet
+                            open={open}
+                            onOpenChange={() => setOpen(false)}
+                            itemSelected={itemSelected}
+                            addToCart={handleAddToCart}
+                        />
+
+                        <div className="flex flex-col gap-4">
+                            {cart.length === 0 ? (
+                                <NoProducts />
+                            ) : (
+                                cart.map((item) => (
+                                    <CartItem
+                                        key={item.id}
+                                        item={item}
+                                        isFlashing={flashItemId === item.id}
+                                        onChangeQuantity={changeQuantity}
+                                        onUpdateQuantity={updateQuantity}
+                                        onRemove={removeItem}
+                                        onDetails={handleProductDetails}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </Content>
 
-            <div className="fixed bottom-6 right-4 z-[9999] w-[calc(100vw-2rem)] max-w-[308px] isolate lg:w-[308px]">
+            {/* ── Resumen flotante ──────────────────────────────────────── */}
+            <div className="fixed bottom-14 right-6 z-[9999] w-80 isolate">
                 <ResumenCuenta
                     subtotal={subtotal}
                     descuento={descuento}
@@ -368,7 +353,7 @@ export default function POSPage() {
             {toast && (
                 <div
                     className={cn(
-                        'fixed bottom-6 left-1/2 z-[var(--z-layer-toast)] flex -translate-x-1/2 items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold border animate-in fade-in slide-in-from-bottom-2 duration-200',
+                        'fixed bottom-50 right-8 z-[var(--z-layer-toast)] flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold border animate-in fade-in slide-in-from-bottom-2 duration-200',
                         toast.type === 'error'
                             ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
                             : 'bg-white dark:bg-zinc-900 border-border text-foreground'
@@ -552,6 +537,7 @@ function CartItem({ item, isFlashing, onChangeQuantity, onUpdateQuantity, onRemo
                         <Trash2 className="size-4" />
                     </Button>
                 </div>
+
             </CardContent>
         </Card>
     );

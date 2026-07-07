@@ -22,6 +22,7 @@ type Services struct {
 	OperacionesSucursal *OperacionesSucursalService
 	OperacionesCaja     *OperacionesCajaService
 	Catalogos           *CatalogosService
+	Inventario          *InventarioService
 	Cloud               *ApiCloudService
 	LocalServer         *LocalServerService
 	Cotizacion          *CotizacionService
@@ -51,7 +52,10 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	if cfg.Role == RoleCaja {
 		proxy := NewCajaProxyService(cfg.LocalServerURL)
 		log.Printf("[Services] Modo CAJA — Servidor Local: %s", cfg.LocalServerURL)
-		return &Services{CajaProxy: proxy}
+		return &Services{
+			CajaProxy:  proxy,
+			Inventario: NewInventarioService(nil),
+		}
 	}
 
 	// ── Servidor Local (comportamiento actual) ──────────────────────────────
@@ -59,6 +63,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	repo := repository.NewCatalogosRepository(db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
+	repoInventario := repository.NewInventarioRepository(db)
 
 	cloudClient := NewCloudHttpClient(apiURL)
 	repoAuditoria := repository.NewAuditoriaSucursalRepository(apiURL, db, cloudClient)
@@ -98,6 +103,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 		OperacionesSucursal: operacionesSucursal,
 		OperacionesCaja:     operacionesCaja,
 		Catalogos:           catalogos,
+		Inventario:          NewInventarioService(repoInventario),
 		Cloud:               NewApiCloudService(apiURL, repo, cloudClient),
 		LocalServer:         localServer,
 		Cotizacion:          cotizacion,

@@ -3,9 +3,6 @@
 import * as React from 'react';
 import {
     ShoppingCart as IconShoppingCart,
-    LayoutGrid,
-    History,
-    X,
     Info,
     Mail,
     Phone,
@@ -14,7 +11,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Content } from '@/components/layout/content';
@@ -26,6 +22,7 @@ import { PanelSolicitarDescuento } from './components/panel-solicitar-descuento'
 
 import { ResumenCuenta } from './resumen';
 import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
+import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { usePosService } from './usePosService';
 // Mock data for initial items
 const shoppingCart = [
@@ -116,18 +113,19 @@ export function CartStepTwo() {
 
     return (
 
-        <div className="flex flex-col h-[calc(100vh-56px)] w-full bg-bg-subtle relative">
-            <ContentHeader className="flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
+        <div className="relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#f5f8fc] dark:bg-background">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+            <ContentHeader className="relative z-[var(--z-layer-base)] flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
                 <div className="w-full">
                     <Steps currentStep={1} />
                 </div>
             </ContentHeader>
 
-            <Content className="flex-1 overflow-hidden p-0">
+            <Content className="relative z-[var(--z-layer-base)] flex-1 overflow-hidden p-0">
                 <div className="flex flex-col h-full w-full overflow-hidden">
                     <div className="flex flex-1 w-full overflow-hidden">
                         {/* Left Section: Transaction */}
-                        <div className="flex-1 flex flex-col p-4 overflow-hidden border-r bg-background/40">
+                        <div className="flex-1 flex flex-col p-4 overflow-hidden border-r border-white/55 bg-white/22 dark:border-white/10 dark:bg-white/[0.025]">
                             <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none">
                                 <CardContent className="p-6 h-full overflow-y-auto bg-transparent flex flex-col gap-8">
                                     <header className="flex items-center gap-4">
@@ -158,16 +156,9 @@ export function CartStepTwo() {
                                         </div>
                                     </header>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                        {/* Card: PEDIDO */}
-                                        {tiposPedido.map((tipoPedido) => (
-                                            <BtnTipoPedido key={tipoPedido.ID} tipoPedido={tipoPedido} isActive={operationType === tipoPedido.ID} onClick={() => handeSetOperationType(tipoPedido.ID)} />
-                                        ))}
-                                    </div>
-
                                     {/* Quick Action: Público General o Sucursal Destino */}
                                     {operationType === 3 ? (
-                                        <div className={cn("mt-4 w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all", sucursalSeleccionada ? "bg-emerald-500/5 border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.2)] dark:bg-emerald-500/10 dark:border-emerald-500/20" : "border-dashed border-muted-foreground/30 bg-muted/10")}>
+                                        <div className={cn("w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all", sucursalSeleccionada ? "bg-emerald-500/5 border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.2)] dark:bg-emerald-500/10 dark:border-emerald-500/20" : "border-dashed border-muted-foreground/30 bg-muted/10")}>
                                             <div className="flex items-start gap-4 w-full">
                                                 <div className={cn("flex size-16 rounded-full mt-0.5 shrink-0 items-center justify-center shadow-sm transition-all", sucursalSeleccionada ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-dashed border-muted-foreground/30")}>
                                                     <Store className="size-8 stroke-[1.5]" />
@@ -213,7 +204,7 @@ export function CartStepTwo() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="mt-4 w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)] dark:bg-primary/10 dark:border-primary/20">
+                                        <div className="w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)] dark:bg-primary/10 dark:border-primary/20">
                                             <div className="flex items-start gap-4 w-full">
                                                 <Avatar className="size-16 rounded-xl mt-0.5 shrink-0 bg-transparent">
                                                     <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
@@ -252,6 +243,13 @@ export function CartStepTwo() {
                                         </div>
                                     )}
 
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                        {/* Card: PEDIDO */}
+                                        {tiposPedido.map((tipoPedido) => (
+                                            <BtnTipoPedido key={tipoPedido.ID} tipoPedido={tipoPedido} isActive={operationType === tipoPedido.ID} onClick={() => handeSetOperationType(tipoPedido.ID)} />
+                                        ))}
+                                    </div>
+
                                     {/* ── Panel Solicitar Descuento (solo en Cotización) ── */}
                                     {operationType === 2 && cart.length > 0 && (
                                         <PanelSolicitarDescuento
@@ -277,45 +275,17 @@ export function CartStepTwo() {
                             </Card>
                         </div>
 
-                        {/* Right Sidebar: Services & Summary */}
-                        <div className="w-[340px] flex flex-col bg-gradient-to-b from-white/50 to-blue-50/50 dark:from-zinc-950 dark:to-blue-900/20 shrink-0 border-l border-border/40 overflow-hidden">
-                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                {/* Resumen de cuenta */}
-                                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
-                                {/* 3. Services List */}
-
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Full Width Secondary Actions Bar */}
-                    <div className="bg-background  p-2 flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-border/60 hover:bg-muted transition-all active:scale-[0.98]"
-                        >
-                            <LayoutGrid className="size-4 text-primary" />
-                            Abrir Cajón (F5)
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-border/60 hover:bg-muted transition-all active:scale-[0.98]"
-                            onClick={() => navigate('/history')}
-                        >
-                            <History className="size-4 text-primary" />
-                            Historial
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="flex-1 h-9 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-none border-destructive/20 text-destructive hover:bg-destructive/5 transition-all active:scale-[0.98]"
-
-                        >
-                            <X className="size-4" />
-                            Cancelar (ESC)
-                        </Button>
+                        {/* Right Sidebar: Promociones */}
+                        <aside className="hidden w-[340px] shrink-0 overflow-hidden border-l border-border/40 bg-gradient-to-b from-white/55 to-blue-50/45 p-4 pb-44 dark:from-zinc-950 dark:to-blue-900/20 lg:flex">
+                            <PromotionsCarousel />
+                        </aside>
                     </div>
                 </div>
             </Content>
+
+            <div className="fixed bottom-6 right-4 z-[9999] w-[calc(100vw-2rem)] max-w-[308px] isolate lg:w-[308px]">
+                <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
+            </div>
 
             <style jsx>{`
                 @keyframes shimmer {
