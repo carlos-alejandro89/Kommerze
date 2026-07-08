@@ -335,6 +335,22 @@ func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint)
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
 }
 
+// ── NetPay ──────────────────────────────────────────────────────────────────────
+
+func (a *App) NetPayAuthGetToken() (*dto.ResponseDto, error) {
+	if a.services.NetPayService == nil {
+		return dto.NewResponseDto(false, "servicio de NetPay no disponible", nil, nil), nil
+	}
+	return a.services.NetPayService.AuthGetToken(), nil
+}
+
+func (a *App) NetPaySaleTransaction(payload services.NetPaySaleRequest) (*dto.ResponseDto, error) {
+	if a.services.NetPayService == nil {
+		return dto.NewResponseDto(false, "servicio de NetPay no disponible", nil, nil), nil
+	}
+	return a.services.NetPayService.SaleTransaction(payload), nil
+}
+
 // ── Tipos de Autorización ─────────────────────────────────────────────────────
 
 // ServiceGetTiposAutorizacion devuelve el catálogo de tipos de autorización.

@@ -968,6 +968,28 @@ export namespace services {
 	}
 	
 	
+	export class NetPaySaleRequest {
+	    serialNumber: string;
+	    amount: string;
+	    storeId: string;
+	    folioNumber: string;
+	    msi: string;
+	    traceability: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new NetPaySaleRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.serialNumber = source["serialNumber"];
+	        this.amount = source["amount"];
+	        this.storeId = source["storeId"];
+	        this.folioNumber = source["folioNumber"];
+	        this.msi = source["msi"];
+	        this.traceability = source["traceability"];
+	    }
+	}
 
 }
 

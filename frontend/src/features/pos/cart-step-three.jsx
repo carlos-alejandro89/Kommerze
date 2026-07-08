@@ -18,12 +18,31 @@ import { ItemPagos } from './components/item-pagos';
 import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { moneyFormat } from '@/lib/helpers';
 import { usePosService } from './usePosService';
+import { useActivation } from '@/providers/ActivationProvider';
+import { toast } from 'sonner';
 const shoppingCart = [];
+
+const CARD_PAYMENT_CLAVES = new Set(['04', '28', '29']);
+
+const isCardPayment = (paymentInfo) => {
+    const clave = String(paymentInfo?.Clave ?? '').trim();
+    const nombre = String(paymentInfo?.Nombre ?? '').toLowerCase();
+    return CARD_PAYMENT_CLAVES.has(clave) || nombre.includes('tarjeta') || paymentInfo?.ID === 2;
+};
+
+const netPaySaleTransaction = (payload) => {
+    const service = window?.go?.main?.App?.NetPaySaleTransaction;
+    if (typeof service !== 'function') {
+        throw new Error('El servicio de NetPay no está disponible. Ejecuta wails dev para regenerar bindings.');
+    }
+    return service(payload);
+};
 
 
 export function CartStepThree() {
     const navigate = useNavigate();
     const posService = usePosService();
+    const { store } = useActivation();
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     //const [productId, setProductId] = React.useState(null);
@@ -107,7 +126,45 @@ export function CartStepThree() {
         setPaymentMethod(paymentMethod);
     }
 
-    const handleAddPayment = (paymentInfo) => {
+    const buildNetPayPayload = (paymentInfo) => {
+        const firstItem = cart[0];
+        const amount = Number(paymentInfo.Monto || 0);
+
+        return {
+            serialNumber: '',
+            amount: amount.toFixed(2),
+            storeId: '',
+            folioNumber: String(localStorage.getItem('folio') || Date.now()),
+            msi: '00',
+            traceability: {
+                idProducto: String(firstItem?.sku || firstItem?.id || 'N/A'),
+                idTienda: String(store?.ID || store?.Guid || store?.guid || 'N/A'),
+            },
+        };
+    };
+
+    const handleAddPayment = async (paymentInfo) => {
+        if (isCardPayment(paymentInfo)) {
+            try {
+                if (!Number(paymentInfo.Monto || 0)) {
+                    throw new Error('Ingresa un monto válido para procesar la tarjeta');
+                }
+                const result = await netPaySaleTransaction(buildNetPayPayload(paymentInfo));
+                if (!result?.success) {
+                    throw new Error(result?.message || result?.errors?.[0] || 'No fue posible procesar el pago con tarjeta');
+                }
+                paymentInfo = {
+                    ...paymentInfo,
+                    Referencia: 'Pago autorizado por NetPay',
+                    NetPay: result.data,
+                };
+                toast.success('Pago con tarjeta autorizado');
+            } catch (error) {
+                toast.error(error?.message || 'No fue posible procesar el pago con tarjeta');
+                return;
+            }
+        }
+
         const pagoExists = pagosAplicados.find(pago => pago.ID == paymentInfo.ID)
         if (pagoExists) {
             const pagos = pagosAplicados.map(p => p.ID == paymentInfo.ID ? paymentInfo : p)
@@ -461,4 +518,3 @@ function PaymentCard({ fp, isActive, onSelect, onAddPayment }) {
         />
     );
 }
-

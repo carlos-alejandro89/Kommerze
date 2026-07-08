@@ -11,6 +11,7 @@ import (
 // apiCloudBaseURL es la URL base del API de Kommerze Cloud.
 // Valor fijo del sistema; no varía por instalación.
 const apiCloudBaseURL = "https://kommerze-cloud-api.developers-lab.com"
+const netPayBaseURL = "https://api-154.api-netpay.com"
 
 type Services struct {
 	Sync                *SyncService
@@ -25,6 +26,7 @@ type Services struct {
 	Inventario          *InventarioService
 	Cloud               *ApiCloudService
 	LocalServer         *LocalServerService
+	NetPayService       *NetPayService
 	Cotizacion          *CotizacionService
 	// En modo Caja, los servicios directos quedan nil; se usa CajaProxy.
 	CajaProxy *CajaProxyService
@@ -76,6 +78,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	cotizacion := NewCotizacionService(db, apiURL, cloudClient)
 	operacionesCaja := NewOperacionesCajaService(db)
 	operacionesSucursal := NewOperacionesSucursalService(db)
+	netPayService := NewNetPayService(netPayBaseURL, cloudClient)
 
 	// Levantar servidor HTTP interno para que las Cajas se conecten
 	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, cotizacion, operacionesSucursal, operacionesCaja)
@@ -106,6 +109,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 		Inventario:          NewInventarioService(repoInventario),
 		Cloud:               NewApiCloudService(apiURL, repo, cloudClient),
 		LocalServer:         localServer,
+		NetPayService:       netPayService,
 		Cotizacion:          cotizacion,
 	}
 }
