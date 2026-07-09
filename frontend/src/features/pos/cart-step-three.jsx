@@ -1,11 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import {
-    Info, Banknote,
-    ChevronDown, ChevronUp,
-    DollarSign, CreditCard, ArrowRightLeft, CheckCircle, MoreHorizontal
-} from 'lucide-react';
+import { Info, Banknote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,22 +9,16 @@ import { Content } from '@/components/layout/content';
 import { ContentHeader } from '@/components/layout/content-header';
 import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
-import { ModalFormaPago } from './modal-forma-pago';
 import { ItemPagos } from './components/item-pagos';
+import { PaymentMethodSelector } from './components/PaymentMethodSelector';
+import { PinpadWaitingDialog } from './components/PinpadWaitingDialog';
 import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { moneyFormat } from '@/lib/helpers';
 import { usePosService } from './usePosService';
 import { useActivation } from '@/providers/ActivationProvider';
 import { toast } from 'sonner';
+import { isCardPayment, pinpadConfigurada } from './components/payment-method-utils';
 const shoppingCart = [];
-
-const CARD_PAYMENT_CLAVES = new Set(['04', '28', '29']);
-
-const isCardPayment = (paymentInfo) => {
-    const clave = String(paymentInfo?.Clave ?? '').trim();
-    const nombre = String(paymentInfo?.Nombre ?? '').toLowerCase();
-    return CARD_PAYMENT_CLAVES.has(clave) || nombre.includes('tarjeta') || paymentInfo?.ID === 2;
-};
 
 const netPaySaleTransaction = (payload) => {
     const service = window?.go?.main?.App?.NetPaySaleTransaction;
@@ -49,6 +39,10 @@ export function CartStepThree() {
     const [itemSelected, setItemSelected] = React.useState({});
     const [paymentMethod, setPaymentMethod] = React.useState(null);
     const [amountReceived, setAmountReceived] = React.useState(0);
+    const [pinpadDialog, setPinpadDialog] = React.useState({
+        open: false,
+        amount: 0,
+    });
     const [pagosAplicados, setPagosAplicados] = React.useState(() => {
         try {
             const stored = localStorage.getItem('pagosAplicados');
@@ -115,6 +109,7 @@ export function CartStepThree() {
     }, [pagosAplicados])
 
     const total = subtotal - descuento;
+    const saldoPendiente = Math.max(total - totalPagos, 0);
 
     const handleProductDetails = (productId) => {
         const item = cart.find(item => item.id === productId);
@@ -144,22 +139,22 @@ export function CartStepThree() {
     };
 
     const handleAddPayment = async (paymentInfo) => {
-        if (isCardPayment(paymentInfo)) {
+        if (pinpadConfigurada && isCardPayment(paymentInfo)) {
             try {
-                if (!Number(paymentInfo.Monto || 0)) {
+                const porPagar = total - totalPagos
+                paymentInfo.Monto = Number(porPagar)
+                if (!Number(porPagar || 0)) {
                     throw new Error('Ingresa un monto válido para procesar la tarjeta');
                 }
                 const result = await netPaySaleTransaction(buildNetPayPayload(paymentInfo));
                 if (!result?.success) {
                     throw new Error(result?.message || result?.errors?.[0] || 'No fue posible procesar el pago con tarjeta');
                 }
-                paymentInfo = {
-                    ...paymentInfo,
-                    Referencia: 'Pago autorizado por NetPay',
-                    NetPay: result.data,
-                };
-                toast.success('Pago con tarjeta autorizado');
+                setPinpadDialog({ open: true, amount: porPagar });
+                toast.success('Comunicación establecida con la pinpad');
+                return;
             } catch (error) {
+                setPinpadDialog(current => ({ ...current, open: false }));
                 toast.error(error?.message || 'No fue posible procesar el pago con tarjeta');
                 return;
             }
@@ -237,6 +232,7 @@ export function CartStepThree() {
                                         paymentMethod={paymentMethod}
                                         onSelect={handleSelectPaymentMethod}
                                         onAddPayment={handleAddPayment}
+                                        saldoPendiente={saldoPendiente}
                                     />
 
                                     {/* ── Pagos Aplicados + Monto Recibido en fila ── */}
@@ -260,7 +256,7 @@ export function CartStepThree() {
                                             {/* Accesos rápidos */}
                                             <div className="flex flex-wrap gap-2">
                                                 <Button variant="secondary" onClick={() => setAmountReceived(total.toFixed(2))} className="h-8 px-3 rounded-lg text-xs font-bold">Exacto</Button>
-                                                <Button variant="secondary" onClick={() => setAmountReceived('500')}  className="h-8 px-3 rounded-lg text-xs font-bold">$500</Button>
+                                                <Button variant="secondary" onClick={() => setAmountReceived('500')} className="h-8 px-3 rounded-lg text-xs font-bold">$500</Button>
                                                 <Button variant="secondary" onClick={() => setAmountReceived('1000')} className="h-8 px-3 rounded-lg text-xs font-bold">$1,000</Button>
                                                 <Button variant="secondary" onClick={() => setAmountReceived('2000')} className="h-8 px-3 rounded-lg text-xs font-bold">$2,000</Button>
                                             </div>
@@ -272,11 +268,10 @@ export function CartStepThree() {
                                                         ? 'Por pagar'
                                                         : 'Cambio a entregar'}
                                                 </p>
-                                                <p className={`text-4xl font-extrabold tracking-tighter ${
-                                                    (!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
-                                                        ? 'text-red-500'
-                                                        : 'text-emerald-600 dark:text-emerald-400'
-                                                }`}>
+                                                <p className={`text-4xl font-extrabold tracking-tighter ${(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
+                                                    ? 'text-red-500'
+                                                    : 'text-emerald-600 dark:text-emerald-400'
+                                                    }`}>
                                                     ${amountReceived && !isNaN(parseFloat(amountReceived))
                                                         ? Math.abs(parseFloat(amountReceived) - total).toFixed(2)
                                                         : total.toFixed(2)}
@@ -333,6 +328,12 @@ export function CartStepThree() {
                 <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={2} />
             </div>
 
+            <PinpadWaitingDialog
+                open={pinpadDialog.open}
+                amount={pinpadDialog.amount}
+                onOpenChange={(open) => setPinpadDialog(current => ({ ...current, open }))}
+            />
+
             <style jsx>{`
                 @keyframes shimmer {
                     100% {
@@ -341,180 +342,5 @@ export function CartStepThree() {
                 }
             `}</style>
         </div>
-    );
-}
-
-// ── Claves SAT de formas de pago comunes en un POS ───────────────────────────
-// 01=Efectivo, 02=Cheque nominativo, 03=Transferencia electrónica,
-// 04=Tarjeta de crédito, 28=Tarjeta de débito, 29=Tarjeta de servicios
-const COMMON_METHOD_CLAVES = new Set(['01', '02', '03', '04', '28', '29']);
-
-const isCommonMethod = (fp) =>
-    COMMON_METHOD_CLAVES.has(String(fp.Clave).trim());
-
-const METHOD_ICONS_BY_CLAVE = {
-    '01': DollarSign,      // Efectivo
-    '02': CheckCircle,     // Cheque nominativo
-    '03': ArrowRightLeft,  // Transferencia electrónica
-    '04': CreditCard,      // Tarjeta de crédito
-    '05': CreditCard,      // Monedero electrónico
-    '06': ArrowRightLeft,  // Dinero electrónico
-    '28': CreditCard,      // Tarjeta de débito
-    '29': CreditCard,      // Tarjeta de servicios
-};
-
-const METHOD_COLORS_BY_CLAVE = {
-    '01': 'from-emerald-500 to-emerald-700', // Efectivo
-    '02': 'from-amber-500  to-amber-700',    // Cheque nominativo
-    '03': 'from-violet-500 to-violet-700',   // Transferencia
-    '04': 'from-blue-500   to-blue-700',     // Tarjeta crédito
-    '05': 'from-purple-500 to-purple-700',   // Monedero
-    '06': 'from-cyan-500   to-cyan-700',     // Dinero electrónico
-    '28': 'from-sky-500    to-sky-700',      // Tarjeta débito
-    '29': 'from-indigo-500 to-indigo-700',   // Tarjeta servicios
-};
-
-const getMethodIcon  = (fp) => METHOD_ICONS_BY_CLAVE[String(fp.Clave).trim()]  ?? MoreHorizontal;
-const getMethodColor = (fp) => METHOD_COLORS_BY_CLAVE[String(fp.Clave).trim()] ?? 'from-slate-500 to-slate-700';
-
-
-
-/**
- * PaymentMethodSelector
- * Muestra métodos comunes de POS con tarjetas grandes y descriptivas.
- * Colapsa los métodos fiscales del SAT en un "Ver otros métodos".
- */
-function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPayment }) {
-    const [showOthers, setShowOthers] = React.useState(false);
-
-    const common = formaPago.filter(m => isCommonMethod(m));
-    const others  = formaPago.filter(m => !isCommonMethod(m));
-
-    return (
-        <div className="space-y-4">
-            {/* ── Métodos comunes (tarjetas grandes) ── */}
-            {common.length > 0 ? (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-                    {common.map(fp => (
-                        <PaymentCard
-                            key={fp.ID}
-                            fp={fp}
-                            isActive={paymentMethod === fp.ID}
-                            onSelect={onSelect}
-                            onAddPayment={onAddPayment}
-                        />
-                    ))}
-                </div>
-            ) : (
-                // Fallback: mostrar todos si no hay coincidencias
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-                    {formaPago.map(fp => (
-                        <PaymentCard
-                            key={fp.ID}
-                            fp={fp}
-                            isActive={paymentMethod === fp.ID}
-                            onSelect={onSelect}
-                            onAddPayment={onAddPayment}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* ── Otros métodos fiscales (colapsable) ── */}
-            {others.length > 0 && (
-                <div>
-                    <button
-                        type="button"
-                        onClick={() => setShowOthers(v => !v)}
-                        className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-1 py-1.5 group"
-                    >
-                        {showOthers
-                            ? <ChevronUp className="size-3.5 transition-transform" />
-                            : <ChevronDown className="size-3.5 transition-transform" />
-                        }
-                        <span>
-                            {showOthers ? 'Ocultar' : 'Ver'} otros métodos fiscales
-                            <span className="ml-1.5 text-[10px] font-bold bg-slate-200 dark:bg-zinc-700 text-slate-500 dark:text-zinc-400 px-1.5 py-0.5 rounded-full">
-                                {others.length}
-                            </span>
-                        </span>
-                    </button>
-
-                    {showOthers && (
-                        <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 mt-2 p-3 rounded-xl border border-dashed border-border bg-slate-50/50 dark:bg-zinc-900/50 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {others.map(fp => (
-                                <ModalFormaPago
-                                    key={fp.ID}
-                                    formaPago={fp}
-                                    isActive={paymentMethod === fp.ID}
-                                    onClick={onSelect}
-                                    handleAddPayment={onAddPayment}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
-
-/**
- * PaymentCard — tarjeta visual grande para métodos comunes del POS.
- * Abre el ModalFormaPago al hacer clic.
- */
-function PaymentCard({ fp, isActive, onSelect, onAddPayment }) {
-    const Icon     = getMethodIcon(fp);
-    const gradient = getMethodColor(fp);
-
-    // Nombre capitalizado para mostrar en la tarjeta
-    const displayName = fp.Nombre
-        ? fp.Nombre.charAt(0).toUpperCase() + fp.Nombre.slice(1).toLowerCase()
-        : fp.Nombre;
-
-    return (
-        <ModalFormaPago
-            formaPago={fp}
-            isActive={isActive}
-            onClick={onSelect}
-            handleAddPayment={onAddPayment}
-            renderTrigger={(triggerProps) => (
-                <button
-                    {...triggerProps}
-                    className={`
-                        relative w-full rounded-2xl p-5 text-left transition-all duration-200 overflow-hidden
-                        border-2 group active:scale-[0.98]
-                        ${isActive
-                            ? 'border-primary shadow-lg shadow-primary/20 bg-primary/5 dark:bg-primary/10'
-                            : 'border-border hover:border-primary/50 bg-white dark:bg-zinc-900 hover:shadow-md'
-                        }
-                    `}
-                >
-                    {/* Icono con gradiente */}
-                    <div className={`
-                        size-11 rounded-xl flex items-center justify-center mb-4
-                        bg-gradient-to-br ${gradient} shadow-md
-                        group-hover:scale-110 transition-transform duration-200
-                    `}>
-                        <Icon className="size-5 text-white" />
-                    </div>
-
-                    {/* Nombre capitalizado */}
-                    <div className="font-bold text-sm text-foreground leading-tight mb-1">
-                        {displayName}
-                    </div>
-                    <div className="text-xs text-muted-foreground leading-snug line-clamp-2">
-                        {fp.Descripcion || 'Método de pago'}
-                    </div>
-
-                    {/* Punto activo */}
-                    {isActive && (
-                        <div className="absolute top-3 right-3 size-2.5 rounded-full bg-primary shadow-[0_0_6px_2px_rgba(var(--primary),0.4)]" />
-                    )}
-
-                    <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-gradient-to-br from-white/5 to-transparent" />
-                </button>
-            )}
-        />
     );
 }
