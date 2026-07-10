@@ -33,6 +33,7 @@ export function CartStepThree() {
     const navigate = useNavigate();
     const posService = usePosService();
     const { store } = useActivation();
+    const idUnicoRef = React.useRef(crypto.randomUUID());
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     //const [productId, setProductId] = React.useState(null);
@@ -122,7 +123,6 @@ export function CartStepThree() {
     }
 
     const buildNetPayPayload = (paymentInfo) => {
-        const firstItem = cart[0];
         const amount = Number(paymentInfo.Monto || 0);
 
         return {
@@ -132,8 +132,8 @@ export function CartStepThree() {
             folioNumber: String(localStorage.getItem('folio') || Date.now()),
             msi: '00',
             traceability: {
-                idProducto: String(firstItem?.sku || firstItem?.id || 'N/A'),
-                idTienda: String(store?.ID || store?.Guid || store?.guid || 'N/A'),
+                paymentGuid: idUnicoRef.current,
+                idSucursal: String(store?.ID || store?.Guid || store?.guid || 'N/A'),
             },
         };
     };
