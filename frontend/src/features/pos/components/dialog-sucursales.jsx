@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Store, MapPin, Check } from "lucide-react";
 
-export function DialogSucursales({ sucursales = [], handleSelectSucursal }) {
+export function DialogSucursales({ sucursales = [], handleSelectSucursal, triggerLabel = "Cambiar sucursal" }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedId, setSelectedId] = useState(null);
@@ -48,7 +48,7 @@ export function DialogSucursales({ sucursales = [], handleSelectSucursal }) {
                         variant="link"
                         className="h-auto p-0 text-[10px] font-bold uppercase text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 shrink-0"
                     >
-                        Cambiar sucursal
+                        {triggerLabel}
                     </Button>
                 </DialogTrigger>
                 <DialogContent showCloseButton={false} className="sm:max-w-[500px] p-0 gap-0 overflow-hidden bg-background">

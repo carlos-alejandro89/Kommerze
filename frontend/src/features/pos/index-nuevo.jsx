@@ -3,8 +3,6 @@
 import * as React from 'react';
 import {
     Search,
-    Plus,
-    Minus,
     Trash2,
     ScanBarcode,
     PackageSearch,
@@ -21,6 +19,7 @@ import { ResumenCuenta } from './resumen';
 import { SearchDropdown } from './components/SearchDropdown';
 import { useCartState } from './useCartState';
 import { usePosService } from './usePosService';
+import { QuantityControl } from '@/components/common/quantity-control';
 
 // ── Constante de imagen placeholder ─────────────────────────────────────────
 const PLACEHOLDER_IMG = 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg';
@@ -326,7 +325,6 @@ export default function POSPage() {
                                         key={item.id}
                                         item={item}
                                         isFlashing={flashItemId === item.id}
-                                        onChangeQuantity={changeQuantity}
                                         onUpdateQuantity={updateQuantity}
                                         onRemove={removeItem}
                                         onDetails={handleProductDetails}
@@ -386,26 +384,7 @@ export default function POSPage() {
 
 // ── Componente CartItem extraído para mayor legibilidad ──────────────────────
 
-function CartItem({ item, isFlashing, onChangeQuantity, onUpdateQuantity, onRemove, onDetails }) {
-    const [editingQty, setEditingQty] = React.useState(false);
-    const [qtyInput, setQtyInput] = React.useState(String(item.quantity));
-    const qtyInputRef = React.useRef(null);
-
-    // Sincronizar el input cuando cambia la cantidad desde afuera
-    React.useEffect(() => {
-        if (!editingQty) setQtyInput(String(item.quantity));
-    }, [item.quantity, editingQty]);
-
-    const commitQty = () => {
-        const val = parseInt(qtyInput, 10);
-        if (!isNaN(val) && val > 0) {
-            onUpdateQuantity(item.id, val);
-        } else {
-            setQtyInput(String(item.quantity)); // revert
-        }
-        setEditingQty(false);
-    };
-
+function CartItem({ item, isFlashing, onUpdateQuantity, onRemove, onDetails }) {
     return (
         <Card
             className={cn(
@@ -469,54 +448,10 @@ function CartItem({ item, isFlashing, onChangeQuantity, onUpdateQuantity, onRemo
                 <div className="flex flex-wrap items-center gap-4 shrink-0 md:pl-4 md:border-l border-slate-100 dark:border-zinc-800/50">
 
                     {/* Control de cantidad: botones +/- con input editable */}
-                    <div className="flex items-center h-9 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-slate-200/60 dark:border-zinc-700/50 p-1">
-                        <button
-                            onClick={() => onChangeQuantity(item.id, -1)}
-                            className="size-7 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-zinc-700 hover:shadow-sm text-slate-600 dark:text-slate-300 transition-all font-medium"
-                        >
-                            <Minus className="size-3" />
-                        </button>
-
-                        {/* Cantidad editable directamente */}
-                        {editingQty ? (
-                            <input
-                                ref={qtyInputRef}
-                                type="number"
-                                min="1"
-                                value={qtyInput}
-                                onChange={(e) => setQtyInput(e.target.value)}
-                                onBlur={commitQty}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') commitQty();
-                                    if (e.key === 'Escape') {
-                                        setQtyInput(String(item.quantity));
-                                        setEditingQty(false);
-                                    }
-                                }}
-                                className="w-10 text-center text-xs font-bold tabular-nums bg-white dark:bg-zinc-700 rounded border border-primary/30 outline-none focus:ring-1 focus:ring-primary/50 px-1 py-0.5"
-                                autoFocus
-                            />
-                        ) : (
-                            <span
-                                className="w-8 flex items-center justify-center text-xs font-bold tabular-nums cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => {
-                                    setEditingQty(true);
-                                    setQtyInput(String(item.quantity));
-                                    setTimeout(() => qtyInputRef.current?.select(), 20);
-                                }}
-                                title="Clic para editar cantidad"
-                            >
-                                {item.quantity}
-                            </span>
-                        )}
-
-                        <button
-                            onClick={() => onChangeQuantity(item.id, 1)}
-                            className="size-7 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-zinc-700 hover:shadow-sm text-slate-600 dark:text-slate-300 transition-all font-medium"
-                        >
-                            <Plus className="size-3" />
-                        </button>
-                    </div>
+                    <QuantityControl
+                        value={item.quantity}
+                        onChange={(quantity) => onUpdateQuantity(item.id, quantity)}
+                    />
 
                     {/* Subtotal */}
                     <div className="flex flex-col items-end min-w-[80px]">

@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   Search, Eye, TrendingUp, CheckCircle, Clock, XCircle,
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
-  ShoppingCart, FileText, Tag, ArrowRightLeft,
+  ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
   ReceiptText,
 } from 'lucide-react';
@@ -23,7 +23,6 @@ const TIPO_TABS = [
   { id: null,  label: 'Todos',          icon: LayoutList },
   { id: 1,     label: 'Ventas',         icon: ShoppingCart },
   { id: 2,     label: 'Cotizaciones',   icon: FileText },
-  { id: 3,     label: 'Transferencias', icon: ArrowRightLeft },
 ];
 
 /* ── Helpers ── */
@@ -145,7 +144,8 @@ export function HistoryPage() {
     try {
       const res = await consultarTransacciones(tipoFiltro, null);
       if (!res.success) { setError(res.message || 'Error al obtener transacciones'); return; }
-      setTransacciones(Array.isArray(res.data) ? res.data : []);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setTransacciones(data.filter(item => item.TipoPedidoID === 1 || item.TipoPedidoID === 2));
     } catch (e) {
       setError(e?.message ?? String(e));
     } finally {
@@ -201,7 +201,7 @@ export function HistoryPage() {
 
   /* ── Resumen del día ── */
   const resumen = useMemo(() => {
-    const hoy         = transacciones.filter(t => esHoy(t.Fecha));
+    const hoy         = transacciones.filter(t => t.TipoPedidoID === 1 && esHoy(t.Fecha));
     const completados = hoy.filter(t => t.Estatus === 'Completado' || t.Estatus === 'Completada');
     const pendientes  = hoy.filter(t => t.Estatus === 'Pendiente');
     const totalHoy    = completados.reduce((acc, t) => acc + (t.MontoTransaccion ?? 0), 0);
@@ -243,7 +243,7 @@ export function HistoryPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold tracking-[-0.025em] text-foreground">Historial de ventas</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Consulta y seguimiento de ventas, cotizaciones y transferencias.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Consulta y seguimiento de ventas y cotizaciones.</p>
               </div>
             </div>
             <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">

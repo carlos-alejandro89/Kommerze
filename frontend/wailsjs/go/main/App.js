@@ -50,6 +50,10 @@ export function ServiceConsultarExistenciaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
 }
 
+export function ServiceConsultarTransferencias() {
+  return window['go']['main']['App']['ServiceConsultarTransferencias']();
+}
+
 export function ServiceCotizacionConvertirAVenta(arg1, arg2, arg3) {
   return window['go']['main']['App']['ServiceCotizacionConvertirAVenta'](arg1, arg2, arg3);
 }
@@ -60,6 +64,10 @@ export function ServiceCotizacionObtenerDetalle(arg1) {
 
 export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function ServiceCrearSolicitudProductos(arg1) {
+  return window['go']['main']['App']['ServiceCrearSolicitudProductos'](arg1);
 }
 
 export function ServiceEmailReceipt(arg1, arg2) {

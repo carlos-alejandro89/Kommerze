@@ -23,10 +23,11 @@ type Pedido struct {
 	Factura      Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	// Datos comerciales
-	Folio     int       `gorm:"index"`
-	Fecha     time.Time `gorm:"type:timestamptz;not null;default:now();index"`
-	EsCredito bool      `gorm:"default:false"`
-	Sync      bool      `gorm:"default:false"`
+	Folio       int       `gorm:"index"`
+	Fecha       time.Time `gorm:"type:timestamptz;not null;default:now();index"`
+	EsCredito   bool      `gorm:"default:false"`
+	Sync        bool      `gorm:"default:false"`
+	Comentarios string    `gorm:"type:text;default:''"`
 
 	// Sucursal origen (aplica a Ventas, Cotizaciones y Transferencias)
 	SucursalOrigenID *uint

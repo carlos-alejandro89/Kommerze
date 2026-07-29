@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Plus, Filter, LayoutGrid, List as ListIcon,
+  Search, LayoutGrid, List as ListIcon,
   Package, Image as ImageIcon, ChevronRight, ChevronLeft,
-  Loader2, ChevronDown, ChevronUp, X
+  Loader2, ChevronDown, ChevronUp, X, ClipboardList, Check
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ServiceConsultaProductos, ServiceGetLineas, ServiceGetMarcas } from '../../../../wailsjs/go/main/App';
+import { ProductRequestModal } from '../components/ProductRequestModal';
+import { loadProductRequestItems, saveProductRequestItems } from '../request-storage';
 
 export function ProductsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [viewMode, setViewMode] = useState('grid');
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState([]);
@@ -19,6 +23,10 @@ export function ProductsPage() {
   const [showOnlyWithStock, setShowOnlyWithStock] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeProduct, setActiveProduct] = useState(null);
+  const [requestItems, setRequestItems] = useState(
+    () => location.state?.requestItems ?? loadProductRequestItems(),
+  );
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 24;
@@ -40,6 +48,10 @@ export function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, selectedLineas, selectedMarcas, showOnlyWithStock]);
+
+  useEffect(() => {
+    saveProductRequestItems(requestItems);
+  }, [requestItems]);
 
   useEffect(() => {
     fetchProducts();
@@ -124,6 +136,22 @@ export function ProductsPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  const selectedProductsCount = Object.keys(requestItems).length;
+
+  const productKey = (product) => product.Guid || product.ProductoGuid || product.Codigo;
+
+  const openProduct = (product) => {
+    setActiveProduct(product);
+  };
+
+  const addToRequest = (product, quantity) => {
+    const key = productKey(product);
+    setRequestItems(current => ({
+      ...current,
+      [key]: { product, quantity },
+    }));
+    setActiveProduct(null);
+  };
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in">
@@ -289,13 +317,16 @@ export function ProductsPage() {
                 </button>
               </div>
 
-              <Link
-                to="/products/new"
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition-colors shadow-sm"
+              <button
+                type="button"
+                disabled={selectedProductsCount === 0}
+                onClick={() => navigate('/products/request-summary', { state: { requestItems } })}
+                className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-4 text-sm font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus className="size-4" />
-                <span className="hidden sm:inline">Nuevo Producto</span>
-              </Link>
+                <ClipboardList className="size-4" />
+                <span>{selectedProductsCount} {selectedProductsCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}</span>
+                <ChevronRight className="size-4" />
+              </button>
             </div>
           </div>
 
@@ -372,8 +403,18 @@ export function ProductsPage() {
                   return (
                     <div
                       key={product.Guid || product.Codigo}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openProduct(product)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openProduct(product);
+                        }
+                      }}
                       className={cn(
-                        "group relative rounded-xl border border-border bg-surface overflow-hidden hover:border-primary/50 hover:shadow-md transition-all duration-200",
+                        "group relative cursor-pointer rounded-xl border bg-surface overflow-hidden hover:border-primary/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25 transition-all duration-200",
+                        requestItems[productKey(product)] ? 'border-primary/60 ring-1 ring-primary/20' : 'border-border',
                         viewMode === 'list' && "flex items-center p-3 gap-4"
                       )}
                     >
@@ -383,6 +424,11 @@ export function ProductsPage() {
                         viewMode === 'grid' ? "aspect-square w-full" : "size-24 rounded-lg shrink-0"
                       )}>
                         <div className="absolute top-2 left-2 z-[var(--z-layer-raised)] flex gap-1">
+                          {requestItems[productKey(product)] && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                              <Check className="size-3" /> Solicitud: {requestItems[productKey(product)].quantity}
+                            </span>
+                          )}
                           {stock > 10 ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold text-success-600">
                               <span className="size-1.5 rounded-full bg-success-500" /> En Stock
@@ -433,14 +479,14 @@ export function ProductsPage() {
                               ${price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                             </p>
                           </div>
-                          <button className={cn(
+                          <span className={cn(
                             "flex size-8 items-center justify-center rounded-full transition-colors",
                             stock > 0
                               ? "bg-primary text-white hover:bg-brand-600 shadow-sm"
                               : "bg-muted text-muted-foreground cursor-not-allowed"
                           )}>
                             <Package className="size-4" />
-                          </button>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -474,6 +520,16 @@ export function ProductsPage() {
           )}
         </div>
       </div>
+
+      <ProductRequestModal
+        product={activeProduct}
+        open={Boolean(activeProduct)}
+        initialQuantity={activeProduct ? requestItems[productKey(activeProduct)]?.quantity || 1 : 1}
+        onOpenChange={(open) => {
+          if (!open) setActiveProduct(null);
+        }}
+        onAdd={addToRequest}
+      />
     </div>
   );
 }

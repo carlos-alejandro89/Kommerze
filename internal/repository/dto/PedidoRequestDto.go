@@ -14,6 +14,7 @@ type PedidoRequestDto struct {
 	Fecha              time.Time                 `json:"fecha"`
 	EsCredito          bool                      `json:"esCredito"`
 	Sync               bool                      `json:"sync"`
+	Comentarios        string                    `json:"comentarios,omitempty"`
 	PedidoDetalle      []PedidoDetalleRequestDto `json:"pedidoDetalle"`
 	Traspaso           *TraspasoRequestDto       `json:"traspaso"`
 }
@@ -33,10 +34,10 @@ type PedidoDetalleRequestDto struct {
 }
 
 type TraspasoRequestDto struct {
-	SucursalOrigenGuid  string    `json:"sucursalOrigenGuid"`
-	SucursalDestinoGuid string    `json:"sucursalDestinoGuid"`
-	EstatusGuid         string    `json:"estatusGuid"`
-	FechaEnvio          time.Time `json:"fechaEnvio"`
-	FechaRecepcion      time.Time `json:"fechaRecepcion"`
-	Sync                bool      `json:"sync"`
+	SucursalOrigenGuid  string     `json:"sucursalOrigenGuid"`
+	SucursalDestinoGuid string     `json:"sucursalDestinoGuid"`
+	EstatusGuid         string     `json:"estatusGuid"`
+	FechaEnvio          time.Time  `json:"fechaEnvio"`
+	FechaRecepcion      *time.Time `json:"fechaRecepcion"`
+	Sync                bool       `json:"sync"`
 }

@@ -46,7 +46,15 @@ func (s *PosService) ConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 	return response, err
 }
 
+func (s *PosService) CrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
+	return s.posRepository.CrearSolicitudProductos(solicitud)
+}
+
 func (s *PosService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	response, err := s.posRepository.ConsultaTransacciones(tipoPedidoID, sucursalID)
 	return response, err
+}
+
+func (s *PosService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
+	return s.posRepository.ConsultarTransferencias()
 }

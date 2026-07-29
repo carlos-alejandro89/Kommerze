@@ -49,7 +49,9 @@ func (a *App) posService() interface {
 	ObtenerTiposPedido() ([]models.TipoPedido, error)
 	ConsultarExistenciaProductos([]uuid.UUID) ([]dto.InventarioDto, error)
 	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint, *uint) (*dto.ResponseDto, error)
+	CrearSolicitudProductos(dto.SolicitudProductosDto) (*dto.ResponseDto, error)
 	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
+	ConsultarTransferencias() ([]dto.TransferenciaDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -343,8 +345,16 @@ func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID)
 }
 
+func (a *App) ServiceCrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
+	return a.posService().CrearSolicitudProductos(solicitud)
+}
+
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
+}
+
+func (a *App) ServiceConsultarTransferencias() ([]dto.TransferenciaDto, error) {
+	return a.posService().ConsultarTransferencias()
 }
 
 func (a *App) ServicePrintReceipt(pedidoGuid string) error {

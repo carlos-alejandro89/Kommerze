@@ -27,10 +27,12 @@ import {
     ServiceBuscarClientes,
     ServiceConsultarExistenciaProductos,
     ServiceConfirmarTransaccion,
+    ServiceCrearSolicitudProductos,
     ServiceObtenerTiposPedido,
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
     ServiceConsultaTransacciones,
+    ServiceConsultarTransferencias,
     ServiceCotizacionSolicitarAutorizacion,
     ServiceCotizacionConvertirAVenta,
     ServiceCotizacionObtenerDetalle,
@@ -102,6 +104,8 @@ export function usePosService() {
     const consultarTransacciones = (tipoPedidoID = null, sucursalID = null) =>
         ServiceConsultaTransacciones(tipoPedidoID, sucursalID);
 
+    const consultarTransferencias = () => ServiceConsultarTransferencias();
+
     /**
      * Confirma y registra la transacción en la base de datos.
      * @param {number} tipoOperacion — ID del tipo de pedido
@@ -114,6 +118,8 @@ export function usePosService() {
      */
     const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID = null) =>
         ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID);
+
+    const crearSolicitudProductos = (solicitud) => ServiceCrearSolicitudProductos(solicitud);
 
     const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
     const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
@@ -171,7 +177,9 @@ export function usePosService() {
         obtenerFormasPago,
         // Transacciones
         confirmarTransaccion,
+        crearSolicitudProductos,
         consultarTransacciones,
+        consultarTransferencias,
         imprimirRecibo,
         enviarRecibo,
         // Cotizaciones

@@ -21,6 +21,44 @@ func SeedCatalogos(db *gorm.DB) error {
 			(3, 'Transferencia',  'Movimiento de mercancía entre sucursales')
 		ON CONFLICT (id) DO NOTHING`,
 
+		// ── Solicitudes de productos ─────────────────────────────────────────
+		`UPDATE tipos_pedido
+		 SET guid = 'f1b2c3d4-e5f6-4a7b-8c9d-012345678903'
+		 WHERE nombre = 'Transferencia'
+		   AND NOT EXISTS (
+		     SELECT 1 FROM tipos_pedido
+		     WHERE guid = 'f1b2c3d4-e5f6-4a7b-8c9d-012345678903'
+		   )`,
+		`INSERT INTO tipos_pedido (guid, nombre, descripcion)
+		 SELECT '7a117386-2369-4fce-b2e7-b1dbd38ecf58', 'Baja de mercancía',
+		        'Salida definitiva de mercancía del inventario'
+		 WHERE NOT EXISTS (
+		   SELECT 1 FROM tipos_pedido
+		   WHERE guid = '7a117386-2369-4fce-b2e7-b1dbd38ecf58'
+		      OR nombre = 'Baja de mercancía'
+		 )`,
+		`UPDATE tipos_pedido
+		 SET guid = '7a117386-2369-4fce-b2e7-b1dbd38ecf58'
+		 WHERE nombre = 'Baja de mercancía'
+		   AND NOT EXISTS (
+		     SELECT 1 FROM tipos_pedido
+		     WHERE guid = '7a117386-2369-4fce-b2e7-b1dbd38ecf58'
+		   )`,
+		`INSERT INTO estatus (guid, nombre)
+		 SELECT '86968037-975a-43ce-880c-043003010104', 'En Transito'
+		 WHERE NOT EXISTS (
+		   SELECT 1 FROM estatus
+		   WHERE guid = '86968037-975a-43ce-880c-043003010104'
+		      OR nombre IN ('En Transito', 'En Tránsito')
+		 )`,
+		`UPDATE estatus
+		 SET guid = '86968037-975a-43ce-880c-043003010104'
+		 WHERE nombre IN ('En Transito', 'En Tránsito')
+		   AND NOT EXISTS (
+		     SELECT 1 FROM estatus
+		     WHERE guid = '86968037-975a-43ce-880c-043003010104'
+		   )`,
+
 		// ── Cliente genérico (público general) ──────────────────────────────
 		`INSERT INTO clientes (id, razon_social, correo, telefono) VALUES
 			(1, 'Público General', 'publico@kommerze.com', '0000000000')

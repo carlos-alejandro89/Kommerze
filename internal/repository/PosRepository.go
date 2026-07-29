@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -115,6 +116,83 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	return dto.NewResponseDto(true, "Transacciones consultadas correctamente", transacciones, nil), nil
 }
 
+func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
+	var transferencias []dto.TransferenciaDto
+
+	query := `
+		select
+			t.guid::text as traspaso_guid,
+			p.guid::text as pedido_guid,
+			p.folio,
+			coalesce(so.nombre_sucursal, 'Sucursal no disponible') as sucursal_origen,
+			coalesce(sd.nombre_sucursal, 'Sucursal no disponible') as sucursal_destino,
+			t.fecha_envio,
+			t.fecha_recepcion,
+			e.guid::text as estatus_guid,
+			e.nombre as estatus,
+			count(distinct pd.id) as total_productos,
+			coalesce(sum(pd.cantidad), 0)::double precision as unidades_totales,
+			coalesce(sum((pd.cantidad * pd.precio_venta) - pd.descuento), 0)::double precision as valor_total,
+			coalesce(p.comentarios, '') as comentarios
+		from traspasos t
+		join pedidos p on p.id = t.pedido_id and p.deleted_at is null
+		join sucursales so on so.id = t.sucursal_origen_id and so.deleted_at is null
+		join sucursales sd on sd.id = t.sucursal_destino_id and sd.deleted_at is null
+		join estatus e on e.id = t.estatus_id and e.deleted_at is null
+		left join pedido_detalle pd on pd.pedido_id = p.id and pd.deleted_at is null
+		where t.deleted_at is null
+		group by t.id, t.guid, p.guid, p.folio, p.comentarios,
+			so.nombre_sucursal, sd.nombre_sucursal, t.fecha_envio,
+			t.fecha_recepcion, e.guid, e.nombre
+		order by t.fecha_envio desc, p.folio desc`
+
+	if err := r.db.Raw(query).Scan(&transferencias).Error; err != nil {
+		return nil, err
+	}
+
+	if len(transferencias) == 0 {
+		return transferencias, nil
+	}
+
+	type transferenciaProductoRow struct {
+		TraspasoGuid string
+		dto.TransferenciaProductoDto
+	}
+	var productos []transferenciaProductoRow
+	if err := r.db.Raw(`
+		select
+			t.guid::text as traspaso_guid,
+			ne.guid::text as nivel_guid,
+			coalesce(ne.codigo, '') as codigo,
+			coalesce(pr.descripcion, 'Producto') as producto,
+			pd.cantidad::double precision as cantidad,
+			pd.precio_venta::double precision as precio_venta,
+			pd.descuento::double precision as descuento,
+			((pd.cantidad * pd.precio_venta) - pd.descuento)::double precision as importe
+		from traspasos t
+		join pedidos p on p.id = t.pedido_id and p.deleted_at is null
+		join pedido_detalle pd on pd.pedido_id = p.id and pd.deleted_at is null
+		join nivel_empaque ne on ne.id = pd.nivel_id and ne.deleted_at is null
+		join productos pr on pr.id = ne.producto_id and pr.deleted_at is null
+		where t.deleted_at is null
+		order by t.fecha_envio desc, pd.id
+	`).Scan(&productos).Error; err != nil {
+		return nil, err
+	}
+
+	indexByGuid := make(map[string]int, len(transferencias))
+	for index := range transferencias {
+		transferencias[index].Productos = make([]dto.TransferenciaProductoDto, 0)
+		indexByGuid[transferencias[index].TraspasoGuid] = index
+	}
+	for _, producto := range productos {
+		if index, ok := indexByGuid[producto.TraspasoGuid]; ok {
+			transferencias[index].Productos = append(transferencias[index].Productos, producto.TransferenciaProductoDto)
+		}
+	}
+	return transferencias, nil
+}
+
 func (r *PosRepository) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var tipos []models.TipoPedido
 	err := r.db.Raw(`select * from tipos_pedido order by id`).Scan(&tipos).Error
@@ -157,7 +235,6 @@ func (r *PosRepository) BeforeCreate(p *models.Pedido, tx *gorm.DB) (err error) 
 
 	return nil
 }
-
 
 func (r *PosRepository) ActualizarExistencias(itemsPedido []dto.PedidoProductoDto, tx *gorm.DB) error {
 	for _, item := range itemsPedido {
@@ -340,9 +417,165 @@ func (r *PosRepository) ConfirmarTransaccion(
 	return dto.NewResponseDto(true, "Transacción confirmada exitosamente", pedido, nil), nil
 }
 
+const (
+	tipoPedidoBajaMercanciaGuid   = "7a117386-2369-4fce-b2e7-b1dbd38ecf58"
+	tipoPedidoTransferenciaGuid   = "f1b2c3d4-e5f6-4a7b-8c9d-012345678903"
+	estatusTraspasoEnTransitoGuid = "86968037-975a-43ce-880c-043003010104"
+)
+
+func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
+	tipoGuid, err := uuid.Parse(solicitud.TipoPedidoGuid)
+	if err != nil || (tipoGuid.String() != tipoPedidoBajaMercanciaGuid && tipoGuid.String() != tipoPedidoTransferenciaGuid) {
+		return dto.NewResponseDto(false, "Tipo de solicitud inválido", nil, nil), fmt.Errorf("tipo de solicitud inválido")
+	}
+	if len(solicitud.Productos) == 0 {
+		return dto.NewResponseDto(false, "Agrega al menos un producto", nil, nil), fmt.Errorf("la solicitud no contiene productos")
+	}
+	if solicitud.SucursalOrigenID == 0 {
+		return dto.NewResponseDto(false, "No se identificó la sucursal de origen", nil, nil), fmt.Errorf("sucursal de origen requerida")
+	}
+	esTransferencia := tipoGuid.String() == tipoPedidoTransferenciaGuid
+	if esTransferencia {
+		if solicitud.SucursalDestinoID == nil || *solicitud.SucursalDestinoID == 0 {
+			return dto.NewResponseDto(false, "Selecciona una sucursal destino", nil, nil), fmt.Errorf("sucursal destino requerida")
+		}
+		if *solicitud.SucursalDestinoID == solicitud.SucursalOrigenID {
+			return dto.NewResponseDto(false, "La sucursal destino debe ser diferente a la de origen", nil, nil), fmt.Errorf("sucursal destino inválida")
+		}
+	}
+
+	var pedido models.Pedido
+	var tipoPedido models.TipoPedido
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("guid = ?", tipoGuid).First(&tipoPedido).Error; err != nil {
+			return fmt.Errorf("no se encontró el tipo de pedido configurado: %w", err)
+		}
+
+		var estatusPedido models.Estatus
+		estatusNombre := "Completado"
+		if esTransferencia {
+			estatusNombre = "En proceso"
+		}
+		if err := tx.Where("LOWER(nombre) = LOWER(?)", estatusNombre).First(&estatusPedido).Error; err != nil {
+			return fmt.Errorf("no se encontró el estatus de pedido %q: %w", estatusNombre, err)
+		}
+
+		seqName := "consecutivo_folio_baja_mercancia"
+		if esTransferencia {
+			seqName = "consecutivo_folio_transferencia"
+		}
+		var folio int
+		if err := tx.Raw("SELECT nextval(?)", seqName).Scan(&folio).Error; err != nil {
+			return fmt.Errorf("no se pudo generar el folio: %w", err)
+		}
+
+		clienteID := uint(1)
+		tipoPedidoID := tipoPedido.ID
+		estatusPedidoID := estatusPedido.ID
+		sucursalOrigenID := solicitud.SucursalOrigenID
+		pedido = models.Pedido{
+			EstatusID:        &estatusPedidoID,
+			ClienteID:        &clienteID,
+			TipoPedidoID:     &tipoPedidoID,
+			Fecha:            time.Now(),
+			Folio:            folio,
+			EsCredito:        false,
+			Sync:             false,
+			Comentarios:      strings.TrimSpace(solicitud.Comentarios),
+			SucursalOrigenID: &sucursalOrigenID,
+		}
+		if err := tx.Create(&pedido).Error; err != nil {
+			return fmt.Errorf("no se pudo crear el pedido: %w", err)
+		}
+
+		for _, item := range solicitud.Productos {
+			nivelGuid, parseErr := uuid.Parse(item.NivelGuid)
+			if parseErr != nil {
+				return fmt.Errorf("producto con identificador inválido: %s", item.NivelGuid)
+			}
+			if item.Cantidad.LessThanOrEqual(decimal.Zero) {
+				return fmt.Errorf("la cantidad solicitada debe ser mayor a cero")
+			}
+
+			var inventario models.SucursalProducto
+			if err := tx.
+				Clauses(clause.Locking{Strength: "UPDATE"}).
+				Joins("JOIN nivel_empaque ON nivel_empaque.id = sucursal_producto.nivel_id").
+				Where("nivel_empaque.guid = ?", nivelGuid).
+				First(&inventario).Error; err != nil {
+				return fmt.Errorf("no se encontró el producto %s en el inventario: %w", item.NivelGuid, err)
+			}
+			if inventario.Existencia.LessThan(item.Cantidad) {
+				return fmt.Errorf(
+					"existencia insuficiente para el producto %s: disponible %s, solicitado %s",
+					item.NivelGuid,
+					inventario.Existencia.String(),
+					item.Cantidad.String(),
+				)
+			}
+
+			detalle := models.PedidoDetalle{
+				PedidoID:     pedido.ID,
+				NivelID:      inventario.NivelID,
+				Cantidad:     item.Cantidad,
+				PrecioCompra: inventario.PrecioCompra,
+				PrecioVenta:  inventario.PrecioVenta,
+				Descuento:    decimal.Zero,
+				TasaIVA:      decimal.NewFromInt(16),
+				TasaISR:      decimal.Zero,
+			}
+			if err := tx.Create(&detalle).Error; err != nil {
+				return fmt.Errorf("no se pudo registrar el detalle: %w", err)
+			}
+
+			inventario.Existencia = inventario.Existencia.Sub(item.Cantidad)
+			if err := tx.Model(&inventario).Update("existencia", inventario.Existencia).Error; err != nil {
+				return fmt.Errorf("no se pudo actualizar la existencia: %w", err)
+			}
+		}
+
+		if esTransferencia {
+			estatusTraspasoGuid := uuid.MustParse(estatusTraspasoEnTransitoGuid)
+			var estatusTraspaso models.Estatus
+			if err := tx.Where("guid = ?", estatusTraspasoGuid).First(&estatusTraspaso).Error; err != nil {
+				return fmt.Errorf("no se encontró el estatus En Tránsito configurado: %w", err)
+			}
+			traspaso := models.Traspaso{
+				PedidoID:          pedido.ID,
+				SucursalOrigenID:  solicitud.SucursalOrigenID,
+				SucursalDestinoID: *solicitud.SucursalDestinoID,
+				EstatusID:         estatusTraspaso.ID,
+				FechaEnvio:        time.Now(),
+				FechaRecepcion:    nil,
+				Sync:              false,
+			}
+			if err := tx.Create(&traspaso).Error; err != nil {
+				return fmt.Errorf("no se pudo registrar el traspaso: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return dto.NewResponseDto(false, "No se pudo crear la solicitud", nil, []string{err.Error()}), err
+	}
+
+	go r.CloudSync(&pedido, &solicitud.SucursalOrigenID, solicitud.SucursalDestinoID)
+	resultado := dto.SolicitudCreadaDto{
+		PedidoGuid:        pedido.Guid.String(),
+		Folio:             pedido.Folio,
+		TipoPedidoGuid:    tipoPedido.Guid.String(),
+		TipoPedido:        tipoPedido.Nombre,
+		Fecha:             pedido.Fecha,
+		SucursalOrigenID:  solicitud.SucursalOrigenID,
+		SucursalDestinoID: solicitud.SucursalDestinoID,
+		Comentarios:       pedido.Comentarios,
+	}
+	return dto.NewResponseDto(true, "Solicitud creada correctamente", resultado, nil), nil
+}
+
 func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, sucursalDestino *uint) {
 	// Cargar las relaciones del pedido para obtener sus Guids correspondientes
-	r.db.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").First(pedido, pedido.ID)
+	r.db.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").Preload("SucursalOrigen").First(pedido, pedido.ID)
 
 	var detalles []models.PedidoDetalle
 	r.db.Preload("Nivel").Where("pedido_id = ?", pedido.ID).Find(&detalles)
@@ -367,24 +600,17 @@ func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, s
 	r.db.Preload("SucursalOrigen").Preload("SucursalDestino").Preload("Estatus").Where("pedido_id = ?", pedido.ID).First(&tr)
 
 	var traspasoDto *dto.TraspasoRequestDto
-	var sucursalOrigenGuid string
+	sucursalOrigenGuid := pedido.SucursalOrigen.Guid.String()
 
 	if tr.ID != 0 && *sucursalOrigen != 0 && *sucursalDestino != 0 {
-		var fechaRecepcion time.Time
-		if tr.FechaRecepcion != nil {
-			fechaRecepcion = *tr.FechaRecepcion
-		}
-
 		traspasoDto = &dto.TraspasoRequestDto{
 			SucursalOrigenGuid:  tr.SucursalOrigen.Guid.String(),
 			SucursalDestinoGuid: tr.SucursalDestino.Guid.String(),
 			EstatusGuid:         tr.Estatus.Guid.String(),
 			FechaEnvio:          tr.FechaEnvio,
-			FechaRecepcion:      fechaRecepcion,
+			FechaRecepcion:      tr.FechaRecepcion,
 			Sync:                tr.Sync,
 		}
-
-		sucursalOrigenGuid = tr.SucursalOrigen.Guid.String()
 	}
 
 	pedidoRequestDto := dto.PedidoRequestDto{
@@ -397,6 +623,7 @@ func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, s
 		Fecha:              pedido.Fecha,
 		EsCredito:          pedido.EsCredito,
 		Sync:               pedido.Sync,
+		Comentarios:        pedido.Comentarios,
 		PedidoDetalle:      pedidoDetalleDto,
 		Traspaso:           traspasoDto,
 	}

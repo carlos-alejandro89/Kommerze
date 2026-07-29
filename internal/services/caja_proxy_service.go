@@ -130,6 +130,14 @@ func (c *CajaProxyService) ConfirmarTransaccion(
 	return &result, nil
 }
 
+func (c *CajaProxyService) CrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
+	var result dto.ResponseDto
+	if err := c.post("/local/solicitudes-productos", solicitud, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	path := "/local/transacciones/historial"
 	params := ""
@@ -149,6 +157,17 @@ func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID 
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (c *CajaProxyService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
+	var result struct {
+		Success bool                   `json:"success"`
+		Data    []dto.TransferenciaDto `json:"data"`
+	}
+	if err := c.get("/local/transferencias", &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
 }
 
 func (c *CajaProxyService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, error) {

@@ -518,6 +518,77 @@ export namespace dto {
 	        this.errors = source["errors"];
 	    }
 	}
+	export class SolicitudProductoItemDto {
+	    nivelGuid: string;
+	    // Go type: decimal
+	    cantidad: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SolicitudProductoItemDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nivelGuid = source["nivelGuid"];
+	        this.cantidad = this.convertValues(source["cantidad"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SolicitudProductosDto {
+	    tipoPedidoGuid: string;
+	    productos: SolicitudProductoItemDto[];
+	    sucursalOrigenId: number;
+	    sucursalDestinoId?: number;
+	    comentarios?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SolicitudProductosDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tipoPedidoGuid = source["tipoPedidoGuid"];
+	        this.productos = this.convertValues(source["productos"], SolicitudProductoItemDto);
+	        this.sucursalOrigenId = source["sucursalOrigenId"];
+	        this.sucursalDestinoId = source["sucursalDestinoId"];
+	        this.comentarios = source["comentarios"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SucursalInicioOperacionesDto {
 	    Usuario: number;
 	    Sucursal: number;
@@ -553,6 +624,88 @@ export namespace dto {
 	        this.Guid = source["Guid"];
 	        this.Descripcion = source["Descripcion"];
 	    }
+	}
+	export class TransferenciaProductoDto {
+	    nivelGuid: string;
+	    codigo: string;
+	    producto: string;
+	    cantidad: number;
+	    precioVenta: number;
+	    descuento: number;
+	    importe: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TransferenciaProductoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nivelGuid = source["nivelGuid"];
+	        this.codigo = source["codigo"];
+	        this.producto = source["producto"];
+	        this.cantidad = source["cantidad"];
+	        this.precioVenta = source["precioVenta"];
+	        this.descuento = source["descuento"];
+	        this.importe = source["importe"];
+	    }
+	}
+	export class TransferenciaDto {
+	    traspasoGuid: string;
+	    pedidoGuid: string;
+	    folio: string;
+	    sucursalOrigen: string;
+	    sucursalDestino: string;
+	    // Go type: time
+	    fechaEnvio: any;
+	    // Go type: time
+	    fechaRecepcion?: any;
+	    estatusGuid: string;
+	    estatus: string;
+	    totalProductos: number;
+	    unidadesTotales: number;
+	    valorTotal: number;
+	    comentarios: string;
+	    productos: TransferenciaProductoDto[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TransferenciaDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.traspasoGuid = source["traspasoGuid"];
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.folio = source["folio"];
+	        this.sucursalOrigen = source["sucursalOrigen"];
+	        this.sucursalDestino = source["sucursalDestino"];
+	        this.fechaEnvio = this.convertValues(source["fechaEnvio"], null);
+	        this.fechaRecepcion = this.convertValues(source["fechaRecepcion"], null);
+	        this.estatusGuid = source["estatusGuid"];
+	        this.estatus = source["estatus"];
+	        this.totalProductos = source["totalProductos"];
+	        this.unidadesTotales = source["unidadesTotales"];
+	        this.valorTotal = source["valorTotal"];
+	        this.comentarios = source["comentarios"];
+	        this.productos = this.convertValues(source["productos"], TransferenciaProductoDto);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

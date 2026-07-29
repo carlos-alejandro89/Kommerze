@@ -30,11 +30,15 @@ export function ServiceConsultaTransacciones(arg1:any,arg2:any):Promise<dto.Resp
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
+export function ServiceConsultarTransferencias():Promise<Array<dto.TransferenciaDto>>;
+
 export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.PagosAplicadosDto>,arg3:any):Promise<dto.ResponseDto>;
 
 export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.CotizacionDetalleDto>;
 
 export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
+
+export function ServiceCrearSolicitudProductos(arg1:dto.SolicitudProductosDto):Promise<dto.ResponseDto>;
 
 export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 

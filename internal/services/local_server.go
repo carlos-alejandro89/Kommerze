@@ -101,6 +101,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/auth/login", l.handleLogin)
 	mux.HandleFunc("/local/productos", l.handleProductos)
 	mux.HandleFunc("/local/transacciones", l.handleTransacciones)
+	mux.HandleFunc("/local/solicitudes-productos", l.handleSolicitudesProductos)
 	mux.HandleFunc("/local/tipos-pedido", l.handleTiposPedido)
 	mux.HandleFunc("/local/existencias", l.handleExistencias)
 	mux.HandleFunc("/local/clientes", l.handleClientes)
@@ -114,6 +115,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/catalogos/usos-cfdi", l.handleUsosCFDI)
 	mux.HandleFunc("/local/catalogos/sucursales", l.handleSucursales)
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
+	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
@@ -310,6 +312,24 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (l *LocalServerService) handleSolicitudesProductos(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var solicitud dto.SolicitudProductosDto
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result, err := l.pos.CrearSolicitudProductos(solicitud)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter, r *http.Request) {
 	var tipoPedidoID *uint
 	var sucursalID *uint
@@ -333,6 +353,22 @@ func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleTransferencias(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.pos.ConsultarTransferencias()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"data":    result,
+	})
 }
 
 // ── Clientes handler ──────────────────────────────────────────────────────────

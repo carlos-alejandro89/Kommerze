@@ -55,7 +55,7 @@ const MODULES = [
   { id: 'inventario', title: 'Inventario', subtitle: 'Existencias y movimientos', icon: ClipboardCheck, color: '#ff8a28', to: '/products', serverOnly: true },
   { id: 'clientes', title: 'Clientes', subtitle: 'Catálogo y gestión de clientes', icon: Users, color: '#7645df', to: '/clients' },
   { id: 'compras', title: 'Compras', subtitle: 'Órdenes y control de compras', icon: ShoppingCart, color: '#168bea' },
-  { id: 'traspasos', title: 'Traspasos', subtitle: 'Transferencias entre sucursales', icon: ArrowLeftRight, color: '#12aeb4', to: '/pos' },
+  { id: 'transferencias', title: 'Transferencias', subtitle: 'Seguimiento a envío y recepción de productos', icon: ArrowLeftRight, color: '#12aeb4', to: '/transfers' },
   { id: 'auditorias', title: 'Auditorías', subtitle: 'Conteos y auditorías de inventario', icon: PackageCheck, color: '#df2864', to: '/auditoria', serverOnly: true },
   { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard' },
   { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura' },

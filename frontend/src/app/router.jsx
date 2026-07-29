@@ -30,8 +30,11 @@ const TransactionPage = lazy(() => import('@/features/pos/pages/TransactionPage'
 const PaymentPage = lazy(() => import('@/features/pos/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
 const OrderPlacedPage = lazy(() => import('@/features/pos/pages/OrderPlacedPage').then(m => ({ default: m.OrderPlacedPage })));
 const ProductsPage = lazy(() => import('@/features/products/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const ProductRequestSummaryPage = lazy(() => import('@/features/products/pages/ProductRequestSummaryPage').then(m => ({ default: m.ProductRequestSummaryPage })));
+const ProductRequestConfirmationPage = lazy(() => import('@/features/products/pages/ProductRequestConfirmationPage').then(m => ({ default: m.ProductRequestConfirmationPage })));
 const CreateProductPage = lazy(() => import('@/features/products/pages/CreateProductPage').then(m => ({ default: m.CreateProductPage })));
 const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const TransfersPage = lazy(() => import('@/features/transfers/pages/TransfersPage').then(m => ({ default: m.TransfersPage })));
 const ClientsPage = lazy(() => import('@/features/clients/pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
 const ClientFormPage = lazy(() => import('@/features/clients/pages/ClientFormPage').then(m => ({ default: m.ClientFormPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
@@ -154,8 +157,20 @@ export const router = createBrowserRouter(
           element: <SuspensePage><CreateProductPage /></SuspensePage>,
         },
         {
+          path: '/products/request-summary',
+          element: <SuspensePage><ProductRequestSummaryPage /></SuspensePage>,
+        },
+        {
+          path: '/products/request-confirmation',
+          element: <SuspensePage><ProductRequestConfirmationPage /></SuspensePage>,
+        },
+        {
           path: '/history',
           element: <SuspensePage><HistoryPage /></SuspensePage>,
+        },
+        {
+          path: '/transfers',
+          element: <SuspensePage><TransfersPage /></SuspensePage>,
         },
         {
           path: '/clients',
