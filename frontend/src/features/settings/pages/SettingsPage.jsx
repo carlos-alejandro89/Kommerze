@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   Save, Server, Shield, Cloud, HardDrive, RefreshCw,
   Monitor, Globe, RotateCcw, Wifi, Copy, Check,
+  ReceiptText, Mail, Plus, Trash2, Bold, Printer,
+  ArrowLeft, Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +17,23 @@ import {
   ServiceSaveKommerzConfig,
   ServiceTestLocalServerConnection,
   ServiceGetLocalIP,
+  ServiceTestPrintReceipt,
 } from '../../../../wailsjs/go/main/App';
+
+const normalizeReceiptConfig = (receipt) => ({
+  ...receipt,
+  legends: [],
+  legendGroups: (receipt.legendGroups || [])
+    .map(group => ({ text: group.text.trim(), bold: Boolean(group.bold) }))
+    .filter(group => group.text),
+});
+
+const settingsInputClass = 'h-11 w-full rounded-2xl border border-[#dce7f6] bg-white/90 px-4 text-sm font-medium text-[#1b3154] shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] outline-none transition-all placeholder:text-[#7790b6] focus:border-blue-300/80 focus:bg-white focus:ring-2 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400/35 dark:focus:bg-white/[.085]';
+const settingsTextareaClass = 'w-full resize-y rounded-2xl border border-[#dce7f6] bg-white/90 px-4 py-3 text-sm font-medium text-[#1b3154] shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] outline-none transition-all placeholder:text-[#7790b6] focus:border-blue-300/80 focus:bg-white focus:ring-2 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400/35 dark:focus:bg-white/[.085]';
+const settingsLabelClass = 'text-xs font-semibold text-[#334a70] dark:text-slate-300';
+const settingsPanelClass = 'overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]';
+const settingsPanelHeaderClass = 'flex items-center gap-3 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.025] to-transparent px-6 py-4 dark:border-white/10 dark:from-blue-400/[.09] dark:via-blue-400/[.025]';
+const settingsInsetClass = 'rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p-4 shadow-[0_10px_30px_-27px_rgba(30,64,120,.42)] dark:border-white/10 dark:bg-white/[.035]';
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -34,6 +52,17 @@ export function SettingsPage() {
   const [localIP, setLocalIP]         = useState('');
   const [alertOpen, setAlertOpen]     = useState(false);
   const [copiedIP, setCopiedIP]       = useState(false);
+  const [receipt, setReceipt] = useState({
+    businessName: 'KOMMERZE',
+    legendGroups: [
+      { text: 'Gracias por su compra', bold: true },
+      { text: '¡Vuelva pronto!', bold: false },
+    ],
+    printerAddress: '', printerPaperWidthMm: 80, printerPaperCut: true, printerOpenDrawer: false,
+    smtpHost: '', smtpPort: '587', smtpUser: '', smtpPassword: '', smtpFrom: '',
+  });
+  const [savingReceipt, setSavingReceipt] = useState(false);
+  const [testingPrinter, setTestingPrinter] = useState(false);
 
   useEffect(() => {
     ServiceGetLocalIP().then(setLocalIP).catch(() => {});
@@ -47,6 +76,19 @@ export function SettingsPage() {
       try {
         const cfg = await ServiceGetKommerzConfig();
         if (cfg?.localServerUrl) setServerURL(cfg.localServerUrl);
+        if (cfg?.receipt) {
+          const configuredGroups = cfg.receipt.legendGroups?.length
+            ? cfg.receipt.legendGroups
+            : (cfg.receipt.legends || []).filter(Boolean).map(text => ({ text, bold: false }));
+          setReceipt(prev => ({
+            ...prev,
+            ...cfg.receipt,
+            printerPaperWidthMm: cfg.receipt.printerPaperWidthMm === 58 ? 58 : 80,
+            printerPaperCut: cfg.receipt.printerPaperCut ?? true,
+            printerOpenDrawer: cfg.receipt.printerOpenDrawer ?? false,
+            legendGroups: configuredGroups.length ? configuredGroups : prev.legendGroups,
+          }));
+        }
       } catch { /* ignore */ }
     };
     loadCreds();
@@ -110,10 +152,74 @@ export function SettingsPage() {
     } catch (err) { toast.error(String(err)); }
   };
 
+  const handleSaveReceipt = async (e) => {
+    e.preventDefault();
+    setSavingReceipt(true);
+    try {
+      const current = await ServiceGetKommerzConfig();
+      const normalizedReceipt = normalizeReceiptConfig(receipt);
+      await ServiceSaveKommerzConfig({ ...(current || {}), receipt: normalizedReceipt });
+      setReceipt(normalizedReceipt);
+      const successMessage = activeTab === 'correo'
+        ? 'Configuración de correo SMTP guardada'
+        : activeTab === 'impresora'
+          ? 'Configuración de impresora guardada'
+          : 'Configuración del ticket guardada';
+      toast.success(successMessage);
+    } catch (err) {
+      toast.error('No se pudo guardar: ' + String(err));
+    } finally { setSavingReceipt(false); }
+  };
+
+  const handleTestPrinter = async () => {
+    const normalizedReceipt = normalizeReceiptConfig(receipt);
+    if (!normalizedReceipt.printerAddress?.trim()) {
+      toast.error('Configura la dirección de la miniprinter antes de realizar la prueba');
+      return;
+    }
+    setTestingPrinter(true);
+    try {
+      const current = await ServiceGetKommerzConfig();
+      await ServiceSaveKommerzConfig({ ...(current || {}), receipt: normalizedReceipt });
+      setReceipt(normalizedReceipt);
+      await ServiceTestPrintReceipt(normalizedReceipt);
+      toast.success('Ticket de prueba enviado a la miniprinter');
+    } catch (err) {
+      toast.error('No se pudo imprimir el ticket de prueba: ' + String(err));
+    } finally {
+      setTestingPrinter(false);
+    }
+  };
+
+  const updateLegendGroup = (index, changes) => {
+    setReceipt(prev => ({
+      ...prev,
+      legendGroups: (prev.legendGroups || []).map((group, groupIndex) =>
+        groupIndex === index ? { ...group, ...changes } : group),
+    }));
+  };
+
+  const addLegendGroup = () => {
+    setReceipt(prev => ({
+      ...prev,
+      legendGroups: [...(prev.legendGroups || []), { text: '', bold: false }],
+    }));
+  };
+
+  const removeLegendGroup = (index) => {
+    setReceipt(prev => ({
+      ...prev,
+      legendGroups: (prev.legendGroups || []).filter((_, groupIndex) => groupIndex !== index),
+    }));
+  };
+
   // ── Tabs config ────────────────────────────────────────────────────────────
 
   const allTabs = [
     { id: 'dispositivo', label: 'Dispositivo',           icon: deviceRole === 'caja' ? Monitor : Server },
+    { id: 'recibos',     label: 'Ticket',                icon: ReceiptText },
+    { id: 'impresora',   label: 'Impresora',             icon: Printer },
+    { id: 'correo',      label: 'Correo SMTP',           icon: Mail },
     { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud,     serverOnly: true },
     { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
     { id: 'security',    label: 'Seguridad',              icon: Shield,    serverOnly: true },
@@ -122,50 +228,70 @@ export function SettingsPage() {
 
   const roleLabel      = deviceRole === 'servidor_local' ? 'Servidor Local' : deviceRole === 'caja' ? 'Caja' : 'Sin configurar';
   const roleBadgeColor = deviceRole === 'servidor_local'
-    ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
+    ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400'
     : deviceRole === 'caja'
-    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
     : 'bg-muted text-muted-foreground border-border';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden animate-fade-in bg-bg-subtle">
+    <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden animate-fade-in">
 
       {/* ── Page Header ───────────────────────────────────────────────────── */}
-      <div className="shrink-0 border-b border-border bg-surface px-6 pt-6 pb-0">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-xl font-bold text-foreground mb-4">Ajustes</h1>
+      <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
+        <div className="mx-auto max-w-[1320px]">
+          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
+            <span>/</span>
+            <span className="text-foreground">Ajustes</span>
+          </nav>
+
+          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Settings className="size-6" strokeWidth={1.8} />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Ajustes</h1>
+                <p className="mt-0.5 text-xs text-muted-foreground">Configura el dispositivo, tickets y servicios de Kommerze.</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+              <ArrowLeft className="size-4" />
+              Volver al inicio
+            </button>
+          </header>
 
           {/* ── Tabs ──────────────────────────────────────────────────────── */}
-          <div className="flex gap-1" role="tablist">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg',
-                    'border border-b-0 transition-all duration-150 relative',
-                    isActive
-                      ? 'bg-bg-subtle border-border text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60',
-                  )}
-                  style={isActive ? { marginBottom: '-1px' } : {}}
-                >
-                  <tab.icon className={cn('size-4', isActive ? 'text-primary' : '')} />
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div className="mt-4 flex justify-end rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
+            <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/35 p-1" role="tablist">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      'relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
+                      isActive
+                        ? 'border border-border/60 bg-background text-primary shadow-sm'
+                        : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                    )}
+                  >
+                    <tab.icon className="size-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Tab Content ───────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl mx-auto space-y-8">
+      <div className="flex-1 overflow-y-auto p-5 lg:p-6">
+        <div className="mx-auto max-w-[1320px] space-y-8">
 
           {/* ── DISPOSITIVO ──────────────────────────────────────────────── */}
           {activeTab === 'dispositivo' && (
@@ -174,9 +300,9 @@ export function SettingsPage() {
                 Rol actual y opciones de red para este equipo.
               </p>
 
-              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+              <div className={settingsPanelClass}>
                 {/* Header de sección */}
-                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+                <div className={settingsPanelHeaderClass}>
                   <div className={cn(
                     'flex size-10 items-center justify-center rounded-lg',
                     deviceRole === 'caja'
@@ -197,16 +323,16 @@ export function SettingsPage() {
                 <div className="p-6 space-y-4">
                   {/* Servidor Local: mostrar IP */}
                   {deviceRole === 'servidor_local' && (
-                    <div className="rounded-lg border border-border bg-bg-subtle p-4">
+                    <div className={settingsInsetClass}>
                       <p className="text-xs font-medium text-muted-foreground mb-1">Las Cajas deben conectarse a:</p>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <p className="font-mono text-sm text-foreground bg-muted px-2 py-1 rounded border border-border">
+                        <p className="rounded-xl border border-blue-100/80 bg-blue-50/70 px-3 py-2 font-mono text-sm text-[#1b3154] dark:border-blue-400/15 dark:bg-blue-400/[.07] dark:text-blue-200">
                           {localIP ? `http://${localIP}:8989` : 'http://<IP de este equipo>:8989'}
                         </p>
                         <button
                           onClick={handleCopyIP}
                           disabled={!localIP}
-                          className="flex size-7 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                          className="flex size-9 items-center justify-center rounded-xl border border-[#dce7f6] bg-white/80 text-[#6481ad] shadow-sm transition-colors hover:border-blue-300/70 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/[.06] dark:text-slate-400 dark:hover:bg-blue-400/10 dark:hover:text-blue-300"
                           title="Copiar dirección"
                         >
                           {copiedIP ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
@@ -221,7 +347,7 @@ export function SettingsPage() {
                   {/* Caja: cambiar URL del Servidor Local */}
                   {deviceRole === 'caja' && (
                     <div className="space-y-3">
-                      <label className="text-sm font-medium text-foreground">URL del Servidor Local</label>
+                      <label className={settingsLabelClass}>URL del Servidor Local</label>
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                         <input
@@ -229,21 +355,16 @@ export function SettingsPage() {
                           value={serverURL}
                           onChange={(e) => { setServerURL(e.target.value); setConnStatus(null); }}
                           placeholder="http://192.168.1.10:8989"
-                          className="w-full rounded-lg border border-border bg-bg-subtle pl-9 pr-3.5 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition"
+                          className={cn(settingsInputClass, 'pl-10 font-mono')}
                         />
                       </div>
                       {connStatus === 'ok'    && <p className="text-xs text-success">✓ Servidor Local alcanzable</p>}
                       {connStatus === 'error' && <p className="text-xs text-danger">✗ No se pudo conectar</p>}
                       <div className="flex gap-2">
                         <button onClick={handleTestConn} disabled={testingConn}
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition disabled:opacity-50">
+                          className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#dce7f6] bg-white/75 px-3 text-xs font-semibold text-[#334a70] transition hover:border-blue-300/70 hover:bg-blue-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/[.05] dark:text-slate-300 dark:hover:bg-blue-400/10">
                           {testingConn ? <RefreshCw className="size-3 animate-spin" /> : <Wifi className="size-3" />}
                           Probar
-                        </button>
-                        <button onClick={handleSaveConn} disabled={connStatus !== 'ok' || savingConn}
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-40">
-                          {savingConn ? <RefreshCw className="size-3 animate-spin" /> : <Save className="size-3" />}
-                          Guardar
                         </button>
                       </div>
                     </div>
@@ -265,6 +386,226 @@ export function SettingsPage() {
             </>
           )}
 
+          {activeTab === 'recibos' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Personaliza el contenido y las leyendas del ticket.
+              </p>
+              <form id="settings-ticket-form" onSubmit={handleSaveReceipt} className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <ReceiptText className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Formato del ticket</h3>
+                    <p className="text-xs text-muted-foreground">Las leyendas se imprimen después de los datos de la venta</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div className="space-y-1.5">
+                    <label className={settingsLabelClass}>Nombre comercial</label>
+                    <input value={receipt.businessName} onChange={e => setReceipt(v => ({ ...v, businessName: e.target.value }))}
+                      placeholder="KOMMERZE" className={settingsInputClass} />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <label className={settingsLabelClass}>Grupos de leyendas</label>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Cada grupo aparecerá separado por una línea en el ticket.</p>
+                      </div>
+                      <button type="button" onClick={addLegendGroup}
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10">
+                        <Plus className="size-3.5" />Agregar grupo
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(receipt.legendGroups || []).map((group, index) => (
+                        <div key={index} className={settingsInsetClass}>
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-[#334a70] dark:text-slate-300">Leyenda {index + 1}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button type="button" onClick={() => updateLegendGroup(index, { bold: !group.bold })}
+                                aria-pressed={group.bold}
+                                title={group.bold ? 'Desactivar negritas' : 'Activar negritas'}
+                                className={cn(
+                                  'flex size-8 items-center justify-center rounded-lg border transition',
+                                  group.bold
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-[#dce7f6] bg-white/75 text-[#6481ad] hover:border-blue-300/70 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/[.06] dark:text-slate-400 dark:hover:bg-blue-400/10',
+                                )}>
+                                <Bold className="size-4" />
+                              </button>
+                              <button type="button" onClick={() => removeLegendGroup(index)}
+                                title="Eliminar grupo"
+                                className="flex size-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500/10">
+                                <Trash2 className="size-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <textarea rows={3} value={group.text}
+                            onChange={e => updateLegendGroup(index, { text: e.target.value })}
+                            placeholder="Escribe el contenido de este grupo..."
+                            className={cn(
+                              settingsTextareaClass,
+                              group.bold && 'font-bold',
+                            )} />
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            Estilo: <strong className="text-foreground">{group.bold ? 'Negritas' : 'Texto normal'}</strong>
+                          </p>
+                        </div>
+                      ))}
+                      {(!receipt.legendGroups || receipt.legendGroups.length === 0) && (
+                        <div className="rounded-2xl border border-dashed border-blue-200/80 bg-blue-50/35 p-5 text-center text-sm text-[#6178a0] dark:border-blue-400/20 dark:bg-blue-400/[.035] dark:text-slate-400">
+                          No hay grupos configurados. El ticket finalizará después de los totales.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+
+          {activeTab === 'impresora' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Configura la conexión y el formato físico de la miniprinter ESC/POS.
+              </p>
+              <form id="settings-printer-form" onSubmit={handleSaveReceipt} className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Printer className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Miniprinter ESC/POS</h3>
+                    <p className="text-xs text-muted-foreground">Conexión, papel, corte, cajón y prueba de impresión</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-3">
+                  <label className="block lg:col-span-2">
+                    <span className={`mb-2 block ${settingsLabelClass}`}>Dirección de red</span>
+                    <input
+                      value={receipt.printerAddress}
+                      onChange={e => setReceipt(v => ({ ...v, printerAddress: e.target.value }))}
+                      placeholder="192.168.1.50:9100"
+                      className={cn(settingsInputClass, 'font-mono')}
+                    />
+                    <span className="mt-2 block text-xs text-muted-foreground">Modo RAW; normalmente utiliza el puerto 9100.</span>
+                  </label>
+                  <label className="block">
+                    <span className={`mb-2 block ${settingsLabelClass}`}>Ancho del papel</span>
+                    <select
+                      value={receipt.printerPaperWidthMm}
+                      onChange={e => setReceipt(v => ({ ...v, printerPaperWidthMm: Number(e.target.value) }))}
+                      className={settingsInputClass}
+                    >
+                      <option value={80}>80 mm (42 columnas)</option>
+                      <option value={58}>58 mm (32 columnas)</option>
+                    </select>
+                    <span className="mt-2 block text-xs text-muted-foreground">El valor predeterminado es 80 mm.</span>
+                  </label>
+                  <div className={cn(settingsInsetClass, 'flex items-center justify-between gap-4 lg:col-span-1')}>
+                    <div>
+                      <p className={settingsLabelClass}>Corte de papel</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Realiza un corte parcial al finalizar el ticket.</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={receipt.printerPaperCut}
+                      onClick={() => setReceipt(v => ({ ...v, printerPaperCut: !v.printerPaperCut }))}
+                      className={cn(
+                        'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+                        receipt.printerPaperCut ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600',
+                      )}
+                    >
+                      <span className={cn(
+                        'absolute left-1 top-1 size-4 rounded-full bg-white shadow-sm transition-transform',
+                        receipt.printerPaperCut ? 'translate-x-5' : 'translate-x-0',
+                      )} />
+                    </button>
+                  </div>
+                  <div className={cn(settingsInsetClass, 'flex items-center justify-between gap-4 lg:col-span-2')}>
+                    <div>
+                      <p className={settingsLabelClass}>Apertura de cajón</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Envía un pulso al cajón conectado a la miniprinter después de imprimir.</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={receipt.printerOpenDrawer}
+                      onClick={() => setReceipt(v => ({ ...v, printerOpenDrawer: !v.printerOpenDrawer }))}
+                      className={cn(
+                        'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+                        receipt.printerOpenDrawer ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600',
+                      )}
+                    >
+                      <span className={cn(
+                        'absolute left-1 top-1 size-4 rounded-full bg-white shadow-sm transition-transform',
+                        receipt.printerOpenDrawer ? 'translate-x-5' : 'translate-x-0',
+                      )} />
+                    </button>
+                  </div>
+                  <div className="lg:col-span-3">
+                    <button
+                      type="button"
+                      onClick={handleTestPrinter}
+                      disabled={testingPrinter || !receipt.printerAddress?.trim()}
+                      className="flex h-10 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 text-xs font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {testingPrinter ? <RefreshCw className="size-4 animate-spin" /> : <Printer className="size-4" />}
+                      {testingPrinter ? 'Imprimiendo…' : 'Impresión de prueba'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+
+          {activeTab === 'correo' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Configura el servidor de correo utilizado para enviar el ticket PDF a tus clientes.
+              </p>
+              <form id="settings-email-form" onSubmit={handleSaveReceipt} className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Mail className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Servidor de correo SMTP</h3>
+                    <p className="text-xs text-muted-foreground">Credenciales del remitente para el envío de tickets PDF</p>
+                  </div>
+                </div>
+                <div className="space-y-5 p-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <label className="block sm:col-span-2">
+                      <span className={`mb-2 block ${settingsLabelClass}`}>Servidor SMTP</span>
+                      <input value={receipt.smtpHost} onChange={e => setReceipt(v => ({ ...v, smtpHost: e.target.value }))} placeholder="smtp.proveedor.com" className={settingsInputClass} />
+                    </label>
+                    <label className="block">
+                      <span className={`mb-2 block ${settingsLabelClass}`}>Puerto</span>
+                      <input value={receipt.smtpPort} onChange={e => setReceipt(v => ({ ...v, smtpPort: e.target.value }))} placeholder="587" className={settingsInputClass} />
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className={`mb-2 block ${settingsLabelClass}`}>Usuario SMTP</span>
+                      <input value={receipt.smtpUser} onChange={e => setReceipt(v => ({ ...v, smtpUser: e.target.value }))} placeholder="usuario@empresa.com" className={settingsInputClass} />
+                    </label>
+                    <label className="block">
+                      <span className={`mb-2 block ${settingsLabelClass}`}>Contraseña</span>
+                      <input type="password" value={receipt.smtpPassword} onChange={e => setReceipt(v => ({ ...v, smtpPassword: e.target.value }))} placeholder="Contraseña" className={settingsInputClass} />
+                    </label>
+                    <label className="block sm:col-span-3">
+                      <span className={`mb-2 block ${settingsLabelClass}`}>Correo remitente</span>
+                      <input type="email" value={receipt.smtpFrom} onChange={e => setReceipt(v => ({ ...v, smtpFrom: e.target.value }))} placeholder="ventas@empresa.com (opcional)" className={settingsInputClass} />
+                    </label>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+
           {/* ── CLOUD ──────────────────────────────────────────────────────── */}
           {activeTab === 'cloud' && (
             <>
@@ -272,8 +613,8 @@ export function SettingsPage() {
                 Administra la conexión y credenciales para sincronizar tu POS con el Sistema Central de Kommerze.
               </p>
 
-              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+              <div className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
                   <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Server className="size-5" />
                   </div>
@@ -283,32 +624,23 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSave} className="p-6 space-y-5">
+                <form id="settings-cloud-form" onSubmit={handleSave} className="p-6 space-y-5">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label htmlFor="email" className="text-sm font-medium text-foreground">Correo Electrónico Central</label>
+                      <label htmlFor="email" className={settingsLabelClass}>Correo Electrónico Central</label>
                       <input id="email" type="email" placeholder="usuario@sistema-central.com"
                         value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading}
-                        className="w-full rounded-lg border border-border bg-bg-subtle px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50" />
+                        className={settingsInputClass} />
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña de API</label>
+                      <label htmlFor="password" className={settingsLabelClass}>Contraseña de API</label>
                       <input id="password" type="password" placeholder="••••••••••••"
                         value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading}
-                        className="w-full rounded-lg border border-border bg-bg-subtle px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition disabled:opacity-50" />
+                        className={settingsInputClass} />
                       <p className="text-xs text-muted-foreground">Esta contraseña se almacena localmente de forma segura.</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end pt-4 border-t border-border">
-                    <button type="submit" disabled={isLoading}
-                      className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-60 shadow-sm">
-                      {isLoading
-                        ? <><RefreshCw className="size-4 animate-spin" />Guardando...</>
-                        : <><Save className="size-4" />Guardar Credenciales</>
-                      }
-                    </button>
-                  </div>
                 </form>
               </div>
 
@@ -331,8 +663,8 @@ export function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Información sobre la base de datos PostgreSQL local de este Servidor.
               </p>
-              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+              <div className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
                   <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
                     <HardDrive className="size-5" />
                   </div>
@@ -357,8 +689,8 @@ export function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Opciones de seguridad y acceso para el sistema.
               </p>
-              <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-                <div className="border-b border-border bg-bg-subtle px-6 py-4 flex items-center gap-3">
+              <div className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
                   <div className="flex size-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
                     <Shield className="size-5" />
                   </div>
@@ -378,6 +710,48 @@ export function SettingsPage() {
 
         </div>
       </div>
+
+      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
+        <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl lg:px-6">
+          <div className="mx-auto flex max-w-[1320px] justify-end">
+            {activeTab === 'dispositivo' && deviceRole === 'caja' && (
+              <button
+                type="button"
+                onClick={handleSaveConn}
+                disabled={connStatus !== 'ok' || savingConn}
+                className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {savingConn ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar conexión
+              </button>
+            )}
+            {activeTab === 'recibos' && (
+              <button form="settings-ticket-form" type="submit" disabled={savingReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {savingReceipt ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar configuración del ticket
+              </button>
+            )}
+            {activeTab === 'impresora' && (
+              <button form="settings-printer-form" type="submit" disabled={savingReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {savingReceipt ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar configuración de impresora
+              </button>
+            )}
+            {activeTab === 'correo' && (
+              <button form="settings-email-form" type="submit" disabled={savingReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {savingReceipt ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar correo SMTP
+              </button>
+            )}
+            {activeTab === 'cloud' && (
+              <button form="settings-cloud-form" type="submit" disabled={isLoading} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar credenciales
+              </button>
+            )}
+          </div>
+        </footer>
+      )}
 
       <DialogAlert
         open={alertOpen}

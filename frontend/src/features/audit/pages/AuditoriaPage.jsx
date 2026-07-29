@@ -12,7 +12,8 @@ import {
     TrendingUp,
     RotateCcw,
     Clock,
-    Lock
+    Lock,
+    ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -270,10 +271,21 @@ export function AuditoriaPage() {
     const progressPercent = Math.round((totalCounted * 100) / totalExpected);
     const financialImpact = countedItems.reduce((sum, item) => sum + (item.diff * 25), 0);
 
+    const handleAuthorizeAudit = () => {
+        alert(`Ajustes aplicados correctamente. Auditoría cerrada y finalizada.\n\nResponsable: Nombre del auditor\nImpacto financiero estimado: ${financialImpact >= 0 ? '+' : ''}$${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
+        setCountedItems([
+            { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
+            { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
+            { id: 3, name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15, counted: 17, diff: 2, status: 'Sobrante' }
+        ]);
+        setChecklist(prev => prev.map(item => ({ ...item, checked: false })));
+        setStatus('setup');
+    };
+
     return (
-        <div className="relative min-h-full overflow-hidden bg-[#f5f8fc] px-6 py-5 dark:bg-background">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
-            <div className="relative z-[var(--z-layer-base)] mx-auto max-w-7xl animate-fade-in space-y-5">
+        <div className="relative flex h-[calc(100vh-56px)] flex-col overflow-hidden bg-[#f5f8fc] dark:bg-background">
+            <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
+            <div className="relative z-[var(--z-layer-base)] flex min-h-0 flex-1 flex-col animate-fade-in">
 
             {/* CSS Shimmer Keyframe definition */}
             <style dangerouslySetInnerHTML={{
@@ -289,38 +301,41 @@ export function AuditoriaPage() {
         }
       `}} />
 
+            <div className="mx-auto w-full max-w-[1320px] shrink-0 px-6 pt-5">
+                <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
+                    <span>/</span>
+                    <span className="text-foreground">Auditoría</span>
+                </nav>
+                <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+                    <div className="flex items-center gap-4">
+                        <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            <ClipboardCheck className="size-6" strokeWidth={1.8} />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">
+                                {status === 'setup' ? 'Auditoría de inventario' : status === 'active' ? 'Auditoría en curso' : 'Conciliación de auditoría'}
+                            </h1>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                {status === 'setup' ? 'Prepara y valida las condiciones antes de iniciar el conteo.' : status === 'active' ? 'Conteo físico y validación de existencias en proceso.' : 'Revisa las diferencias antes de actualizar el inventario.'}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+                        <ArrowLeft className="size-4" />
+                        Volver al inicio
+                    </button>
+                </header>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="mx-auto max-w-[1320px] space-y-5">
+
             {/* ========================================================================= */}
             {/* 1. SETUP VIEW */}
             {/* ========================================================================= */}
             {status === 'setup' && (
                 <div className="space-y-5 animate-slide-up">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
-                                Inventario
-                            </p>
-                            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-foreground md:text-[28px]">Nueva Auditoría de Inventario</h1>
-                            <p className="mt-1 text-sm font-medium text-muted-foreground">Configure los parámetros iniciales para la validación de existencias.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                className="rounded-xl border-white/65 bg-white/70 px-5 py-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]"
-                                onClick={() => navigate('/home')}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                variant="primary"
-                                className="rounded-xl px-5 py-2 shadow-sm font-semibold"
-                                onClick={handleStartAudit}
-                            >
-                                Iniciar Auditoría
-                            </Button>
-                        </div>
-                    </div>
-
                     {/* Bento Grid */}
                     <div className="grid grid-cols-12 gap-4">
                         {/* Left Side (General Data & Assignment) */}
@@ -463,10 +478,10 @@ export function AuditoriaPage() {
                 >
 
                     <div className="z-10 w-full max-w-[560px] px-4">
-                        <Card className="glass border border-border/80 rounded-2xl p-8 shadow-lg flex flex-col items-center text-center">
+                        <Card className="flex flex-col items-center rounded-2xl border border-white/70 bg-white/65 p-8 text-center shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
 
                             {/* Pulsing Lock Icon */}
-                            <div className="w-20 h-20 rounded-full bg-muted/80 flex items-center justify-center mb-6 relative border border-border shadow-inner">
+                            <div className="relative mb-6 flex size-20 items-center justify-center rounded-full border border-blue-200/70 bg-blue-500/10 text-blue-600 shadow-inner dark:border-blue-400/15 dark:text-blue-400">
                                 <Lock className="size-10 text-primary fill-primary/10" />
                                 <span className="absolute top-1 right-1 flex h-4 w-4">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -478,21 +493,21 @@ export function AuditoriaPage() {
                             <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
                                 Auditoría en Curso
                             </h1>
-                            <p className="text-sm text-text-secondary max-w-[420px] mb-6">
+                            <p className="mb-6 max-w-[420px] text-sm text-muted-foreground">
                                 El terminal se encuentra bloqueado temporalmente para garantizar la integridad del inventario. Por favor, espere a que el proceso finalice.
                             </p>
 
                             {/* Details Grid */}
                             <div className="grid grid-cols-2 gap-4 w-full mb-6 text-left">
-                                <div className="bg-muted/40 p-4 rounded-xl flex flex-col items-start border border-border/50">
-                                    <span className="text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Auditor Asignado</span>
+                                <div className="flex flex-col items-start rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p-4 dark:border-white/10 dark:bg-white/[.035]">
+                                    <span className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Auditor Asignado</span>
                                     <div className="flex items-center gap-1.5">
                                         <User className="size-4 text-primary shrink-0" />
                                         <span className="text-sm font-bold text-foreground">Auditor</span>
                                     </div>
                                 </div>
-                                <div className="bg-muted/40 p-4 rounded-xl flex flex-col items-start border border-border/50">
-                                    <span className="text-[11px] font-bold text-text-muted mb-1.5 uppercase tracking-wider">Hora de Inicio</span>
+                                <div className="flex flex-col items-start rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p-4 dark:border-white/10 dark:bg-white/[.035]">
+                                    <span className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Hora de Inicio</span>
                                     <div className="flex items-center gap-1.5">
                                         <Clock className="size-4 text-primary shrink-0" />
                                         <span className="text-sm font-bold text-foreground font-mono">{startTime}</span>
@@ -518,31 +533,8 @@ export function AuditoriaPage() {
                                 </p>
                             </div>
 
-                            {/* Main Actions Container */}
-                            <div className="w-full space-y-3 pt-2">
-                                <Button
-                                    variant="primary"
-                                    onClick={() => setStatus('reconciliation')}
-                                    className="w-full flex items-center justify-center gap-2 h-11 text-sm font-bold bg-success hover:bg-success/90 text-white rounded-xl shadow-md transition-all active:scale-95 shrink-0"
-                                >
-                                    <Check className="size-4.5 stroke-[3]" /> Finalizar y Conciliar
-                                </Button>
-
-
-
-                                <div className="flex justify-between items-center pt-3 mt-1 border-t border-border/50 text-[10px] text-text-muted">
-                                    <button
-                                        onClick={() => {
-                                            if (confirm('¿Desea pausar la auditoría y regresar al panel de configuración? El conteo no se perderá.')) {
-                                                setStatus('setup');
-                                            }
-                                        }}
-                                        className="hover:underline hover:text-foreground font-medium"
-                                    >
-                                        Pausar Conteo
-                                    </button>
-                                    <span className="font-medium">{auditoriaActiva?.Guid ?? auditoriaActiva?.guid}</span>
-                                </div>
+                            <div className="w-full border-t border-border/50 pt-3 text-center text-[10px] font-medium text-muted-foreground">
+                                Auditoría: {auditoriaActiva?.Guid ?? auditoriaActiva?.guid}
                             </div>
 
                         </Card>
@@ -562,45 +554,10 @@ export function AuditoriaPage() {
             {/* ========================================================================= */}
             {status === 'reconciliation' && (
                 <div className="space-y-6 animate-slide-up">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-primary tracking-tight">Conciliación de Ajustes</h1>
-                            <p className="text-sm text-text-secondary mt-1">
-                                Revise las diferencias y autorice la actualización de inventarios del sistema.
-                            </p>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                className="rounded-xl px-5 py-2"
-                                onClick={() => setStatus('active')}
-                            >
-                                Volver a Conteo
-                            </Button>
-                            <Button
-                                variant="primary"
-                                className="rounded-xl px-5 py-2 shadow-sm font-semibold bg-success hover:bg-success/90 text-white"
-                                onClick={() => {
-                                    alert(`Ajustes aplicados correctamente. Auditoría cerrada y finalizada.\n\nResponsable: Nombre del auditor\nImpacto financiero estimado: ${financialImpact >= 0 ? '+' : ''}$${financialImpact.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
-                                    setCountedItems([
-                                        { id: 1, name: 'Refresco Cola 600ml', sku: '750105530001', expected: 50, counted: 48, diff: -2, status: 'Faltante' },
-                                        { id: 2, name: 'Papas Fritas Sal 100g', sku: '750100012345', expected: 30, counted: 30, diff: 0, status: 'Completo' },
-                                        { id: 3, name: 'Aceite de Cocina 1L', sku: '750200098765', expected: 15, counted: 17, diff: 2, status: 'Sobrante' }
-                                    ]);
-                                    setChecklist(prev => prev.map(item => ({ ...item, checked: false })));
-                                    setStatus('setup');
-                                }}
-                            >
-                                Autorizar y Cerrar Auditoría
-                            </Button>
-                        </div>
-                    </div>
-
                     <div className="grid grid-cols-12 gap-6">
                         {/* Left side (Summary Table of discrepancies only) */}
                         <div className="col-span-12 lg:col-span-8 space-y-6">
-                            <Card className="glass shadow-sm">
+                            <Card className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
                                 <CardHeader className="pb-3 border-b border-border">
                                     <CardTitle className="text-base font-bold text-danger-600">Discrepancias a Conciliar</CardTitle>
                                     <CardDescription className="text-xs">
@@ -611,7 +568,7 @@ export function AuditoriaPage() {
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left text-sm">
                                             <thead>
-                                                <tr className="bg-muted/30 text-text-secondary text-xs uppercase font-bold border-b border-border">
+                                                <tr className="border-b border-border/70 bg-slate-50/90 text-xs font-bold uppercase text-muted-foreground dark:bg-white/[.055]">
                                                     <th className="px-5 py-3">Producto</th>
                                                     <th className="px-5 py-3 font-mono">SKU</th>
                                                     <th className="px-5 py-3 text-right">Teórico</th>
@@ -622,7 +579,7 @@ export function AuditoriaPage() {
                                             </thead>
                                             <tbody className="divide-y divide-border/60">
                                                 {countedItems.filter(item => item.diff !== 0).map((item) => (
-                                                    <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                                                    <tr key={item.id} className="transition-colors hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
                                                         <td className="px-5 py-3 font-semibold text-foreground">{item.name}</td>
                                                         <td className="px-5 py-3 font-mono text-xs text-text-secondary">{item.sku}</td>
                                                         <td className="px-5 py-3 text-right text-text-secondary">{item.expected}</td>
@@ -659,12 +616,12 @@ export function AuditoriaPage() {
                         {/* Right side (Financial impact & Signoff) */}
                         <div className="col-span-12 lg:col-span-4 space-y-6">
                             {/* Financial Impact Card */}
-                            <Card className="glass shadow-sm">
+                            <Card className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-base font-bold">Resumen de Conciliación</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                                    <div className="space-y-3 rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p-4 dark:border-white/10 dark:bg-white/[.035]">
                                         <div className="flex justify-between items-center text-xs">
                                             <span className="text-text-secondary">Diferencias Totales:</span>
                                             <span className="font-bold font-mono text-foreground">{totalDiscrepancies} productos</span>
@@ -699,7 +656,7 @@ export function AuditoriaPage() {
                                     {/* Sign-off signatures */}
                                     <div className="space-y-3 pt-2">
                                         <label className="text-xs font-bold text-text-secondary block">Autorización del Auditor</label>
-                                        <div className="p-3 border border-dashed border-border bg-muted/10 rounded-lg flex items-center gap-2">
+                                        <div className="flex items-center gap-2 rounded-xl border border-dashed border-blue-200/80 bg-blue-50/35 p-3 dark:border-blue-400/20 dark:bg-blue-400/[.035]">
                                             <UserCheck className="size-4 text-success" />
                                             <div className="text-xs">
                                                 <p className="font-bold text-foreground">Auditor</p>
@@ -711,7 +668,7 @@ export function AuditoriaPage() {
                                         </div>
 
                                         <label className="text-xs font-bold text-text-secondary block">Autorización del Gerente</label>
-                                        <div className="p-3 border border-dashed border-border bg-muted/10 rounded-lg flex items-center gap-2">
+                                        <div className="flex items-center gap-2 rounded-xl border border-dashed border-blue-200/80 bg-blue-50/35 p-3 dark:border-blue-400/20 dark:bg-blue-400/[.035]">
                                             <UserCheck className="size-4 text-success" />
                                             <div className="text-xs">
                                                 <p className="font-bold text-foreground">Roberto Mendez</p>
@@ -727,6 +684,54 @@ export function AuditoriaPage() {
                         </div>
                     </div>
                 </div>
+            )}
+            </div>
+            </div>
+
+            {(status === 'setup' || status === 'active' || status === 'reconciliation') && (
+                <footer className="z-[var(--z-layer-raised)] shrink-0 border-t border-border/70 bg-background/90 px-6 py-3 backdrop-blur-xl">
+                    <div className="mx-auto flex max-w-[1320px] justify-end gap-2">
+                        {status === 'setup' ? (
+                            <>
+                                <button type="button" onClick={() => navigate('/home')} className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground transition hover:bg-muted">
+                                    Cancelar
+                                </button>
+                                <button type="button" onClick={handleStartAudit} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105">
+                                    <ClipboardCheck className="size-4" />
+                                    Iniciar auditoría
+                                </button>
+                            </>
+                        ) : status === 'active' ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (confirm('¿Desea pausar la auditoría y regresar al panel de configuración? El conteo no se perderá.')) {
+                                            setStatus('setup');
+                                        }
+                                    }}
+                                    className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                >
+                                    Pausar conteo
+                                </button>
+                                <button type="button" onClick={() => setStatus('reconciliation')} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105">
+                                    <Check className="size-4" />
+                                    Finalizar y conciliar
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button type="button" onClick={() => setStatus('active')} className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground transition hover:bg-muted">
+                                    Volver al conteo
+                                </button>
+                                <button type="button" onClick={handleAuthorizeAudit} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105">
+                                    <Check className="size-4" />
+                                    Autorizar y cerrar auditoría
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </footer>
             )}
             </div>
         </div>

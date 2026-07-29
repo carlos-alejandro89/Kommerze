@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
   Search, Eye, TrendingUp, CheckCircle, Clock, XCircle,
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
   ShoppingCart, FileText, Tag, ArrowRightLeft,
   LayoutList, BadgeCheck, BadgeX, Loader2,
+  ReceiptText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
@@ -120,6 +123,7 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /*  Componente principal                                        */
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
+  const navigate = useNavigate();
   const { consultarTransacciones } = usePosService();
 
   const [transacciones, setTransacciones] = useState([]);
@@ -205,9 +209,10 @@ export function HistoryPage() {
   }, [transacciones]);
 
   const summaryCards = [
-    { label: 'Ventas Hoy',   value: `$${resumen.totalHoy.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, icon: TrendingUp,  color: 'text-primary',  bg: 'bg-primary/10' },
-    { label: 'Completados',  value: String(resumen.completados), icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
-    { label: 'Pendientes',   value: String(resumen.pendientes),  icon: Clock,       color: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-500/10'  },
+    { label: 'Ventas hoy', value: `$${resumen.totalHoy.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, detail: 'Importe completado', icon: TrendingUp, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' },
+    { label: 'Completados', value: String(resumen.completados), detail: 'Operaciones del día', icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
+    { label: 'Pendientes', value: String(resumen.pendientes), detail: resumen.pendientes ? 'Requieren atención' : 'Sin pendientes', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10' },
+    { label: 'Total registros', value: String(transacciones.length), detail: 'En todas las fechas', icon: FileText, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10' },
   ];
 
   /* ── Handlers modales ── */
@@ -222,69 +227,102 @@ export function HistoryPage() {
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in">
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden p-5 gap-4">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Gestión de Pedidos</h2>
-            <p className="text-sm text-muted-foreground">Historial de ventas, cotizaciones y transferencias.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={cargar}
-              disabled={loading}
-              className="flex size-8 items-center justify-center rounded-lg border border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Recargar"
-            >
-              <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
+        <div className="shrink-0">
+          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
+            <span>/</span>
+            <span className="text-foreground">Historial de ventas</span>
+          </nav>
+          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <ReceiptText className="size-6" strokeWidth={1.8} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold tracking-[-0.025em] text-foreground">Historial de ventas</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">Consulta y seguimiento de ventas, cotizaciones y transferencias.</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+              <ArrowLeft className="size-4" />
+              Volver al inicio
             </button>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          </header>
+        </div>
+
+        {/* Resumen */}
+        <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
+          {summaryCards.map((card) => (
+            <div key={card.label} className="flex min-h-[92px] items-center gap-3.5 rounded-2xl border border-white/70 bg-white/65 p-4 shadow-[0_12px_32px_-27px_rgba(30,64,120,.42)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.045]">
+              <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', card.bg)}>
+                <card.icon className={cn('size-5', card.color)} strokeWidth={1.9} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground">{card.label}</p>
+                {loading
+                  ? <div className="mt-1 h-6 w-20 animate-pulse rounded-md bg-muted" />
+                  : <p className="mt-0.5 truncate text-xl font-bold tracking-[-0.025em] text-foreground">{card.value}</p>
+                }
+                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/75">{card.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Navegación, búsqueda y actualización ── */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar por folio, cliente o tipo…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-56 rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+                className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/75 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
               />
             </div>
+            <button
+              onClick={cargar}
+              disabled={loading}
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              title="Actualizar historial"
+            >
+              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/35 p-1">
+            {TIPO_TABS.map(tab => {
+              const Icon = tab.icon;
+              const active = tipoFiltro === tab.id;
+              const pending = tab.id === 2
+                ? transacciones.filter(t => t.TipoPedidoID === 2 && t.EstatusAutorizacion === 'solicitada').length
+                : 0;
+              return (
+                <button
+                  key={String(tab.id)}
+                  onClick={() => setTipoFiltro(tab.id)}
+                  className={cn(
+                    'relative flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
+                    active
+                      ? 'border border-border/60 bg-background text-primary shadow-sm'
+                      : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  {tab.label}
+                  {pending > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white">{pending}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── Tabs de tipo ── */}
-        <div className="flex items-center gap-1 shrink-0 p-1 bg-muted/40 rounded-xl w-fit border border-border/60">
-          {TIPO_TABS.map(tab => {
-            const Icon    = tab.icon;
-            const active  = tipoFiltro === tab.id;
-            const pending = tab.id === 2
-              ? transacciones.filter(t => t.TipoPedidoID === 2 && t.EstatusAutorizacion === 'solicitada').length
-              : 0;
-            return (
-              <button
-                key={String(tab.id)}
-                onClick={() => setTipoFiltro(tab.id)}
-                className={cn(
-                  'relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
-                  active
-                    ? 'bg-background text-foreground shadow-sm border border-border/60'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Icon className="size-3.5" />
-                {tab.label}
-                {pending > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white">
-                    {pending}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Table card */}
-        <div className="flex-1 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
 
           {/* Error */}
           {error && (
@@ -322,15 +360,15 @@ export function HistoryPage() {
               <div className={cn('flex-1', modalAbierto ? 'overflow-hidden' : 'overflow-auto')}>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border bg-muted/30 sticky top-0">
+                    <tr className="sticky top-0 border-b border-border/70 bg-slate-50/95 backdrop-blur dark:bg-white/[.055]">
                       {['Folio', 'Fecha', 'Cliente', 'Tipo', 'Total', 'Estado', 'Acciones'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        <th key={h} className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap">
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border/65">
                     {pageItems.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
@@ -359,36 +397,40 @@ export function HistoryPage() {
                       const StatusIcon      = sc.icon;
 
                       return (
-                        <tr key={t.ID} className="hover:bg-muted/20 transition-colors group">
+                        <tr key={t.ID} className="group transition-colors hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
 
                           {/* Folio */}
-                          <td className="px-4 py-3 font-mono text-xs font-semibold text-primary whitespace-nowrap">
-                            #{String(t.Folio).padStart(4, '0')}
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            <button onClick={() => setModalVer(t)} className="font-mono text-xs font-bold text-primary underline-offset-4 hover:underline">
+                              #{String(t.Folio).padStart(4, '0')}
+                            </button>
                           </td>
 
                           {/* Fecha */}
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-5 py-3.5 whitespace-nowrap">
                             <div className="text-xs font-medium text-foreground">{fecha}</div>
                             {hora && <div className="text-xs text-muted-foreground/70">{hora}</div>}
                           </td>
 
                           {/* Cliente */}
-                          <td className="px-4 py-3 font-medium text-foreground max-w-[160px] truncate">
+                          <td className="max-w-[200px] truncate px-5 py-3.5 text-sm font-medium text-foreground">
                             {t.RazonSocial || 'Público General'}
                           </td>
 
                           {/* Tipo */}
-                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                            {t.TipoOperacion || '—'}
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            <span className="rounded-md bg-blue-500/8 px-2 py-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                              {t.TipoOperacion || '—'}
+                            </span>
                           </td>
 
                           {/* Total */}
-                          <td className="px-4 py-3 font-semibold text-foreground tabular-nums whitespace-nowrap">
+                          <td className="px-5 py-3.5 font-bold text-foreground tabular-nums whitespace-nowrap">
                             ${(t.MontoTransaccion ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                           </td>
 
                           {/* Estado */}
-                          <td className="px-4 py-3">
+                          <td className="px-5 py-3.5">
                             <div className="flex flex-col items-start gap-0.5">
                               <span className={cn(
                                 'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold',
@@ -412,12 +454,12 @@ export function HistoryPage() {
                           </td>
 
                           {/* Acciones */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-1.5">
                               {/* Acciones genéricas */}
                               <button
                                 onClick={() => setModalVer(t)}
-                                className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                                className="flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/65 px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
                               >
                                 <Eye className="size-3" /> Ver
                               </button>
@@ -439,7 +481,7 @@ export function HistoryPage() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between border-t border-border px-4 py-3 shrink-0">
+              <div className="flex shrink-0 items-center justify-between border-t border-border/70 bg-background/35 px-5 py-3">
                 <p className="text-xs text-muted-foreground">
                   {filtered.length === 0
                     ? 'Sin resultados'
@@ -450,15 +492,15 @@ export function HistoryPage() {
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={safePage === 1}
-                    className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <span className="px-2 text-xs font-medium text-foreground">{safePage} / {totalPages}</span>
+                  <span className="min-w-16 px-2 text-center text-xs font-semibold text-foreground">{safePage} / {totalPages}</span>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={safePage === totalPages}
-                    className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="size-4" />
                   </button>
@@ -467,54 +509,6 @@ export function HistoryPage() {
             </>
           )}
         </div>
-      </div>
-
-      {/* ── Right Panel — Resumen ── */}
-      <div className={cn('w-[260px] shrink-0 border-l border-border bg-surface flex flex-col gap-4 p-4', modalAbierto ? 'overflow-hidden' : 'overflow-y-auto')}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Resumen del Día</h3>
-          {loading && <RefreshCw className="size-3.5 text-muted-foreground animate-spin" />}
-        </div>
-
-        {summaryCards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-border bg-muted/20 p-4">
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
-              <div className={cn('flex size-7 items-center justify-center rounded-lg', card.bg)}>
-                <card.icon className={cn('size-3.5', card.color)} />
-              </div>
-            </div>
-            {loading
-              ? <div className="h-8 w-20 rounded-md bg-muted animate-pulse" />
-              : <p className="text-2xl font-bold text-foreground">{card.value}</p>
-            }
-          </div>
-        ))}
-
-        {/* Cotizaciones pendientes de auth */}
-        {!loading && !error && (() => {
-          const pendientes = transacciones.filter(t => t.TipoPedidoID === 2 && t.EstatusAutorizacion === 'solicitada');
-          if (pendientes.length === 0) return null;
-          return (
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="size-3.5 text-indigo-500" />
-                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Esperando autorización</p>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{pendientes.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">cotización{pendientes.length !== 1 ? 'es' : ''}</p>
-            </div>
-          );
-        })()}
-
-        {/* Total general */}
-        {!loading && !error && (
-          <div className="rounded-xl border border-border bg-muted/20 p-4 mt-auto">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Total registros</p>
-            <p className="text-2xl font-bold text-foreground">{transacciones.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">en todas las fechas</p>
-          </div>
-        )}
       </div>
 
       {/* ── Modales ── */}

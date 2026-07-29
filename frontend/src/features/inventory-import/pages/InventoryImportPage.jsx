@@ -95,7 +95,7 @@ export function InventoryImportPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden bg-[#f5f8fc] px-6 py-5 dark:bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+      <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
 
       <div className="relative z-[var(--z-layer-base)] mx-auto flex w-full max-w-5xl flex-col gap-4">
         <header className="flex items-center justify-between gap-4">

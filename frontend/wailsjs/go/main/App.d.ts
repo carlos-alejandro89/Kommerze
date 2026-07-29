@@ -36,6 +36,8 @@ export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.Cotizac
 
 export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
 
+export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
+
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
 export function ServiceGetKommerzConfig():Promise<services.KommerzConfig>;
@@ -68,6 +70,8 @@ export function ServiceGuardarInventarioJSON(arg1:string,arg2:string):Promise<dt
 
 export function ServiceIniciarAuditoria(arg1:string,arg2:string):Promise<dto.ResponseDto>;
 
+export function ServiceListarClientes():Promise<Array<dto.ClienteDto>>;
+
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
@@ -90,6 +94,8 @@ export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
 export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
 
+export function ServicePrintReceipt(arg1:string):Promise<void>;
+
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function ServiceRestartApp():Promise<void>;
@@ -105,6 +111,8 @@ export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacione
 export function ServiceTestDBConnection(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<dto.ResponseDto>;
 
 export function ServiceTestLocalServerConnection(arg1:string):Promise<dto.ResponseDto>;
+
+export function ServiceTestPrintReceipt(arg1:services.ReceiptConfig):Promise<void>;
 
 export function ServiceVerificarAuditoriasEnCurso():Promise<dto.ResponseDto>;
 

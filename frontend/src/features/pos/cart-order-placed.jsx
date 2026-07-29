@@ -19,9 +19,26 @@ import { ContentHeader } from '@/components/layout/content-header';
 import { Steps } from './steps';
 import { moneyFormat } from '@/lib/helpers';
 import { ItemPagos } from './components/item-pagos';
+import { usePosService } from './usePosService';
+import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 export function CartOrderPlaced() {
     const navigate = useNavigate();
+    const posService = usePosService();
+    const [isPrinting, setIsPrinting] = React.useState(false);
+    const [isSending, setIsSending] = React.useState(false);
+    const [sendDialogOpen, setSendDialogOpen] = React.useState(false);
+    const [recipientEmail, setRecipientEmail] = React.useState('');
+    const [sendError, setSendError] = React.useState('');
+    const pedidoGuid = React.useMemo(() => localStorage.getItem('pedidoGuid') || '', []);
 
     const prefixes = {
         1: 'POS',
@@ -92,6 +109,47 @@ export function CartOrderPlaced() {
 
     const totalPagos = pagosAplicados.reduce((suma, item) => suma + parseFloat(item.Monto || 0), 0);
     const cambio = Math.max(0, totalPagos - total);
+
+    const handlePrint = async () => {
+        if (!pedidoGuid) { toast.error('No se encontró el identificador de la venta'); return; }
+        setIsPrinting(true);
+        try {
+            await posService.imprimirRecibo(pedidoGuid);
+            toast.success('Recibo enviado a la miniprinter');
+        } catch (error) {
+            toast.error('No se pudo imprimir: ' + String(error));
+        } finally { setIsPrinting(false); }
+    };
+
+    const handleOpenSend = () => {
+        if (!pedidoGuid) {
+            toast.error('No se encontró el identificador de la venta. Finaliza una venta nueva e intenta nuevamente.');
+            return;
+        }
+        setSendError('');
+        setSendDialogOpen(true);
+    };
+
+    const handleSend = async (event) => {
+        event.preventDefault();
+        const correo = recipientEmail.trim();
+        if (!correo) {
+            setSendError('Ingresa el correo electrónico del destinatario.');
+            return;
+        }
+        setSendError('');
+        setIsSending(true);
+        try {
+            await posService.enviarRecibo(pedidoGuid, correo);
+            setSendDialogOpen(false);
+            setRecipientEmail('');
+            toast.success('Recibo PDF enviado por correo');
+        } catch (error) {
+            const message = String(error || 'Error desconocido');
+            setSendError(message);
+            toast.error('No se pudo enviar el recibo');
+        } finally { setIsSending(false); }
+    };
 
     return (
         <div className="flex flex-col h-[calc(100vh-56px)] w-full bg-bg-subtle relative">
@@ -200,19 +258,24 @@ export function CartOrderPlaced() {
                             {/* Secondary Actions */}
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                                 <Button
+                                    onClick={handlePrint}
+                                    disabled={isPrinting}
                                     variant="outline"
                                     className="flex-1 sm:flex-none h-10 px-4 rounded-xl text-[11px] font-bold uppercase gap-2 shadow-sm border-border/80 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all active:scale-[0.98] text-muted-foreground hover:text-foreground bg-surface-container-lowest dark:bg-zinc-900"
                                 >
                                     <Printer className="size-4" />
-                                    <span className="hidden sm:inline">Imprimir</span>
+                                    <span className="hidden sm:inline">{isPrinting ? 'Imprimiendo…' : 'Imprimir'}</span>
                                 </Button>
 
                                 <Button
+                                    type="button"
+                                    onClick={handleOpenSend}
+                                    disabled={isSending}
                                     variant="outline"
                                     className="flex-1 sm:flex-none h-10 px-4 rounded-xl text-[11px] font-bold uppercase gap-2 shadow-sm border-border/80 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all active:scale-[0.98] text-muted-foreground hover:text-foreground bg-surface-container-lowest dark:bg-zinc-900"
                                 >
                                     <Mail className="size-4" />
-                                    <span className="hidden sm:inline">Enviar</span>
+                                    <span className="hidden sm:inline">{isSending ? 'Enviando…' : 'Enviar'}</span>
                                 </Button>
 
                                 <Button
@@ -229,6 +292,72 @@ export function CartOrderPlaced() {
                     </div>
                 </div>
             </Content>
+
+            <Dialog open={sendDialogOpen} onOpenChange={(open) => !isSending && setSendDialogOpen(open)}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-border/70 p-0 overflow-hidden">
+                    <div className="bg-gradient-to-r from-[#002366] to-[#001233] px-6 py-5 text-white">
+                        <div className="flex size-11 items-center justify-center rounded-xl bg-white/10 border border-white/15 mb-4">
+                            <Mail className="size-5" />
+                        </div>
+                        <DialogHeader className="mb-0">
+                            <DialogTitle className="text-xl text-white">Enviar recibo por correo</DialogTitle>
+                            <DialogDescription className="text-blue-100/80">
+                                Se enviará un mensaje HTML con el recibo PDF de la venta {folio ? `#${operationPrefix}-${String(folio).padStart(6, '0')}` : ''}.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    <form onSubmit={handleSend} className="p-6">
+                        <label htmlFor="receipt-recipient" className="mb-2 block text-sm font-semibold text-foreground">
+                            Correo del destinatario
+                        </label>
+                        <input
+                            id="receipt-recipient"
+                            type="email"
+                            required
+                            autoFocus
+                            autoComplete="email"
+                            value={recipientEmail}
+                            onChange={(event) => {
+                                setRecipientEmail(event.target.value);
+                                if (sendError) setSendError('');
+                            }}
+                            disabled={isSending}
+                            placeholder="cliente@correo.com"
+                            className="w-full rounded-xl border border-border bg-bg-subtle px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                        />
+
+                        {sendError && (
+                            <div role="alert" className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2.5 text-sm text-red-600 dark:text-red-400">
+                                {sendError}
+                            </div>
+                        )}
+
+                        <DialogFooter className="mt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isSending}
+                                onClick={() => setSendDialogOpen(false)}
+                                className="h-10 rounded-xl px-5"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isSending || !recipientEmail.trim()}
+                                className="h-10 rounded-xl bg-primary px-5 text-primary-foreground"
+                            >
+                                {isSending ? (
+                                    <><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Enviando…</>
+                                ) : (
+                                    <><Mail className="size-4" />Enviar recibo</>
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <style jsx>{`
                 @keyframes shimmer {

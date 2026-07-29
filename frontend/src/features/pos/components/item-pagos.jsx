@@ -16,19 +16,40 @@ const ICONS_BY_CLAVE = {
 
 const DEFAULT = { Icon: MoreHorizontal, cls: 'text-muted-foreground' };
 
+const getCardBrandLogo = (brand) => {
+    const normalized = String(brand ?? '').trim().toLowerCase();
+    if (normalized.includes('visa')) {
+        return { src: '/media/brand-logos/visa.svg', alt: 'Visa' };
+    }
+    if (normalized.includes('mastercard') || normalized.includes('master card')) {
+        return { src: '/media/brand-logos/mastercard.svg', alt: 'Mastercard' };
+    }
+    return null;
+};
+
 export function ItemPagos({ pago, handleDeletePaymentItem }) {
     const { Icon, cls } = ICONS_BY_CLAVE[String(pago.Clave ?? '').trim()] ?? DEFAULT;
+    const leyendaPago = pago.TipoTarjeta || pago.Referencia;
+    const cardBrandLogo = getCardBrandLogo(pago.MarcaTarjeta);
 
     return (
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-background border border-border/60 hover:border-border transition-colors group">
             {/* Ícono */}
-            <Icon className={`size-4 shrink-0 ${cls}`} />
+            {cardBrandLogo ? (
+                <img
+                    src={cardBrandLogo.src}
+                    alt={cardBrandLogo.alt}
+                    className="h-5 w-7 shrink-0 object-contain"
+                />
+            ) : (
+                <Icon className={`size-4 shrink-0 ${cls}`} />
+            )}
 
             {/* Nombre y referencia */}
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{pago.Nombre}</p>
-                {pago.Referencia && (
-                    <p className="text-[11px] text-muted-foreground truncate">{pago.Referencia}</p>
+                {leyendaPago && (
+                    <p className="text-[11px] text-muted-foreground truncate">{leyendaPago}</p>
                 )}
             </div>
 

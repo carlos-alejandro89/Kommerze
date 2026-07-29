@@ -20,7 +20,7 @@ import { TurnoProvider } from '@/providers/TurnoProvider';
  */
 
 /** Rutas que renderizan sin header — tienen su propio layout fullscreen. */
-const FULLSCREEN_ROUTES = ['/home'];
+const FULLSCREEN_ROUTES = ['/home', '/home-classic'];
 
 export function AppLayout() {
   const { pathname } = useLocation();
@@ -43,7 +43,7 @@ export function AppLayout() {
     <TurnoProvider>
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto bg-bg-subtle">
+        <main className="kommerze-gradient-bg kommerze-module-surface flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

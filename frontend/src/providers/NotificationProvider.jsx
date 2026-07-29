@@ -110,11 +110,29 @@ export function NotificationProvider({ children }) {
       addNotification(isApproved ? 'success' : 'error', title, description);
     };
 
+    const handleNetPayPaymentResponse = (data) => {
+      if (!data) return;
+
+      const responseCode = String(data.responseCode ?? data.ResponseCode ?? '');
+      const message = data.message ?? data.Message ?? 'Pago aprobado correctamente';
+
+      if (responseCode === '00') {
+        toast.success(message);
+        return;
+      }
+
+      toast.error(message || 'No fue posible aprobar el pago');
+    };
+
     const unsub = EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
+    const unsubNetPay = EventsOn('netpay_payment_response', handleNetPayPaymentResponse);
 
     return () => {
       if (typeof unsub === 'function') {
         unsub();
+      }
+      if (typeof unsubNetPay === 'function') {
+        unsubNetPay();
       }
     };
   }, [addNotification]);

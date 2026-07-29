@@ -36,6 +36,43 @@ type NetPayCredentials struct {
 	NetPayDeviceSerial string `json:"netPayDeviceSerial"`
 }
 
+type ReceiptLegendGroup struct {
+	Text string `json:"text"`
+	Bold bool   `json:"bold"`
+}
+
+type ReceiptConfig struct {
+	BusinessName        string               `json:"businessName,omitempty"`
+	LegendGroups        []ReceiptLegendGroup `json:"legendGroups,omitempty"`
+	Legends             []string             `json:"legends,omitempty"` // Compatibilidad con configuraciones anteriores.
+	PrinterAddress      string               `json:"printerAddress,omitempty"`
+	PrinterPaperWidthMM int                  `json:"printerPaperWidthMm,omitempty"`
+	PrinterPaperCut     *bool                `json:"printerPaperCut,omitempty"`
+	PrinterOpenDrawer   *bool                `json:"printerOpenDrawer,omitempty"`
+	SMTPHost            string               `json:"smtpHost,omitempty"`
+	SMTPPort            string               `json:"smtpPort,omitempty"`
+	SMTPUser            string               `json:"smtpUser,omitempty"`
+	SMTPPassword        string               `json:"smtpPassword,omitempty"`
+	SMTPFrom            string               `json:"smtpFrom,omitempty"`
+}
+
+// EffectivePrinterPaperWidthMM conserva compatibilidad con configuraciones
+// anteriores y limita el formato a los anchos térmicos soportados.
+func (c ReceiptConfig) EffectivePrinterPaperWidthMM() int {
+	if c.PrinterPaperWidthMM == 58 {
+		return 58
+	}
+	return 80
+}
+
+func (c ReceiptConfig) EffectivePrinterPaperCut() bool {
+	return c.PrinterPaperCut == nil || *c.PrinterPaperCut
+}
+
+func (c ReceiptConfig) EffectivePrinterOpenDrawer() bool {
+	return c.PrinterOpenDrawer != nil && *c.PrinterOpenDrawer
+}
+
 // KommerzConfig es el único archivo de configuración del dispositivo.
 // Se persiste en ~/.config/Kommerze/kommerze_config.json
 // y reemplaza los archivos separados: licencia.json, cloud_credentials.json.
@@ -70,6 +107,9 @@ type KommerzConfig struct {
 
 	// Zona horaria para el servidor Go y la conexión PostgreSQL
 	TimeZone string `json:"timeZone,omitempty"`
+
+	// Ticket térmico, impresora de red y correo SMTP (configuración local).
+	Receipt ReceiptConfig `json:"receipt,omitempty"`
 }
 
 // EffectiveDBConfig devuelve los valores de conexión a la BD aplicando

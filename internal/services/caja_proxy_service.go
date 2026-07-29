@@ -3,6 +3,7 @@ package services
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	reportmodels "BitComercio/internal/usecases/reports/models"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -150,6 +151,17 @@ func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID 
 	return &result, nil
 }
 
+func (c *CajaProxyService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, error) {
+	var result struct {
+		Success bool                 `json:"success"`
+		Data    reportmodels.Receipt `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/recibos?pedidoGuid=%s", pedidoGuid), &result); err != nil {
+		return reportmodels.Receipt{}, err
+	}
+	return result.Data, nil
+}
+
 // SetContext inicia la conexión WebSocket hacia el Servidor Local
 // para recibir eventos en tiempo real y emitirlos al frontend de esta Caja.
 func (c *CajaProxyService) SetContext(ctx context.Context) {
@@ -269,6 +281,17 @@ func (c *CajaProxyService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 		Data    []dto.ClienteDto `json:"data"`
 	}
 	if err := c.get(fmt.Sprintf("/local/clientes?q=%s", q), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) ListarClientes() ([]dto.ClienteDto, error) {
+	var result struct {
+		Success bool             `json:"success"`
+		Data    []dto.ClienteDto `json:"data"`
+	}
+	if err := c.get("/local/clientes/listado", &result); err != nil {
 		return nil, err
 	}
 	return result.Data, nil

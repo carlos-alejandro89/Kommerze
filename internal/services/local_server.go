@@ -60,13 +60,14 @@ type LocalServerService struct {
 	catalogos           *CatalogosService
 	clientes            *ClientesService
 	cotizacion          *CotizacionService
+	receipt             *ReceiptService
 	operacionesSucursal *OperacionesSucursalService
 	operacionesCaja     *OperacionesCajaService
 	hub                 *wsHub
 	server              *http.Server
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
@@ -74,6 +75,7 @@ func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat 
 		catalogos:           cat,
 		clientes:            clientes,
 		cotizacion:          cotizacion,
+		receipt:             receipt,
 		operacionesSucursal: opSucursal,
 		operacionesCaja:     opCaja,
 		hub:                 newWsHub(),
@@ -102,6 +104,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/tipos-pedido", l.handleTiposPedido)
 	mux.HandleFunc("/local/existencias", l.handleExistencias)
 	mux.HandleFunc("/local/clientes", l.handleClientes)
+	mux.HandleFunc("/local/clientes/listado", l.handleListadoClientes)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -111,19 +114,20 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/catalogos/usos-cfdi", l.handleUsosCFDI)
 	mux.HandleFunc("/local/catalogos/sucursales", l.handleSucursales)
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
+	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
-	mux.HandleFunc("/local/cotizaciones/convertir-venta",        l.handleConvertirVenta)
-	mux.HandleFunc("/local/cotizaciones/detalle",                l.handleDetalleCotizacion)
-	mux.HandleFunc("/local/ws",                                  l.handleCajaWs)
+	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
+	mux.HandleFunc("/local/cotizaciones/detalle", l.handleDetalleCotizacion)
+	mux.HandleFunc("/local/ws", l.handleCajaWs)
 	// Operaciones sucursal
-	mux.HandleFunc("/local/sucursal/operacion/activa",           l.handleOperacionSucursalActiva)
-	mux.HandleFunc("/local/sucursal/operacion/cerrar",           l.handleCerrarOperacionSucursal)
+	mux.HandleFunc("/local/sucursal/operacion/activa", l.handleOperacionSucursalActiva)
+	mux.HandleFunc("/local/sucursal/operacion/cerrar", l.handleCerrarOperacionSucursal)
 	// Turnos de cajero
-	mux.HandleFunc("/local/cajero/turno/abrir",                  l.handleAbrirCaja)
-	mux.HandleFunc("/local/cajero/turno/cerrar",                 l.handleCerrarCaja)
-	mux.HandleFunc("/local/cajero/turno/activo",                 l.handleOperacionCajeroActiva)
-	mux.HandleFunc("/local/cajero/turno/resumen",                l.handleResumenCajero)
-	mux.HandleFunc("/local/cajero/turnos",                       l.handleOperacionesCajero)
+	mux.HandleFunc("/local/cajero/turno/abrir", l.handleAbrirCaja)
+	mux.HandleFunc("/local/cajero/turno/cerrar", l.handleCerrarCaja)
+	mux.HandleFunc("/local/cajero/turno/activo", l.handleOperacionCajeroActiva)
+	mux.HandleFunc("/local/cajero/turno/resumen", l.handleResumenCajero)
+	mux.HandleFunc("/local/cajero/turnos", l.handleOperacionesCajero)
 
 	l.server = &http.Server{
 		Addr:    addr,
@@ -134,6 +138,20 @@ func (l *LocalServerService) Start(addr string) {
 	if err := l.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Printf("[LocalServer] Error: %v", err)
 	}
+}
+
+func (l *LocalServerService) handleReceipt(w http.ResponseWriter, r *http.Request) {
+	guid := r.URL.Query().Get("pedidoGuid")
+	if guid == "" {
+		writeError(w, http.StatusBadRequest, "pedidoGuid requerido")
+		return
+	}
+	result, err := l.receipt.BuildReceipt(guid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
 }
 
 func (l *LocalServerService) Stop() {
@@ -187,7 +205,7 @@ func (l *LocalServerService) handleHealth(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
-	
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":    true,
 		"message":    "Servidor Local activo",
@@ -266,12 +284,12 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 		return
 	}
 	var body struct {
-		TipoOperacion     *uint                     `json:"tipoOperacion"`
-		PagosAplicados    []dto.PagosAplicadosDto   `json:"pagosAplicados"`
-		ItemsPedido       []dto.PedidoProductoDto   `json:"itemsPedido"`
-		SucursalOrigen    *uint                     `json:"sucursalOrigen"`
-		SucursalDestino   *uint                     `json:"sucursalDestino"`
-		OperacionCajeroID *uint                     `json:"operacionCajeroID"`
+		TipoOperacion     *uint                   `json:"tipoOperacion"`
+		PagosAplicados    []dto.PagosAplicadosDto `json:"pagosAplicados"`
+		ItemsPedido       []dto.PedidoProductoDto `json:"itemsPedido"`
+		SucursalOrigen    *uint                   `json:"sucursalOrigen"`
+		SucursalDestino   *uint                   `json:"sucursalDestino"`
+		OperacionCajeroID *uint                   `json:"operacionCajeroID"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
@@ -326,6 +344,19 @@ func (l *LocalServerService) handleClientes(w http.ResponseWriter, r *http.Reque
 	}
 	q := r.URL.Query().Get("q")
 	clientes, err := l.clientes.BuscarClientes(q)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": clientes})
+}
+
+func (l *LocalServerService) handleListadoClientes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	clientes, err := l.clientes.ListarClientes()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

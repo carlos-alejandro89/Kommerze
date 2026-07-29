@@ -9,6 +9,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/lib/pq v1.11.2
 	github.com/shopspring/decimal v1.4.0
 	github.com/wailsapp/wails/v2 v2.11.0

@@ -35,6 +35,8 @@ import {
     ServiceCotizacionConvertirAVenta,
     ServiceCotizacionObtenerDetalle,
     ServiceGetTiposAutorizacion,
+    ServicePrintReceipt,
+    ServiceEmailReceipt,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -113,6 +115,9 @@ export function usePosService() {
     const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID = null) =>
         ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID);
 
+    const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
+    const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
+
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
     /**
@@ -167,6 +172,8 @@ export function usePosService() {
         // Transacciones
         confirmarTransaccion,
         consultarTransacciones,
+        imprimirRecibo,
+        enviarRecibo,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

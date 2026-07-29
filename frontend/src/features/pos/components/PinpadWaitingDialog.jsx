@@ -1,4 +1,4 @@
-import { CheckCircle2, CreditCard, Radio, Smartphone, Wifi } from 'lucide-react';
+import { CheckCircle2, CreditCard, Radio, Smartphone, Wifi, XCircle } from 'lucide-react';
 import {
     Dialog,
     DialogClose,
@@ -13,8 +13,20 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
     currency: 'MXN',
 });
 
-export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
+export function PinpadWaitingDialog({ open, amount, status = 'waiting', message, onOpenChange }) {
     const formattedAmount = currencyFormatter.format(Number(amount || 0));
+    const isSuccess = status === 'success';
+    const isError = status === 'error';
+    const isWaiting = status === 'waiting';
+    const statusColor = isSuccess ? 'emerald' : isError ? 'red' : 'primary';
+    const title = isSuccess
+        ? 'Pago aprobado'
+        : isError
+            ? 'Pago no aprobado'
+            : 'Esperando respuesta de la terminal...';
+    const description = isWaiting
+        ? <>Por favor, <span className="font-bold text-primary">inserte, deslice o acerque</span> la tarjeta para continuar.</>
+        : message || (isSuccess ? 'Transacción aprobada correctamente.' : 'La transacción no pudo ser aprobada.');
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -24,7 +36,7 @@ export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
             >
                 <div className="flex flex-col items-center px-10 py-9 text-center">
                     <div className="relative mb-8 flex h-48 w-full max-w-[320px] items-center justify-center">
-                        <div className="absolute inset-x-6 bottom-3 h-12 rounded-full bg-primary/10 blur-2xl" />
+                        <div className={`absolute inset-x-6 bottom-3 h-12 rounded-full blur-2xl ${isError ? 'bg-red-500/10' : isSuccess ? 'bg-emerald-500/10' : 'bg-primary/10'}`} />
 
                         <div className="relative flex w-full items-center justify-center gap-5">
                             <div className="relative flex h-36 w-28 flex-col rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-100 p-3 shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:from-zinc-900 dark:to-zinc-950">
@@ -47,14 +59,20 @@ export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
                             </div>
 
                             <div className="flex flex-col items-center gap-3">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_infinite] rounded-full bg-primary" />
-                                    <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_0.18s_infinite] rounded-full bg-primary/70" />
-                                    <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_0.36s_infinite] rounded-full bg-primary/40" />
-                                </div>
-                                <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
-                                <span className="rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase text-primary">
-                                    Esperando
+                                {isWaiting ? (
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_infinite] rounded-full bg-primary" />
+                                        <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_0.18s_infinite] rounded-full bg-primary/70" />
+                                        <span className="h-1.5 w-1.5 animate-[pinpad-pulse_1.4s_ease-in-out_0.36s_infinite] rounded-full bg-primary/40" />
+                                    </div>
+                                ) : (
+                                    <div className={`flex size-14 animate-[pinpad-result_0.45s_ease-out] items-center justify-center rounded-full ${isSuccess ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                        {isSuccess ? <CheckCircle2 className="size-8" /> : <XCircle className="size-8" />}
+                                    </div>
+                                )}
+                                <div className={`h-px w-16 bg-gradient-to-r from-transparent to-transparent ${isError ? 'via-red-500/45' : isSuccess ? 'via-emerald-500/45' : 'via-primary/45'}`} />
+                                <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase ${isError ? 'border-red-500/15 bg-red-500/5 text-red-600' : isSuccess ? 'border-emerald-500/15 bg-emerald-500/5 text-emerald-600' : 'border-primary/15 bg-primary/5 text-primary'}`}>
+                                    {isError ? 'Declinado' : isSuccess ? 'Aprobado' : 'Esperando'}
                                 </span>
                             </div>
 
@@ -77,17 +95,17 @@ export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
                             <p className="text-4xl font-bold tracking-tight text-primary">{formattedAmount}</p>
                             <p className="mt-1 text-[11px] font-bold uppercase text-muted-foreground">Monto a cobrar</p>
                         </div>
-                        <DialogTitle className="text-2xl font-semibold text-foreground">
-                            Esperando respuesta de la terminal...
+                        <DialogTitle className={`text-2xl font-semibold ${isError ? 'text-red-600' : isSuccess ? 'text-emerald-600' : 'text-foreground'}`}>
+                            {title}
                         </DialogTitle>
                         <DialogDescription className="max-w-sm text-base leading-relaxed text-muted-foreground">
-                            Por favor, <span className="font-bold text-primary">inserte, deslice o acerque</span> la tarjeta para continuar.
+                            {description}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/8 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Comunicación establecida con Pinpad
+                    <div className={`mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${isError ? 'border-red-500/15 bg-red-500/5 text-red-700 dark:text-red-300' : isSuccess ? 'border-emerald-500/15 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300' : 'border-emerald-500/15 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isError ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                        {isWaiting ? 'Comunicación establecida con Pinpad' : message}
                     </div>
 
                     <div className="mt-8 flex w-full flex-col items-center gap-6 border-t border-border/70 pt-7">
@@ -100,18 +118,20 @@ export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
                             <span className="text-xs font-semibold text-muted-foreground">VISA / MASTERCARD / AMEX</span>
                         </div>
 
-                        <DialogClose className="w-full rounded-xl border border-border px-4 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted active:scale-[0.98]">
-                            Cancelar operación
-                        </DialogClose>
+                        {isWaiting && (
+                            <DialogClose className="w-full rounded-xl border border-border px-4 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted active:scale-[0.98]">
+                                Cancelar operación
+                            </DialogClose>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-3 bg-muted/70 px-8 py-4 text-xs font-medium text-muted-foreground">
                     <span className="flex items-center gap-2">
-                        <Wifi className="size-4 text-primary" />
-                        Esperando operación por {formattedAmount} en Pinpad
+                        <Wifi className={`size-4 ${isError ? 'text-red-500' : isSuccess ? 'text-emerald-500' : 'text-primary'}`} />
+                        {isWaiting ? `Esperando operación por ${formattedAmount} en Pinpad` : message}
                     </span>
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className={`h-2 w-2 rounded-full ${isError ? 'bg-red-500' : isSuccess ? 'bg-emerald-500' : 'bg-emerald-500 animate-pulse'}`} />
                 </div>
 
                 <style>{`
@@ -123,6 +143,21 @@ export function PinpadWaitingDialog({ open, amount, onOpenChange }) {
                         50% {
                             opacity: 1;
                             transform: translateY(-2px) scale(1);
+                        }
+                    }
+
+                    @keyframes pinpad-result {
+                        0% {
+                            opacity: 0;
+                            transform: scale(0.72);
+                        }
+                        70% {
+                            opacity: 1;
+                            transform: scale(1.08);
+                        }
+                        100% {
+                            opacity: 1;
+                            transform: scale(1);
                         }
                     }
                 `}</style>

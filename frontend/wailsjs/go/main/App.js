@@ -62,6 +62,10 @@ export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3, arg4, a
   return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function ServiceEmailReceipt(arg1, arg2) {
+  return window['go']['main']['App']['ServiceEmailReceipt'](arg1, arg2);
+}
+
 export function ServiceGetEmpaques() {
   return window['go']['main']['App']['ServiceGetEmpaques']();
 }
@@ -126,6 +130,10 @@ export function ServiceIniciarAuditoria(arg1, arg2) {
   return window['go']['main']['App']['ServiceIniciarAuditoria'](arg1, arg2);
 }
 
+export function ServiceListarClientes() {
+  return window['go']['main']['App']['ServiceListarClientes']();
+}
+
 export function ServiceLoadCloudCredentials() {
   return window['go']['main']['App']['ServiceLoadCloudCredentials']();
 }
@@ -170,6 +178,10 @@ export function ServiceObtenerValorInventario() {
   return window['go']['main']['App']['ServiceObtenerValorInventario']();
 }
 
+export function ServicePrintReceipt(arg1) {
+  return window['go']['main']['App']['ServicePrintReceipt'](arg1);
+}
+
 export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
 }
@@ -200,6 +212,10 @@ export function ServiceTestDBConnection(arg1, arg2, arg3, arg4, arg5, arg6, arg7
 
 export function ServiceTestLocalServerConnection(arg1) {
   return window['go']['main']['App']['ServiceTestLocalServerConnection'](arg1);
+}
+
+export function ServiceTestPrintReceipt(arg1) {
+  return window['go']['main']['App']['ServiceTestPrintReceipt'](arg1);
 }
 
 export function ServiceVerificarAuditoriasEnCurso() {

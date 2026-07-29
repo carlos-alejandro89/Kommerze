@@ -24,7 +24,8 @@ func (s *ClientesService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 
 	pattern := "%" + q + "%"
 	err := s.db.Raw(`
-		SELECT id, guid, razon_social, rfc, correo, telefono
+		SELECT id, guid, razon_social, rfc, correo, telefono,
+		       credito_maximo, dias_credito
 		FROM clientes
 		WHERE deleted_at IS NULL
 		  AND (razon_social ILIKE @p OR rfc ILIKE @p OR telefono ILIKE @p)
@@ -33,6 +34,22 @@ func (s *ClientesService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 		sql.Named("p", pattern),
 	).Scan(&clientes).Error
 
+	if err != nil {
+		return nil, err
+	}
+	return clientes, nil
+}
+
+// ListarClientes devuelve el catálogo completo para el tablero de clientes.
+func (s *ClientesService) ListarClientes() ([]dto.ClienteDto, error) {
+	var clientes []dto.ClienteDto
+	err := s.db.Raw(`
+		SELECT id, guid, razon_social, rfc, correo, telefono,
+		       credito_maximo, dias_credito
+		FROM clientes
+		WHERE deleted_at IS NULL
+		ORDER BY razon_social`,
+	).Scan(&clientes).Error
 	if err != nil {
 		return nil, err
 	}

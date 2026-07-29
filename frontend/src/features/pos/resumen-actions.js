@@ -111,6 +111,7 @@ export const confirmarTransaccion = async (confirmarTransaccionService, setAlert
         const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null, cajeroID);
 
         localStorage.setItem('folio', result.data.Folio)
+        localStorage.setItem('pedidoGuid', result.data.Guid)
         return result.success;
     } catch (error) {
         console.error("Error en la transacción:", error);

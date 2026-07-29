@@ -6,12 +6,14 @@ import (
 	"BitComercio/internal/repository/dto"
 	"BitComercio/internal/services"
 	requestdto "BitComercio/internal/services/requestDto"
+	reportmodels "BitComercio/internal/usecases/reports/models"
 	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -87,6 +89,7 @@ func (a *App) catalogosService() interface {
 // Caja           → CajaProxyService (HTTP al Servidor Local)
 func (a *App) clientesService() interface {
 	BuscarClientes(string) ([]dto.ClienteDto, error)
+	ListarClientes() ([]dto.ClienteDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -104,6 +107,15 @@ func (a *App) cotizacionService() interface {
 		return a.services.CajaProxy
 	}
 	return a.services.Cotizacion
+}
+
+func (a *App) receiptService() interface {
+	BuildReceipt(string) (reportmodels.Receipt, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Receipt
 }
 
 // ── Sync (solo Servidor Local) ────────────────────────────────────────────────
@@ -333,6 +345,78 @@ func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []
 
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
+}
+
+func (a *App) ServicePrintReceipt(pedidoGuid string) error {
+	receipt, err := a.receiptService().BuildReceipt(pedidoGuid)
+	if err != nil {
+		return err
+	}
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return err
+	}
+	if cfg.Receipt.BusinessName != "" {
+		receipt.Negocio = cfg.Receipt.BusinessName
+	}
+	receipt.Leyendas = cfg.Receipt.Legends
+	receipt.LeyendaGrupos = receiptLegendGroups(cfg.Receipt.LegendGroups)
+	return services.PrintReceipt(receipt, cfg.Receipt)
+}
+
+func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
+	receipt, err := a.receiptService().BuildReceipt(pedidoGuid)
+	if err != nil {
+		return err
+	}
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return err
+	}
+	if cfg.Receipt.BusinessName != "" {
+		receipt.Negocio = cfg.Receipt.BusinessName
+	}
+	receipt.Leyendas = cfg.Receipt.Legends
+	receipt.LeyendaGrupos = receiptLegendGroups(cfg.Receipt.LegendGroups)
+	return services.EmailReceipt(receipt, recipient, cfg.Receipt)
+}
+
+func (a *App) ServiceTestPrintReceipt(cfg services.ReceiptConfig) error {
+	now := time.Now()
+	receipt := reportmodels.Receipt{
+		Folio:    "DEMO-000001",
+		Negocio:  cfg.BusinessName,
+		Sucursal: "Sucursal Demo",
+		Cajero:   "Usuario Demo",
+		Fecha:    now,
+		Items: []reportmodels.ReceiptItem{
+			{
+				Codigo:      "DEMO/TEST",
+				Descripcion: "ARTICULO DEMO/TEST",
+				Cantidad:    1,
+				Precio:      10,
+				Importe:     10,
+			},
+		},
+		Subtotal: 10,
+		Total:    10,
+		Pago:     20,
+		Cambio:   10,
+		Leyendas: cfg.Legends,
+	}
+	if receipt.Negocio == "" {
+		receipt.Negocio = "KOMMERZE"
+	}
+	receipt.LeyendaGrupos = receiptLegendGroups(cfg.LegendGroups)
+	return services.PrintReceipt(receipt, cfg)
+}
+
+func receiptLegendGroups(groups []services.ReceiptLegendGroup) []reportmodels.ReceiptLegendGroup {
+	result := make([]reportmodels.ReceiptLegendGroup, 0, len(groups))
+	for _, group := range groups {
+		result = append(result, reportmodels.ReceiptLegendGroup{Text: group.Text, Bold: group.Bold})
+	}
+	return result
 }
 
 // ── NetPay ──────────────────────────────────────────────────────────────────────
@@ -597,6 +681,11 @@ func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 // Funciona en modo Servidor Local (BD directa) y Caja (proxy HTTP).
 func (a *App) ServiceBuscarClientes(q string) ([]dto.ClienteDto, error) {
 	return a.clientesService().BuscarClientes(q)
+}
+
+// ServiceListarClientes obtiene el catálogo completo para el tablero.
+func (a *App) ServiceListarClientes() ([]dto.ClienteDto, error) {
+	return a.clientesService().ListarClientes()
 }
 
 // ── Cloud (solo Servidor Local) ───────────────────────────────────────────────

@@ -252,7 +252,7 @@ export function ProductsPage() {
       </div>
 
       {/* ── Main Content ─────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-bg-subtle">
+      <div className="flex-1 flex flex-col overflow-hidden bg-transparent">
 
         {/* Header */}
         <div className="flex flex-col gap-4 p-5 shrink-0 bg-surface border-b border-border">

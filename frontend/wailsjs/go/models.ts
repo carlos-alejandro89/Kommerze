@@ -134,6 +134,8 @@ export namespace dto {
 	    RFC: string;
 	    Correo: string;
 	    Telefono: string;
+	    CreditoMaximo: number;
+	    DiasCredito: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ClienteDto(source);
@@ -147,6 +149,8 @@ export namespace dto {
 	        this.RFC = source["RFC"];
 	        this.Correo = source["Correo"];
 	        this.Telefono = source["Telefono"];
+	        this.CreditoMaximo = source["CreditoMaximo"];
+	        this.DiasCredito = source["DiasCredito"];
 	    }
 	}
 	export class CotizacionItemDto {
@@ -822,6 +826,72 @@ export namespace services {
 	        this.password = source["password"];
 	    }
 	}
+	export class ReceiptLegendGroup {
+	    text: string;
+	    bold: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReceiptLegendGroup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.bold = source["bold"];
+	    }
+	}
+	export class ReceiptConfig {
+	    businessName?: string;
+	    legendGroups?: ReceiptLegendGroup[];
+	    legends?: string[];
+	    printerAddress?: string;
+	    printerPaperWidthMm?: number;
+	    printerPaperCut?: boolean;
+	    printerOpenDrawer?: boolean;
+	    smtpHost?: string;
+	    smtpPort?: string;
+	    smtpUser?: string;
+	    smtpPassword?: string;
+	    smtpFrom?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReceiptConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.businessName = source["businessName"];
+	        this.legendGroups = this.convertValues(source["legendGroups"], ReceiptLegendGroup);
+	        this.legends = source["legends"];
+	        this.printerAddress = source["printerAddress"];
+	        this.printerPaperWidthMm = source["printerPaperWidthMm"];
+	        this.printerPaperCut = source["printerPaperCut"];
+	        this.printerOpenDrawer = source["printerOpenDrawer"];
+	        this.smtpHost = source["smtpHost"];
+	        this.smtpPort = source["smtpPort"];
+	        this.smtpUser = source["smtpUser"];
+	        this.smtpPassword = source["smtpPassword"];
+	        this.smtpFrom = source["smtpFrom"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LicenciaInfo {
 	    guid: string;
 	    licenciaKey: string;
@@ -923,6 +993,7 @@ export namespace services {
 	    dbName?: string;
 	    dbSslMode?: string;
 	    timeZone?: string;
+	    receipt?: ReceiptConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new KommerzConfig(source);
@@ -946,6 +1017,7 @@ export namespace services {
 	        this.dbName = source["dbName"];
 	        this.dbSslMode = source["dbSslMode"];
 	        this.timeZone = source["timeZone"];
+	        this.receipt = this.convertValues(source["receipt"], ReceiptConfig);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -990,6 +1062,8 @@ export namespace services {
 	        this.traceability = source["traceability"];
 	    }
 	}
+	
+	
 
 }
 

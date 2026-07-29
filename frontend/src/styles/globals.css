@@ -338,6 +338,31 @@
   border: 1px solid oklch(from var(--border) l c h / 0.5);
 }
 
+/* Fondo compartido para el menú principal y todos los módulos del sistema. */
+.kommerze-gradient-bg {
+  background-color: #f4f8fe;
+  background-image:
+    radial-gradient(circle at 58% 5%, rgba(219, 233, 255, 0.72), transparent 34%),
+    linear-gradient(135deg, #f9fbff 0%, #f2f7fd 60%, #f7faff 100%);
+  background-attachment: fixed;
+}
+
+.dark .kommerze-gradient-bg {
+  background-color: #07111f;
+  background-image:
+    radial-gradient(circle at 58% 5%, rgba(26, 73, 139, 0.24), transparent 34%),
+    linear-gradient(135deg, #091525 0%, #07111f 60%, #0a1627 100%);
+}
+
+/*
+ * Las páginas existentes suelen declarar un color sólido en su contenedor
+ * raíz. Se neutraliza solo ese primer nivel para revelar el degradado del
+ * layout, sin modificar superficies internas como cards, inputs o tablas.
+ */
+.kommerze-module-surface > * {
+  background-color: transparent !important;
+}
+
 /* ─────────────────────────────────────────────
    Home Screen — Module Accent Colors (CarPlay)
    Usados por ModuleCard para gradientes y glows

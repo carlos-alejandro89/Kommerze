@@ -32,6 +32,8 @@ const OrderPlacedPage = lazy(() => import('@/features/pos/pages/OrderPlacedPage'
 const ProductsPage = lazy(() => import('@/features/products/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
 const CreateProductPage = lazy(() => import('@/features/products/pages/CreateProductPage').then(m => ({ default: m.CreateProductPage })));
 const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ClientsPage = lazy(() => import('@/features/clients/pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
+const ClientFormPage = lazy(() => import('@/features/clients/pages/ClientFormPage').then(m => ({ default: m.ClientFormPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const SyncPage = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
 const InventoryImportPage = lazy(() => import('@/features/inventory-import/pages/InventoryImportPage').then(m => ({ default: m.InventoryImportPage })));
@@ -39,6 +41,7 @@ const AperturaCajaPage = lazy(() => import('@/features/pos/pages/AperturaCajaPag
 const CierreCajaPage = lazy(() => import('@/features/pos/pages/CierreCajaPage').then(m => ({ default: m.CierreCajaPage })));
 const CortesSucursalPage = lazy(() => import('@/features/pos/pages/CortesSucursalPage').then(m => ({ default: m.CortesSucursalPage })));
 const HomePage = lazy(() => import('@/features/home/pages/HomePage').then(m => ({ default: m.HomePage })));
+const MainMenuV2 = lazy(() => import('@/features/home/pages/MainMenuV2').then(m => ({ default: m.MainMenuV2 })));
 const AuditoriaPage = lazy(() => import('@/features/audit/pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
@@ -116,6 +119,10 @@ export const router = createBrowserRouter(
         { index: true, element: <Navigate to="/home" replace /> },
         {
           path: '/home',
+          element: <SuspensePage><MainMenuV2 /></SuspensePage>,
+        },
+        {
+          path: '/home-classic',
           element: <SuspensePage><HomePage /></SuspensePage>,
         },
         {
@@ -149,6 +156,18 @@ export const router = createBrowserRouter(
         {
           path: '/history',
           element: <SuspensePage><HistoryPage /></SuspensePage>,
+        },
+        {
+          path: '/clients',
+          element: <SuspensePage><ClientsPage /></SuspensePage>,
+        },
+        {
+          path: '/clients/new',
+          element: <SuspensePage><ClientFormPage /></SuspensePage>,
+        },
+        {
+          path: '/clients/:guid/edit',
+          element: <SuspensePage><ClientFormPage /></SuspensePage>,
         },
         {
           path: '/settings',

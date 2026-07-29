@@ -18,6 +18,7 @@ import { usePosService } from './usePosService';
 import { useActivation } from '@/providers/ActivationProvider';
 import { toast } from 'sonner';
 import { isCardPayment, pinpadConfigurada } from './components/payment-method-utils';
+import { EventsOn } from '../../../wailsjs/runtime/runtime';
 const shoppingCart = [];
 
 const netPaySaleTransaction = (payload) => {
@@ -28,12 +29,50 @@ const netPaySaleTransaction = (payload) => {
     return service(payload);
 };
 
+const getNetPayCardPaymentType = (data) => {
+    const cardType = String(
+        data?.cardType ??
+        data?.CardType ??
+        data?.raw?.card_type ??
+        data?.raw?.cardType ??
+        data?.raw?.CardType ??
+        data?.Raw?.card_type ??
+        data?.Raw?.cardType ??
+        data?.Raw?.CardType ??
+        ''
+    ).trim().toUpperCase();
+
+    if (cardType === 'C') {
+        return { Clave: '04', Nombre: 'Tarjeta de crédito' };
+    }
+
+    if (cardType === 'D') {
+        return { Clave: '28', Nombre: 'Tarjeta de débito' };
+    }
+
+    return {};
+};
+
+const getNetPayCardBrand = (data) => String(
+    data?.cardTypeName ??
+    data?.CardTypeName ??
+    data?.raw?.cardTypeName ??
+    data?.raw?.card_type_name ??
+    data?.raw?.CardTypeName ??
+    data?.Raw?.cardTypeName ??
+    data?.Raw?.card_type_name ??
+    data?.Raw?.CardTypeName ??
+    ''
+).trim();
+
 
 export function CartStepThree() {
     const navigate = useNavigate();
     const posService = usePosService();
     const { store } = useActivation();
     const idUnicoRef = React.useRef(crypto.randomUUID());
+    const pinpadPaymentRef = React.useRef(null);
+    const pinpadCloseTimeoutRef = React.useRef(null);
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     //const [productId, setProductId] = React.useState(null);
@@ -43,6 +82,8 @@ export function CartStepThree() {
     const [pinpadDialog, setPinpadDialog] = React.useState({
         open: false,
         amount: 0,
+        status: 'waiting',
+        message: '',
     });
     const [pagosAplicados, setPagosAplicados] = React.useState(() => {
         try {
@@ -122,6 +163,78 @@ export function CartStepThree() {
         setPaymentMethod(paymentMethod);
     }
 
+    React.useEffect(() => {
+        const unsub = EventsOn('netpay_payment_response', (data) => {
+            const pendingPayment = pinpadPaymentRef.current;
+            if (!pendingPayment) return;
+
+            const paymentGuid = data?.paymentGuid ?? data?.PaymentGuid ?? data?.raw?.paymentGuid ?? data?.Raw?.paymentGuid;
+            if (paymentGuid && paymentGuid !== idUnicoRef.current) return;
+
+            const responseCode = String(data?.responseCode ?? data?.ResponseCode ?? '');
+            const message = data?.message ?? data?.Message ?? 'Pago aprobado correctamente';
+            const isApproved = responseCode === '00';
+
+            pinpadPaymentRef.current = null;
+
+            setPinpadDialog(current => ({
+                ...current,
+                open: true,
+                status: isApproved ? 'success' : 'error',
+                message: message || (isApproved ? 'Pago aprobado correctamente' : 'No fue posible aprobar el pago'),
+            }));
+
+            if (pinpadCloseTimeoutRef.current) {
+                clearTimeout(pinpadCloseTimeoutRef.current);
+            }
+
+            pinpadCloseTimeoutRef.current = setTimeout(() => {
+                setPinpadDialog(current => ({
+                    ...current,
+                    open: false,
+                    status: 'waiting',
+                    message: '',
+                }));
+                pinpadCloseTimeoutRef.current = null;
+            }, isApproved ? 2200 : 3200);
+
+            if (!isApproved) {
+                idUnicoRef.current = crypto.randomUUID();
+                return;
+            }
+
+            const cardPaymentType = getNetPayCardPaymentType(data);
+            const cardBrand = getNetPayCardBrand(data);
+            const pagoAutorizado = {
+                ...pendingPayment,
+                ...cardPaymentType,
+                TipoTarjeta: cardPaymentType.Nombre || pendingPayment.Nombre,
+                MarcaTarjeta: cardBrand,
+                Referencia: cardPaymentType.Nombre || pendingPayment.Nombre,
+                NetPay: data?.raw ?? data?.Raw ?? data,
+            };
+
+            setPagosAplicados(prev => {
+                const pagoExists = prev.find(pago => pago.ID == pagoAutorizado.ID);
+                if (pagoExists) {
+                    return prev.map(pago => pago.ID == pagoAutorizado.ID ? pagoAutorizado : pago);
+                }
+                return [...prev, pagoAutorizado];
+            });
+
+            idUnicoRef.current = crypto.randomUUID();
+        });
+
+        return () => {
+            if (typeof unsub === 'function') {
+                unsub();
+            }
+            if (pinpadCloseTimeoutRef.current) {
+                clearTimeout(pinpadCloseTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const buildNetPayPayload = (paymentInfo) => {
         const amount = Number(paymentInfo.Monto || 0);
 
@@ -150,11 +263,27 @@ export function CartStepThree() {
                 if (!result?.success) {
                     throw new Error(result?.message || result?.errors?.[0] || 'No fue posible procesar el pago con tarjeta');
                 }
-                setPinpadDialog({ open: true, amount: porPagar });
+                pinpadPaymentRef.current = {
+                    ...paymentInfo,
+                    Referencia: 'Pago con tarjeta',
+                    NetPaySolicitud: result.data,
+                };
+                setPinpadDialog({
+                    open: true,
+                    amount: porPagar,
+                    status: 'waiting',
+                    message: '',
+                });
                 toast.success('Comunicación establecida con la pinpad');
                 return;
             } catch (error) {
-                setPinpadDialog(current => ({ ...current, open: false }));
+                pinpadPaymentRef.current = null;
+                setPinpadDialog(current => ({
+                    ...current,
+                    open: false,
+                    status: 'waiting',
+                    message: '',
+                }));
                 toast.error(error?.message || 'No fue posible procesar el pago con tarjeta');
                 return;
             }
@@ -184,7 +313,7 @@ export function CartStepThree() {
     return (
 
         <div className="relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#f5f8fc] dark:bg-background">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+            <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
             <ContentHeader className="relative z-[var(--z-layer-base)] flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
                 <div className="w-full">
                     <Steps currentStep={2} />
@@ -331,7 +460,14 @@ export function CartStepThree() {
             <PinpadWaitingDialog
                 open={pinpadDialog.open}
                 amount={pinpadDialog.amount}
-                onOpenChange={(open) => setPinpadDialog(current => ({ ...current, open }))}
+                status={pinpadDialog.status}
+                message={pinpadDialog.message}
+                onOpenChange={(open) => setPinpadDialog(current => ({
+                    ...current,
+                    open,
+                    status: open ? current.status : 'waiting',
+                    message: open ? current.message : '',
+                }))}
             />
 
             <style jsx>{`

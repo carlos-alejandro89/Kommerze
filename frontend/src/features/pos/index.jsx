@@ -241,7 +241,7 @@ export default function POSPage() {
 
     return (
         <div className="relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#f5f8fc] dark:bg-background">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+            <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
             <ContentHeader className="relative z-[var(--z-layer-base)] flex items-center justify-between bg-surface supports-[backdrop-filter]:bg-surface">
                 <div className="w-full">
                     <Steps currentStep={0} />
@@ -255,17 +255,17 @@ export default function POSPage() {
                         {/* ── Left: Lista de productos en el carrito ────────── */}
                         <div className="flex-1 flex flex-col overflow-hidden border-r border-white/55 bg-white/22 dark:border-white/10 dark:bg-white/[0.025]">
                             {/* Barra de búsqueda */}
-                            <div className="mb-4 flex items-center justify-between px-4 pt-4">
-                                <div className="group relative mr-2 flex flex-1 items-center rounded-[1.15rem] border border-white/65 bg-white/70 px-4 py-2 shadow-sm backdrop-blur-xl transition-shadow focus-within:bg-white/82 focus-within:shadow-[0_14px_32px_-26px_rgba(15,23,42,0.34)] dark:border-white/10 dark:bg-white/[0.055] dark:focus-within:bg-white/[0.075] dark:focus-within:shadow-none">
+                            <div className="relative z-[var(--z-layer-dropdown)] mb-4 flex shrink-0 items-center justify-between px-4 pt-4">
+                                <div className="group relative mr-2 flex flex-1 items-center rounded-2xl border border-[#dce7f6] bg-white/90 px-4 py-2 shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] backdrop-blur-xl transition-all focus-within:border-blue-300/80 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065] dark:focus-within:border-blue-400/35 dark:focus-within:bg-white/[.085]">
                                     {/* Icono izquierdo */}
-                                    <Search className="mr-3 size-4 shrink-0 text-muted-foreground group-focus-within:text-primary" strokeWidth={2.25} />
+                                    <Search className="mr-3 size-4 shrink-0 text-[#6481ad] transition-colors group-focus-within:text-blue-600 dark:text-slate-400 dark:group-focus-within:text-blue-400" strokeWidth={2.25} />
 
                                     <input
                                         ref={searchInputRef}
                                         type="text"
                                         id="pos-search-input"
                                         placeholder="Buscar productos, SKU o código de barras..."
-                                        className="h-7 w-full min-w-0 bg-transparent pr-20 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/70"
+                                        className="h-7 w-full min-w-0 bg-transparent pr-20 text-sm font-medium text-[#1b3154] outline-none placeholder:text-[#7790b6] dark:text-slate-100 dark:placeholder:text-slate-500"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         onKeyDown={handleSearchKeyDown}
@@ -281,11 +281,11 @@ export default function POSPage() {
 
                                     {/* Iconos derecha */}
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors flex items-center gap-2">
-                                        <ScanBarcode className="size-4 text-muted-foreground/55" strokeWidth={2.2} />
-                                        <div className="mx-0.5 h-4 w-px bg-black/5 dark:bg-white/10" />
+                                        <ScanBarcode className="size-4 text-[#7890b2] dark:text-slate-500" strokeWidth={2.2} />
+                                        <div className="mx-0.5 h-4 w-px bg-[#dce7f6] dark:bg-white/10" />
                                         <Badge
                                             variant="secondary"
-                                            className="cursor-default rounded border border-black/5 bg-black/5 px-2 py-1 text-[10px] font-bold text-muted-foreground/70 shadow-none dark:border-white/10 dark:bg-white/[0.06]"
+                                            className="cursor-default rounded-lg border-0 bg-[#f4f7fc] px-2 py-1 text-[10px] font-semibold text-[#6b83a9] shadow-none dark:bg-white/10 dark:text-slate-400"
                                             title="Presiona F2 para enfocar la búsqueda"
                                         >
                                             F2
@@ -316,7 +316,7 @@ export default function POSPage() {
                             </div>
 
                             {/* Lista del carrito */}
-                            <Card className="flex-1 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-none mx-4 mb-4">
+                            <Card className="relative z-[var(--z-layer-base)] mx-4 mb-4 flex-1 overflow-hidden border-zinc-200 shadow-none dark:border-zinc-800">
                                 <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
                                     <ProductDetailsSheet
                                         open={open}
