@@ -157,6 +157,7 @@ export namespace dto {
 	    nivelGuid: string;
 	    nivelCodigo: string;
 	    producto: string;
+	    unidadMedida: string;
 	    cantidad: number;
 	    precioVenta: number;
 	    descuento: number;
@@ -171,6 +172,7 @@ export namespace dto {
 	        this.nivelGuid = source["nivelGuid"];
 	        this.nivelCodigo = source["nivelCodigo"];
 	        this.producto = source["producto"];
+	        this.unidadMedida = source["unidadMedida"];
 	        this.cantidad = source["cantidad"];
 	        this.precioVenta = source["precioVenta"];
 	        this.descuento = source["descuento"];
@@ -629,6 +631,7 @@ export namespace dto {
 	    nivelGuid: string;
 	    codigo: string;
 	    producto: string;
+	    unidadMedida: string;
 	    cantidad: number;
 	    precioVenta: number;
 	    descuento: number;
@@ -643,6 +646,7 @@ export namespace dto {
 	        this.nivelGuid = source["nivelGuid"];
 	        this.codigo = source["codigo"];
 	        this.producto = source["producto"];
+	        this.unidadMedida = source["unidadMedida"];
 	        this.cantidad = source["cantidad"];
 	        this.precioVenta = source["precioVenta"];
 	        this.descuento = source["descuento"];

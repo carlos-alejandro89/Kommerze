@@ -3,6 +3,7 @@ package repository
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -114,6 +115,116 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 	return dto.NewResponseDto(true, "Jornada activa encontrada", operacion, nil)
 }
 
+// ObtenerResumenVentasOperacion devuelve las ventas reales de la operación más
+// reciente, agrupadas por hora desde su apertura hasta su cierre (o hasta ahora).
+func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID uint) *dto.ResponseDto {
+	var operacion models.OperacionSucursal
+	if err := o.db.
+		Where("sucursal_id = ? AND deleted_at IS NULL", sucursalID).
+		Order("fecha_inicio DESC").
+		First(&operacion).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return dto.NewResponseDto(true, "Sin operaciones registradas", nil, nil)
+		}
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	fechaFin := time.Now()
+	if operacion.FechaFin != nil {
+		fechaFin = *operacion.FechaFin
+	}
+
+	type resumenRow struct {
+		Total  float64
+		Ventas int64
+	}
+	var resumen resumenRow
+	if err := o.db.Raw(`
+		SELECT COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total,
+		       COUNT(DISTINCT p.id) AS ventas
+		FROM pedido_detalle pd
+		INNER JOIN pedidos p ON p.id = pd.pedido_id
+		WHERE p.sucursal_origen_id = ?
+		  AND p.fecha BETWEEN ? AND ?
+		  AND p.estatus_id = 2
+		  AND p.tipo_pedido_id = 1
+		  AND p.deleted_at IS NULL
+	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&resumen).Error; err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	var horas []dto.VentaHoraDto
+	if err := o.db.Raw(`
+		SELECT date_trunc('hour', p.fecha) AS hora,
+		       COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total
+		FROM pedido_detalle pd
+		INNER JOIN pedidos p ON p.id = pd.pedido_id
+		WHERE p.sucursal_origen_id = ?
+		  AND p.fecha BETWEEN ? AND ?
+		  AND p.estatus_id = 2
+		  AND p.tipo_pedido_id = 1
+		  AND p.deleted_at IS NULL
+		GROUP BY date_trunc('hour', p.fecha)
+		ORDER BY hora
+	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&horas).Error; err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	// Completar horas sin ventas para mantener una línea temporal continua.
+	porHora := make([]dto.VentaHoraDto, 0)
+	porHoraMap := make(map[int64]float64, len(horas))
+	for _, hora := range horas {
+		porHoraMap[hora.Hora.Truncate(time.Hour).Unix()] = hora.Total
+	}
+	inicioHora := operacion.FechaInicio.Truncate(time.Hour)
+	finHora := fechaFin.Truncate(time.Hour)
+	for hora := inicioHora; !hora.After(finHora); hora = hora.Add(time.Hour) {
+		porHora = append(porHora, dto.VentaHoraDto{Hora: hora, Total: porHoraMap[hora.Unix()]})
+	}
+
+	var actividades []dto.ActividadOperacionDto
+	if err := o.db.Raw(`
+		SELECT
+			CASE
+				WHEN p.tipo_pedido_id = 1 THEN 'venta'
+				WHEN p.tipo_pedido_id = 2 THEN 'cotizacion'
+				WHEN t.id IS NOT NULL
+				  OR p.tipo_pedido_id = 3
+				  OR lower(COALESCE(tp.nombre, '')) LIKE '%transfer%'
+				  OR lower(COALESCE(tp.nombre, '')) LIKE '%traspas%' THEN 'transferencia'
+				WHEN lower(tp.nombre) LIKE '%baja%' THEN 'baja'
+				ELSE 'pedido'
+			END AS tipo,
+			p.folio,
+			p.fecha,
+			COALESCE(SUM(pd.precio_venta * pd.cantidad), 0)::double precision AS valor,
+			COALESCE(sd.nombre_sucursal, tp.nombre, '') AS detalle
+		FROM pedidos p
+		LEFT JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
+		LEFT JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+		LEFT JOIN traspasos t ON t.pedido_id = p.id AND t.deleted_at IS NULL
+		LEFT JOIN sucursales sd ON sd.id = t.sucursal_destino_id AND sd.deleted_at IS NULL
+		WHERE p.sucursal_origen_id = ?
+		  AND p.fecha BETWEEN ? AND ?
+		  AND p.deleted_at IS NULL
+		GROUP BY p.id, p.tipo_pedido_id, tp.nombre, t.id, sd.nombre_sucursal
+		ORDER BY p.fecha DESC
+		LIMIT 5
+	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&actividades).Error; err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	return dto.NewResponseDto(true, "Resumen de ventas de la operación", dto.ResumenVentasOperacionDto{
+		OperacionID: operacion.ID,
+		FechaInicio: operacion.FechaInicio,
+		FechaFin:    operacion.FechaFin,
+		Total:       resumen.Total,
+		Ventas:      resumen.Ventas,
+		PorHora:     porHora,
+		Actividades: actividades,
+	}, nil)
+}
+
 // acumuladosDia contiene los totales calculados desde pedidos/pagos del período.
 type acumuladosDia struct {
 	ValorVentas          decimal.Decimal
@@ -150,7 +261,7 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		SELECT 
 			COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total,
 			COALESCE(SUM(pd.descuento * pd.cantidad), 0)    AS descuentos
-		FROM pedido_detalles pd
+		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
 		WHERE p.sucursal_origen_id = ?
 		  AND p.fecha BETWEEN ? AND ?
@@ -215,6 +326,20 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 			return dto.NewResponseDto(false, "No se encontró la operación de sucursal", nil, nil)
 		}
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+
+	// Una jornada no puede cerrarse mientras existan turnos de caja activos.
+	// Esta validacion vive en backend para que aplique aunque la operacion sea
+	// invocada desde una Caja o por otro cliente distinto a la interfaz actual.
+	var cajasAbiertas int64
+	if err := o.db.Model(&models.OperacionCajero{}).
+		Where("operacion_sucursal_id = ? AND estatus_id = ? AND fecha_fin IS NULL", operacion.ID, 1).
+		Count(&cajasAbiertas).Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo validar el estado de las cajas", nil, []string{err.Error()})
+	}
+	if cajasAbiertas > 0 {
+		mensaje := fmt.Sprintf("No se puede cerrar la jornada: hay %d caja(s) con turno activo", cajasAbiertas)
+		return dto.NewResponseDto(false, mensaje, map[string]any{"cajasAbiertas": cajasAbiertas}, nil)
 	}
 
 	// Calcular acumulados automáticamente

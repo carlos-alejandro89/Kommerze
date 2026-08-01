@@ -362,11 +362,11 @@ func (s *CotizacionService) ConvertirAVenta(
 		// 3. Cambiar tipo a Venta (1) y estatus a Completado (2)
 		tipoPedidoVenta := uint(1)
 		estatusCompletado := uint(2)
-		
+
 		pedido.TipoPedidoID = &tipoPedidoVenta
 		pedido.EstatusID = &estatusCompletado
 		pedido.SucursalOrigenID = sucursalOrigenID
-		
+
 		if err := tx.Select("TipoPedidoID", "EstatusID", "SucursalOrigenID").Updates(&pedido).Error; err != nil {
 			return fmt.Errorf("actualizando pedido: %w", err)
 		}
@@ -431,7 +431,11 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 	}
 
 	var detalles []models.PedidoDetalle
-	s.db.Preload("Nivel").Where("pedido_id = ? AND deleted_at IS NULL", pedidoID).Find(&detalles)
+	s.db.Preload("Nivel").
+		Preload("Nivel.Producto").
+		Preload("Nivel.Empaque").
+		Where("pedido_id = ? AND deleted_at IS NULL", pedidoID).
+		Find(&detalles)
 
 	// Construir items
 	var items []dto.CotizacionItemDto
@@ -444,13 +448,14 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 		subtotal += qty * price
 		totalDescuento += disc
 		items = append(items, dto.CotizacionItemDto{
-			NivelGuid:   d.Nivel.Guid.String(),
-			NivelCodigo: d.Nivel.Codigo,
-			Producto:    "", // se puede enriquecer con join si se necesita
-			Cantidad:    qty,
-			PrecioVenta: price,
-			Descuento:   disc,
-			Subtotal:    sub,
+			NivelGuid:    d.Nivel.Guid.String(),
+			NivelCodigo:  d.Nivel.Codigo,
+			Producto:     d.Nivel.Producto.Descripcion,
+			UnidadMedida: d.Nivel.Empaque.NombreEmpaque,
+			Cantidad:     qty,
+			PrecioVenta:  price,
+			Descuento:    disc,
+			Subtotal:     sub,
 		})
 	}
 

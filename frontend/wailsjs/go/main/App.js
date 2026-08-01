@@ -174,6 +174,10 @@ export function ServiceObtenerResumenInventario() {
   return window['go']['main']['App']['ServiceObtenerResumenInventario']();
 }
 
+export function ServiceObtenerResumenVentasOperacion(arg1) {
+  return window['go']['main']['App']['ServiceObtenerResumenVentasOperacion'](arg1);
+}
+
 export function ServiceObtenerSucursalLocal() {
   return window['go']['main']['App']['ServiceObtenerSucursalLocal']();
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, RefreshCw, Play, Square, Users, DollarSign, Banknote, CreditCard, FileText, MoreHorizontal, BarChart3, Package, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Building2, RefreshCw, Play, Square, Users, DollarSign, Banknote, CreditCard, FileText, MoreHorizontal, BarChart3, Package, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -23,6 +24,7 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', c
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
 export function CortesSucursalPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { store, isInitialized } = useActivation();
 
@@ -112,6 +114,16 @@ export function CortesSucursalPage() {
   // ── Cerrar jornada ────────────────────────────────────────────────────────
   const handleCerrarJornada = async () => {
     if (!opSucursal) return;
+    const cajasAbiertas = turnos.filter(turno => {
+      const estatusID = turno?.EstatusID ?? turno?.estatusID;
+      const fechaFin = turno?.FechaFin ?? turno?.fechaFin;
+      return Number(estatusID) === 1 && !fechaFin;
+    });
+    if (cajasAbiertas.length > 0) {
+      setActiveTab('cajas');
+      setAlertAction('cajas-abiertas');
+      return;
+    }
     setAlertAction('cerrar');
   };
 
@@ -138,6 +150,12 @@ export function CortesSucursalPage() {
   };
 
   const jornadaActiva = opSucursal && (opSucursal?.EstatusID === 1 || opSucursal?.estatusID === 1);
+  const turnosActivos = turnos.filter((turno) => {
+    const estatusID = turno?.EstatusID ?? turno?.estatusID;
+    const fechaFin = turno?.FechaFin ?? turno?.fechaFin;
+    return Number(estatusID) === 1 && !fechaFin;
+  });
+  const turnosCerrados = turnos.length - turnosActivos.length;
 
   if (loading) {
     return (
@@ -148,35 +166,42 @@ export function CortesSucursalPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden bg-bg-subtle animate-fade-in">
+    <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden animate-fade-in">
 
       {/* ── Page Header + Tabs ──────────────────────────────────────────── */}
-      <div className="shrink-0 border-b border-border bg-surface px-6 pt-5 pb-0">
-        <div className="max-w-4xl mx-auto">
+      <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
+        <div className="mx-auto max-w-[1320px]">
+          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
+            <span>/</span>
+            <span className="text-foreground">Cierre de jornada</span>
+          </nav>
 
           {/* Título + badge estado */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Building2 className="size-5 text-primary" />
-              <h1 className="text-xl font-bold text-foreground">Corte Sucursal</h1>
+          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Building2 className="size-6" strokeWidth={1.8} />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Cierre de jornada</h1>
+                <p className="mt-0.5 text-xs text-muted-foreground">Control y seguimiento de la operación diaria de la sucursal.</p>
+              </div>
             </div>
-            {/* Badge de estado de jornada */}
-            <div className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border',
-              jornadaActiva
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
-                : 'bg-muted border-border text-muted-foreground',
-            )}>
-              <span className={cn('size-1.5 rounded-full', jornadaActiva ? 'bg-emerald-500' : 'bg-muted-foreground')} />
-              {jornadaActiva
-                ? `Activa desde ${fmtDate(opSucursal?.FechaInicio || opSucursal?.fechaInicio)}`
-                : 'Sin jornada activa'
-              }
+            <div className="flex items-center gap-3">
+              <div className={cn('hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold sm:flex', jornadaActiva ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border bg-muted text-muted-foreground')}>
+                <span className={cn('size-1.5 rounded-full', jornadaActiva ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+                {jornadaActiva ? 'Jornada activa' : 'Sin jornada activa'}
+              </div>
+              <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+                <ArrowLeft className="size-4" /> Volver al inicio
+              </button>
             </div>
-          </div>
+          </header>
 
           {/* Tabs */}
-          <div className="flex gap-1" role="tablist">
+          <div className="mt-4 flex justify-end rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/35 p-1" role="tablist">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -186,167 +211,162 @@ export function CortesSucursalPage() {
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg',
-                    'border border-b-0 transition-all duration-150',
-                    isActive
-                      ? 'bg-bg-subtle border-border text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                    'relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
+                    isActive ? 'border border-border/60 bg-background text-primary shadow-sm' : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
                   )}
-                  style={isActive ? { marginBottom: '-1px' } : {}}
                 >
-                  <tab.icon className={cn('size-4', isActive && 'text-primary')} />
+                  <tab.icon className="size-3.5" />
                   {tab.label}
                 </button>
               );
             })}
           </div>
+          </div>
         </div>
       </div>
 
       {/* ── Tab Content ─────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-5 lg:p-6">
+        <div className="mx-auto max-w-[1320px]">
 
           {/* ── JORNADA ───────────────────────────────────────────────────── */}
           {activeTab === 'jornada' && (
-            <div className="space-y-5">
-              <p className="text-sm text-muted-foreground">Controla el inicio y cierre de la jornada de la sucursal.</p>
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold tracking-[-0.015em] text-foreground">Estado de la jornada</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Consulta el periodo operativo, el inventario y los turnos asociados.</p>
+              </div>
 
-              {/* Info jornada */}
               {opSucursal ? (
-                <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
-                  <div className={cn(
-                    'px-5 py-4 flex items-center justify-between',
-                    jornadaActiva ? 'bg-emerald-600' : 'bg-muted',
-                  )}>
-                    <div>
-                      <p className={cn('text-xs font-semibold uppercase tracking-wider', jornadaActiva ? 'text-emerald-100' : 'text-muted-foreground')}>
-                        {jornadaActiva ? 'Jornada Activa' : 'Jornada Cerrada'}
-                      </p>
-                      <p className={cn('text-lg font-bold mt-0.5', jornadaActiva ? 'text-white' : 'text-foreground')}>
-                        Inicio: {fmtDate(opSucursal?.FechaInicio || opSucursal?.fechaInicio)}
-                      </p>
+                <>
+                  <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+                    <div className="flex flex-col justify-between gap-5 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.075] via-blue-500/[.025] to-transparent px-5 py-5 dark:border-white/10 dark:from-blue-400/[.09] sm:flex-row sm:items-center">
+                      <div className="flex items-center gap-4">
+                        <div className={cn('flex size-11 items-center justify-center rounded-xl', jornadaActiva ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground')}>
+                          <Building2 className="size-5" strokeWidth={1.8} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-foreground">Operación de sucursal</h3>
+                            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', jornadaActiva ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border bg-muted text-muted-foreground')}>
+                              {jornadaActiva ? 'Activa' : 'Cerrada'}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">Inició el {fmtDate(opSucursal?.FechaInicio || opSucursal?.fechaInicio)}</p>
+                        </div>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Finalización</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">{jornadaActiva ? 'Operación en curso' : fmtDate(opSucursal?.FechaFin || opSucursal?.fechaFin)}</p>
+                      </div>
                     </div>
-                    <div className={cn(
-                      'flex size-10 items-center justify-center rounded-xl',
-                      jornadaActiva ? 'bg-white/20' : 'bg-muted',
-                    )}>
-                      <Building2 className={cn('size-5', jornadaActiva ? 'text-white' : 'text-muted-foreground')} />
+                    <div className="grid gap-px bg-border/50 sm:grid-cols-2 xl:grid-cols-4">
+                      <JornadaMetric icon={Package} label="Inventario inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} tone="violet" />
+                      <JornadaMetric icon={DollarSign} label="Inventario actual" value={fmt(inventario)} tone="blue" />
+                      <JornadaMetric icon={Users} label="Turnos registrados" value={turnos.length} tone="cyan" />
+                      <JornadaMetric icon={AlertCircle} label="Turnos abiertos" value={turnosActivos.length} tone={turnosActivos.length ? 'amber' : 'emerald'} />
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="p-5 grid grid-cols-2 gap-3">
-                    <StatCell label="Inventario Inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
-                    <StatCell label="Turnos Cajeros" value={turnos.length} />
-                    {opSucursal?.FechaFin && (
-                      <StatCell label="Fecha Cierre" value={fmtDate(opSucursal.FechaFin || opSucursal.fechaFin)} colSpan />
-                    )}
-                  </div>
-                </div>
+                  {turnosActivos.length > 0 && (
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-300/45 bg-amber-50/55 px-4 py-3 text-amber-900 dark:border-amber-400/15 dark:bg-amber-400/[.055] dark:text-amber-200">
+                      <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-xs font-semibold">Hay {turnosActivos.length} {turnosActivos.length === 1 ? 'caja abierta' : 'cajas abiertas'}</p>
+                        <p className="mt-0.5 text-[11px] opacity-75">Todos los turnos deben cerrarse antes de finalizar la jornada.</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="rounded-xl border border-warning/30 bg-surface shadow-sm p-6 text-center space-y-3">
-                  <AlertCircle className="mx-auto size-10 text-warning" />
-                  <p className="text-sm text-muted-foreground">No hay jornada activa en esta sucursal.</p>
+                <div className="rounded-2xl border border-amber-300/45 bg-amber-50/45 px-6 py-10 text-center shadow-[0_16px_36px_-30px_rgba(217,119,6,.6)] backdrop-blur-xl dark:border-amber-400/15 dark:bg-amber-400/[.045]">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Building2 className="size-6" strokeWidth={1.8} />
+                  </div>
+                  <h3 className="mt-4 text-sm font-semibold text-foreground">La sucursal no tiene una jornada activa</h3>
+                  <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">Inicia una jornada para habilitar la apertura de cajas y registrar la operación del día.</p>
                 </div>
               )}
-
-              {/* Inventario actual */}
-              <div className="rounded-xl border border-border bg-surface shadow-sm p-4 flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-violet-500/10">
-                  <Package className="size-4 text-violet-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Valor inventario actual</p>
-                  <p className="text-base font-bold text-foreground">{fmt(inventario)}</p>
-                </div>
-              </div>
-
-              {/* Acciones */}
-              <div className="flex gap-3">
-                {!jornadaActiva && (
-                  <button
-                    onClick={handleIniciarJornada}
-                    disabled={submitting || !!opSucursal || !sucursalID}
-                    className={cn(
-                      'flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all shadow-md',
-                      submitting || !!opSucursal
-                        ? 'bg-emerald-400 cursor-not-allowed'
-                        : 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98]',
-                    )}
-                  >
-                    {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-                    Iniciar Jornada
-                  </button>
-                )}
-                {jornadaActiva && (
-                  <button
-                    onClick={handleCerrarJornada}
-                    disabled={submitting}
-                    className={cn(
-                      'flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all shadow-md',
-                      submitting
-                        ? 'bg-rose-400 cursor-not-allowed'
-                        : 'bg-rose-600 hover:bg-rose-500 active:scale-[0.98]',
-                    )}
-                  >
-                    {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Square className="size-4" />}
-                    Cerrar Jornada
-                  </button>
-                )}
-                <button
-                  onClick={fetchDatos}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-3 text-xs font-medium text-muted-foreground hover:bg-muted transition"
-                >
-                  <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-                  Actualizar
-                </button>
-              </div>
             </div>
           )}
 
           {/* ── TURNOS ────────────────────────────────────────────────────── */}
           {activeTab === 'cajas' && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{turnos.length} turno(s) registrado(s) en la jornada actual.</p>
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                <div>
+                  <h2 className="text-base font-semibold tracking-[-0.015em] text-foreground">Turnos de caja</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Seguimiento de responsables, horarios y fondos durante la jornada.</p>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] font-semibold">
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-600 dark:text-emerald-400">{turnosActivos.length} abiertos</span>
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">{turnosCerrados} cerrados</span>
+                </div>
+              </div>
 
-              {turnos.length === 0 ? (
-                <div className="rounded-xl border border-border bg-surface shadow-sm p-8 text-center">
-                  <Users className="mx-auto size-10 text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No hay turnos de cajero registrados aún.</p>
+              <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+                <div className="flex items-center gap-3 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.02] to-transparent px-5 py-4 dark:border-white/10 dark:from-blue-400/[.08]">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Users className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Registro de turnos</h3>
+                    <p className="text-[11px] text-muted-foreground">{turnos.length} {turnos.length === 1 ? 'turno registrado' : 'turnos registrados'}</p>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {turnos.map((turno) => {
-                    const activo = turno?.EstatusID === 1 || turno?.estatusID === 1;
-                    return (
-                      <div key={turno?.ID || turno?.id} className="rounded-xl border border-border bg-surface shadow-sm p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={cn('size-2.5 rounded-full', activo ? 'bg-emerald-500' : 'bg-muted-foreground')} />
-                            <span className="text-sm font-semibold text-foreground">
-                              {turno?.CajaNombre || turno?.cajaNombre || 'Sin nombre'}
-                            </span>
-                          </div>
-                          <span className={cn(
-                            'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                            activo
-                              ? 'bg-emerald-500/10 text-emerald-600'
-                              : 'bg-muted text-muted-foreground',
-                          )}>
-                            {activo ? 'ACTIVO' : 'CERRADO'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <MiniStat label="Cajero"   value={turno?.ResponsableCaja?.Nombre || turno?.responsableCaja?.nombre || '—'} />
-                          <MiniStat label="Apertura" value={fmt(turno?.FondoCajaApertura || turno?.fondoCajaApertura)} />
-                          <MiniStat label="Cierre"   value={turno?.FechaFin ? fmt(turno?.FondoCajaCierre || turno?.fondoCajaCierre) : '—'} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                {turnos.length === 0 ? (
+                  <div className="px-6 py-12 text-center">
+                    <div className="mx-auto flex size-11 items-center justify-center rounded-2xl bg-muted/70 text-muted-foreground"><Users className="size-5" /></div>
+                    <h3 className="mt-3 text-sm font-semibold text-foreground">Aún no hay turnos registrados</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Los turnos aparecerán aquí cuando una caja inicie operación.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[920px] text-left">
+                      <thead className="border-b border-border/60 bg-muted/20 text-[10px] font-semibold uppercase tracking-[.08em] text-muted-foreground">
+                        <tr>
+                          <th className="px-5 py-3">Caja</th>
+                          <th className="px-4 py-3">Responsable</th>
+                          <th className="px-4 py-3">Inicio</th>
+                          <th className="px-4 py-3 text-right">Fondo apertura</th>
+                          <th className="px-4 py-3">Cierre</th>
+                          <th className="px-5 py-3 text-right">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/55">
+                        {turnos.map((turno) => {
+                          const fechaFin = turno?.FechaFin ?? turno?.fechaFin;
+                          const activo = Number(turno?.EstatusID ?? turno?.estatusID) === 1 && !fechaFin;
+                          return (
+                            <tr key={turno?.ID || turno?.id} className="transition-colors hover:bg-blue-500/[.025]">
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <span className={cn('size-2 rounded-full', activo ? 'bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.1)]' : 'bg-slate-300 dark:bg-slate-600')} />
+                                  <span className="text-xs font-semibold text-foreground">{turno?.CajaNombre || turno?.cajaNombre || 'Caja sin nombre'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-xs text-foreground">{turno?.ResponsableCaja?.Nombre || turno?.responsableCaja?.nombre || '—'}</td>
+                              <td className="px-4 py-4 text-xs text-muted-foreground">{fmtDate(turno?.FechaInicio || turno?.fechaInicio)}</td>
+                              <td className="px-4 py-4 text-right text-xs font-semibold text-foreground">{fmt(turno?.FondoCajaApertura || turno?.fondoCajaApertura)}</td>
+                              <td className="px-4 py-4">
+                                {fechaFin ? (
+                                  <div><p className="text-xs text-muted-foreground">{fmtDate(fechaFin)}</p><p className="mt-0.5 text-[11px] font-semibold text-foreground">{fmt(turno?.FondoCajaCierre || turno?.fondoCajaCierre)}</p></div>
+                                ) : <span className="text-xs text-muted-foreground">Pendiente</span>}
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold', activo ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border bg-muted/60 text-muted-foreground')}>
+                                  {activo ? 'Abierto' : 'Cerrado'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
             </div>
           )}
 
@@ -356,7 +376,7 @@ export function CortesSucursalPage() {
               <p className="text-sm text-muted-foreground">Acumulados financieros de la jornada.</p>
 
               {!opSucursal ? (
-                <div className="rounded-xl border border-border bg-surface shadow-sm p-8 text-center">
+                <div className="rounded-2xl border border-white/70 bg-white/65 p-8 text-center shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
                   <AlertCircle className="mx-auto size-10 text-muted-foreground mb-3" />
                   <p className="text-sm text-muted-foreground">No hay jornada disponible.</p>
                 </div>
@@ -404,12 +424,36 @@ export function CortesSucursalPage() {
         </div>
       </div>
 
+      {activeTab === 'jornada' && (
+        <footer className="shrink-0 border-t border-white/70 bg-white/78 px-5 py-3.5 shadow-[0_-14px_38px_-32px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-background/85 lg:px-6">
+          <div className="mx-auto flex max-w-[1320px] items-center justify-end gap-3">
+            <button onClick={fetchDatos} disabled={loading} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/75 px-4 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50">
+              <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} /> Actualizar
+            </button>
+            {!jornadaActiva && (
+              <button onClick={handleIniciarJornada} disabled={submitting || !!opSucursal || !sucursalID} className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(5,150,105,.8)] transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
+                {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />} Iniciar jornada
+              </button>
+            )}
+            {jornadaActiva && (
+              <button onClick={handleCerrarJornada} disabled={submitting} className="flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-5 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(225,29,72,.75)] transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">
+                {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Square className="size-4" />} Cerrar jornada
+              </button>
+            )}
+          </div>
+        </footer>
+      )}
+
       <DialogAlert 
         open={alertAction !== null} 
         onOpenChange={(open) => !open && setAlertAction(null)}
-        title={alertAction === 'iniciar' ? 'Iniciar Jornada' : 'Cerrar Jornada'}
-        description={alertAction === 'iniciar' ? '¿Confirmas iniciar la jornada de esta sucursal?' : '¿Confirmas cerrar la jornada? Los acumulados se calcularán automáticamente.'}
-        onConfirm={alertAction === 'iniciar' ? confirmIniciarJornada : confirmCerrarJornada}
+        title={alertAction === 'iniciar' ? 'Iniciar Jornada' : alertAction === 'cajas-abiertas' ? 'Hay cajas abiertas' : 'Cerrar Jornada'}
+        description={alertAction === 'iniciar'
+          ? '¿Confirmas iniciar la jornada de esta sucursal?'
+          : alertAction === 'cajas-abiertas'
+            ? 'Debes cerrar todos los turnos de caja antes de cerrar la jornada de la sucursal.'
+            : '¿Confirmas cerrar la jornada? Los acumulados se calcularán automáticamente.'}
+        onConfirm={alertAction === 'iniciar' ? confirmIniciarJornada : alertAction === 'cerrar' ? confirmCerrarJornada : undefined}
         onCancel={() => setAlertAction(null)}
         type={alertAction === 'iniciar' ? 'success' : 'warning'}
       />
@@ -417,28 +461,31 @@ export function CortesSucursalPage() {
   );
 }
 
-function StatCell({ label, value, colSpan }) {
+function JornadaMetric({ icon: Icon, label, value, tone }) {
+  const tones = {
+    violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  };
   return (
-    <div className={cn('rounded-lg bg-bg-subtle border border-border p-3', colSpan && 'col-span-2')}>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p className="text-xs font-semibold text-foreground truncate">{value}</p>
+    <div className="flex items-center gap-3 bg-white/75 px-5 py-5 dark:bg-white/[.025]">
+      <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', tones[tone] || tones.blue)}>
+        <Icon className="size-4" strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-medium uppercase tracking-[.08em] text-muted-foreground">{label}</p>
+        <p className="mt-1 truncate text-sm font-bold text-foreground">{value}</p>
+      </div>
     </div>
   );
 }
 
 function Section({ title, icon: Icon, iconColor, children }) {
   return (
-    <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
-      <div className="border-b border-border bg-bg-subtle px-5 py-3 flex items-center gap-2">
+    <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+      <div className="flex items-center gap-2 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.025] to-transparent px-5 py-3.5 dark:border-white/10 dark:from-blue-400/[.09] dark:via-blue-400/[.025]">
         <Icon className={cn('size-4', iconColor)} />
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>

@@ -44,7 +44,10 @@ export function CartStepTwo() {
     const ObtenerTiposPedido = async () => {
         try {
             const res = await posService.obtenerTiposPedido();
-            setTiposPedido(res || []);
+            setTiposPedido((res || []).filter(tipo => {
+                const nombre = String(tipo.Nombre || '').trim().toLocaleLowerCase('es-MX');
+                return tipo.ID === 1 || tipo.ID === 2 || nombre === 'venta' || nombre === 'cotizacion' || nombre === 'cotización';
+            }));
         } catch (error) {
             console.error('Error al llamar a obtenerTiposPedido:', error);
         }
@@ -243,8 +246,7 @@ export function CartStepTwo() {
                                         </div>
                                     )}
 
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                        {/* Card: PEDIDO */}
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         {tiposPedido.map((tipoPedido) => (
                                             <BtnTipoPedido key={tipoPedido.ID} tipoPedido={tipoPedido} isActive={operationType === tipoPedido.ID} onClick={() => handeSetOperationType(tipoPedido.ID)} />
                                         ))}

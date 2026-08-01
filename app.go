@@ -564,6 +564,18 @@ func (a *App) ServiceObtenerOperacionSucursalActiva(sucursalID uint) *dto.Respon
 	return a.services.OperacionesSucursal.ObtenerOperacionSucursalActiva(sucursalID)
 }
 
+// ServiceObtenerResumenVentasOperacion devuelve el total y la serie horaria de
+// ventas de la jornada activa. Funciona en Servidor Local y Caja.
+func (a *App) ServiceObtenerResumenVentasOperacion(sucursalID uint) *dto.ResponseDto {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.ObtenerResumenVentasOperacion(sucursalID)
+	}
+	if a.services.OperacionesSucursal == nil {
+		return dto.NewResponseDto(false, "No disponible", nil, nil)
+	}
+	return a.services.OperacionesSucursal.ObtenerResumenVentasOperacion(sucursalID)
+}
+
 // ServiceCerrarOperacionSucursal calcula acumulados y cierra la jornada.
 // Tras el cierre emite el evento "jornada:cerrada" al frontend local (Wails)
 // y hace broadcast WebSocket a todas las Cajas conectadas.

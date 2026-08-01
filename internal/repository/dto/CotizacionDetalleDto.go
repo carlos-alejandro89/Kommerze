@@ -2,13 +2,14 @@ package dto
 
 // CotizacionItemDto representa un item de la cotizacion para mostrar en los modales.
 type CotizacionItemDto struct {
-	NivelGuid   string  `json:"nivelGuid"`
-	NivelCodigo string  `json:"nivelCodigo"`
-	Producto    string  `json:"producto"`
-	Cantidad    float64 `json:"cantidad"`
-	PrecioVenta float64 `json:"precioVenta"`
-	Descuento   float64 `json:"descuento"`
-	Subtotal    float64 `json:"subtotal"`
+	NivelGuid    string  `json:"nivelGuid"`
+	NivelCodigo  string  `json:"nivelCodigo"`
+	Producto     string  `json:"producto"`
+	UnidadMedida string  `json:"unidadMedida"`
+	Cantidad     float64 `json:"cantidad"`
+	PrecioVenta  float64 `json:"precioVenta"`
+	Descuento    float64 `json:"descuento"`
+	Subtotal     float64 `json:"subtotal"`
 }
 
 // CotizacionDetalleDto contiene toda la informacion de una cotizacion para los modales.

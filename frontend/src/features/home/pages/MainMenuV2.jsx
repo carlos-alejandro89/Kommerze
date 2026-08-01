@@ -64,12 +64,25 @@ const MODULES = [
   { id: 'configuracion', title: 'Configuración', subtitle: 'Parámetros del sistema', icon: Settings, color: '#607996', to: '/settings' },
 ];
 
-const RECENT_ACTIVITY = [
-  { icon: ShoppingCart, color: '#1779f5', title: 'Venta #VTA-000125', detail: 'Hace 5 min', value: '$1,250.00' },
-  { icon: ArrowLeftRight, color: '#13aa68', title: 'Traspaso #TRP-00008', detail: 'Hace 30 min', value: '$3,450.00' },
-  { icon: Package, color: '#e6a80a', title: 'Entrada de productos', detail: 'Hace 1 h', value: '$8,900.00' },
-  { icon: ClipboardCheck, color: '#8654df', title: 'Auditoría iniciada', detail: 'Hace 2 h', value: 'Sucursal Norte' },
-];
+const ACTIVITY_META = {
+  venta: { icon: ShoppingCart, color: '#1779f5', label: 'Venta' },
+  cotizacion: { icon: FileText, color: '#8654df', label: 'Cotización' },
+  transferencia: { icon: ArrowLeftRight, color: '#13aa68', label: 'Transferencia' },
+  baja: { icon: Package, color: '#e6a80a', label: 'Baja de mercancía' },
+  pedido: { icon: ClipboardCheck, color: '#607996', label: 'Operación' },
+};
+
+function relativeTime(value, now = new Date()) {
+  if (!value) return 'Fecha no disponible';
+  const seconds = Math.max(0, Math.floor((now.getTime() - new Date(value).getTime()) / 1000));
+  if (seconds < 60) return 'Hace unos segundos';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
+}
 
 function Brand() {
   return (
@@ -85,21 +98,52 @@ function Brand() {
   );
 }
 
-function SalesChart() {
+const money = value => Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+function SalesChart({ data = [] }) {
+  const chart = useMemo(() => {
+    const values = data.map(item => Number(item?.total ?? item?.Total ?? 0));
+    const max = Math.max(...values, 1);
+    const points = values.map((value, index) => ({
+      x: values.length <= 1 ? 125 : 2 + (index * 246) / (values.length - 1),
+      y: 94 - (value / max) * 78,
+    }));
+    if (points.length === 1) points.push({ x: 248, y: points[0].y });
+    if (points.length === 0) points.push({ x: 2, y: 94 }, { x: 248, y: 94 });
+    const line = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+    return { line, area: `${line} L248 104 L2 104 Z`, last: points.at(-1) };
+  }, [data]);
+
   return (
     <div className="mt-3 h-[104px] w-full">
-      <svg viewBox="0 0 250 104" className="h-full w-full overflow-visible" aria-label="Tendencia de ventas del día">
+      <svg viewBox="0 0 250 104" className="h-full w-full overflow-visible" aria-label="Ventas por hora durante la operación">
         <defs>
           <linearGradient id="menuV2Area" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#26a6ff" stopOpacity=".48" />
             <stop offset="100%" stopColor="#26a6ff" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d="M2 90 C15 74,20 92,34 77 S53 84,64 66 S80 59,94 38 S116 56,126 53 S150 40,165 50 S184 46,196 38 S216 47,248 10 L248 104 L2 104 Z" fill="url(#menuV2Area)" />
-        <path d="M2 90 C15 74,20 92,34 77 S53 84,64 66 S80 59,94 38 S116 56,126 53 S150 40,165 50 S184 46,196 38 S216 47,248 10" fill="none" stroke="#29a7ff" strokeWidth="3" strokeLinecap="round" />
+        <path d={chart.area} fill="url(#menuV2Area)" />
+        <path d={chart.line} fill="none" stroke="#29a7ff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         <line x1="125" y1="5" x2="125" y2="96" stroke="#7fb8ff" strokeOpacity=".25" strokeDasharray="3 4" />
-        <circle cx="248" cy="10" r="3.5" fill="#49bbff" />
+        <circle cx={chart.last.x} cy={chart.last.y} r="3.5" fill="#49bbff" />
       </svg>
+    </div>
+  );
+}
+
+function ChartTimeLabels({ data = [] }) {
+  const formatHour = item => {
+    const value = item?.hora ?? item?.Hora;
+    if (!value) return '--:--';
+    return new Date(value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  };
+  const middle = data.length ? data[Math.floor((data.length - 1) / 2)] : null;
+  return (
+    <div className="-mt-1 flex justify-between text-[10px] text-blue-200/80">
+      <span>{formatHour(data[0])}</span>
+      <span>{formatHour(middle)}</span>
+      <span>{formatHour(data.at(-1))}</span>
     </div>
   );
 }
@@ -139,11 +183,13 @@ export function MainMenuV2() {
   const [now, setNow] = useState(new Date());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [dark, setDark] = useMenuDarkMode();
+  const [salesSummary, setSalesSummary] = useState(null);
 
   const userName = user?.Nombre ?? user?.nombre ?? user?.CorreoElectronico ?? 'Usuario';
   const firstName = userName.split(' ').filter(Boolean)[0] || 'Usuario';
   const initials = userName.split(' ').filter(Boolean).slice(0, 2).map(word => word[0]?.toUpperCase()).join('');
   const storeName = store?.Nombre ?? store?.NombreSucursal ?? store?.nombre ?? license?.sucursal?.nombreSucursal ?? 'Matriz Centro';
+  const storeID = store?.ID ?? store?.id ?? 0;
 
   const modules = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -183,6 +229,33 @@ export function MainMenuV2() {
   }, []);
 
   useEffect(() => {
+    if (!storeID) {
+      setSalesSummary(null);
+      return undefined;
+    }
+
+    let active = true;
+    const loadSales = async () => {
+      try {
+        const service = window?.go?.main?.App?.ServiceObtenerResumenVentasOperacion;
+        if (!service) return;
+        const response = await service(storeID);
+        if (active) setSalesSummary(response?.success ? response.data : null);
+      } catch (error) {
+        console.error('No se pudo cargar el resumen de ventas de la operación', error);
+        if (active) setSalesSummary(null);
+      }
+    };
+
+    loadSales();
+    const timer = window.setInterval(loadSales, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [storeID]);
+
+  useEffect(() => {
     const closeUserMenu = event => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
@@ -216,14 +289,14 @@ export function MainMenuV2() {
           <Brand />
 
           <section className="mt-8 rounded-[22px] bg-[radial-gradient(circle_at_90%_95%,#0758c9_0%,#032761_45%,#031636_100%)] p-5 text-white shadow-[0_18px_36px_-18px_rgba(0,46,126,.62)]">
-            <div className="text-sm font-semibold text-blue-100">Ventas del día</div>
+            <div className="text-sm font-semibold text-blue-100">Ventas en esta operación</div>
             <div className="mt-2 flex items-center justify-between">
-              <strong className="text-[27px] tracking-tight">$24,850.00</strong>
-              <span className="rounded-full bg-emerald-400/12 px-2 py-1 text-xs font-bold text-emerald-300">↗ 12.5%</span>
+              <strong className="text-[27px] tracking-tight">{money(salesSummary?.total)}</strong>
+              <span className="rounded-full bg-sky-400/12 px-2 py-1 text-xs font-bold text-sky-200">{salesSummary?.ventas || 0} ventas</span>
             </div>
-            <div className="mt-1 text-sm font-semibold text-blue-100">vs. ayer</div>
-            <SalesChart />
-            <div className="-mt-1 flex justify-between text-[10px] text-blue-200/80"><span>00:00</span><span>12:00</span><span>23:59</span></div>
+            <div className="mt-1 text-xs font-medium text-blue-100/80">Acumulado desde la apertura de la jornada</div>
+            <SalesChart data={salesSummary?.porHora || []} />
+            <ChartTimeLabels data={salesSummary?.porHora || []} />
           </section>
 
           <section className="mt-4 rounded-[22px] bg-gradient-to-b from-[#073479] to-[#032255] p-5 text-white shadow-[0_18px_36px_-20px_rgba(0,46,126,.58)]">
@@ -245,18 +318,29 @@ export function MainMenuV2() {
 
             <h2 className="mt-5 text-sm font-semibold">Actividad reciente</h2>
             <div className="mt-3 space-y-3">
-              {RECENT_ACTIVITY.map(activity => (
-                <div key={activity.title} className="flex items-center gap-2.5">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: activity.color }}>
-                    <activity.icon className="size-3.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] font-semibold">{activity.title}</div>
-                    <div className="text-[10px] text-blue-200/70">{activity.detail}</div>
+              {(salesSummary?.actividades || []).map((activity, index) => {
+                const type = activity?.tipo || 'pedido';
+                const meta = ACTIVITY_META[type] || ACTIVITY_META.pedido;
+                const ActivityIcon = meta.icon;
+                const folio = String(activity?.folio || 0).padStart(6, '0');
+                return (
+                  <div key={`${type}-${activity?.folio}-${activity?.fecha || index}`} className="flex items-center gap-2.5">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: meta.color }}>
+                      <ActivityIcon className="size-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[11px] font-semibold">{meta.label} #{folio}</div>
+                      <div className="truncate text-[10px] text-blue-200/70">{relativeTime(activity?.fecha, now)}{activity?.detalle && type === 'transferencia' ? ` · ${activity.detalle}` : ''}</div>
+                    </div>
+                    <div className="max-w-[76px] truncate text-right text-[10px] font-semibold text-blue-50">{money(activity?.valor)}</div>
                   </div>
-                  <div className="max-w-[74px] text-right text-[10px] font-semibold text-blue-50">{activity.value}</div>
+                );
+              })}
+              {!salesSummary?.actividades?.length && (
+                <div className="rounded-xl border border-white/10 bg-white/[.045] px-3 py-4 text-center text-[11px] text-blue-100/70">
+                  Aún no hay actividad en esta operación.
                 </div>
-              ))}
+              )}
             </div>
           </section>
 

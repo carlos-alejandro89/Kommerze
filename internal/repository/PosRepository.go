@@ -165,6 +165,7 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 			ne.guid::text as nivel_guid,
 			coalesce(ne.codigo, '') as codigo,
 			coalesce(pr.descripcion, 'Producto') as producto,
+			coalesce(em.empaque, '') as unidad_medida,
 			pd.cantidad::double precision as cantidad,
 			pd.precio_venta::double precision as precio_venta,
 			pd.descuento::double precision as descuento,
@@ -174,6 +175,7 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 		join pedido_detalle pd on pd.pedido_id = p.id and pd.deleted_at is null
 		join nivel_empaque ne on ne.id = pd.nivel_id and ne.deleted_at is null
 		join productos pr on pr.id = ne.producto_id and pr.deleted_at is null
+		left join empaques em on em.id = ne.empaque_id and em.deleted_at is null
 		where t.deleted_at is null
 		order by t.fecha_envio desc, pd.id
 	`).Scan(&productos).Error; err != nil {

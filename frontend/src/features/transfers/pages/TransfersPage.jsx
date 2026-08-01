@@ -154,15 +154,15 @@ function TransferDetail({ item, onClose }) {
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/75 shadow-[0_14px_35px_-30px_rgba(20,54,110,.55)]">
               <div className="max-h-[280px] overflow-auto">
-                <table className="w-full min-w-[620px] text-sm">
+                <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="sticky top-0 z-10 border-b border-border/65 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-                      {['Artículo', 'Cantidad', 'Precio de venta', 'Importe'].map((label, index) => (
+                      {['Artículo', 'Unidad', 'Cantidad', 'Precio de venta', 'Importe'].map((label, index) => (
                         <th
                           key={label}
                           className={cn(
                             'px-4 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground',
-                            index === 0 ? 'text-left' : 'text-right',
+                            index === 0 ? 'text-left' : index === 1 ? 'text-center' : 'text-right',
                           )}
                         >
                           {label}
@@ -173,7 +173,7 @@ function TransferDetail({ item, onClose }) {
                   <tbody className="divide-y divide-border/60">
                     {(item.productos || []).length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-10 text-center text-xs text-muted-foreground">No hay artículos registrados en esta transferencia.</td>
+                        <td colSpan={5} className="py-10 text-center text-xs text-muted-foreground">No hay artículos registrados en esta transferencia.</td>
                       </tr>
                     )}
                     {(item.productos || []).map((product, index) => (
@@ -188,6 +188,11 @@ function TransferDetail({ item, onClose }) {
                               <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{product.codigo || 'Sin código'}</p>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="inline-flex rounded-md border border-border/60 bg-muted/25 px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                            {product.unidadMedida || '—'}
+                          </span>
                         </td>
                         <td className="px-4 py-3.5 text-right text-xs font-semibold tabular-nums">{Number(product.cantidad || 0)}</td>
                         <td className="px-4 py-3.5 text-right text-xs tabular-nums">

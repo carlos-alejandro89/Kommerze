@@ -3,13 +3,14 @@ package dto
 import "time"
 
 type TransferenciaProductoDto struct {
-	NivelGuid   string  `json:"nivelGuid"`
-	Codigo      string  `json:"codigo"`
-	Producto    string  `json:"producto"`
-	Cantidad    float64 `json:"cantidad"`
-	PrecioVenta float64 `json:"precioVenta"`
-	Descuento   float64 `json:"descuento"`
-	Importe     float64 `json:"importe"`
+	NivelGuid    string  `json:"nivelGuid"`
+	Codigo       string  `json:"codigo"`
+	Producto     string  `json:"producto"`
+	UnidadMedida string  `json:"unidadMedida"`
+	Cantidad     float64 `json:"cantidad"`
+	PrecioVenta  float64 `json:"precioVenta"`
+	Descuento    float64 `json:"descuento"`
+	Importe      float64 `json:"importe"`
 }
 
 // TransferenciaDto contiene la información de seguimiento de un traspaso entre

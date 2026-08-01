@@ -92,6 +92,8 @@ export function ServiceObtenerResumenCajero(arg1:number):Promise<dto.ResponseDto
 
 export function ServiceObtenerResumenInventario():Promise<dto.ResponseDto>;
 
+export function ServiceObtenerResumenVentasOperacion(arg1:number):Promise<dto.ResponseDto>;
+
 export function ServiceObtenerSucursalLocal():Promise<dto.ResponseDto>;
 
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;

@@ -123,6 +123,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/ws", l.handleCajaWs)
 	// Operaciones sucursal
 	mux.HandleFunc("/local/sucursal/operacion/activa", l.handleOperacionSucursalActiva)
+	mux.HandleFunc("/local/sucursal/operacion/resumen-ventas", l.handleResumenVentasOperacion)
 	mux.HandleFunc("/local/sucursal/operacion/cerrar", l.handleCerrarOperacionSucursal)
 	// Turnos de cajero
 	mux.HandleFunc("/local/cajero/turno/abrir", l.handleAbrirCaja)
@@ -618,6 +619,20 @@ func (l *LocalServerService) handleOperacionSucursalActiva(w http.ResponseWriter
 	}
 	result := l.operacionesSucursal.ObtenerOperacionSucursalActiva(sucursalID)
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleResumenVentasOperacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var sucursalID uint
+	fmt.Sscanf(r.URL.Query().Get("sucursalId"), "%d", &sucursalID)
+	if sucursalID == 0 {
+		writeError(w, http.StatusBadRequest, "sucursalId requerido")
+		return
+	}
+	writeJSON(w, http.StatusOK, l.operacionesSucursal.ObtenerResumenVentasOperacion(sucursalID))
 }
 
 func (l *LocalServerService) handleCerrarOperacionSucursal(w http.ResponseWriter, r *http.Request) {

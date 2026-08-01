@@ -198,15 +198,15 @@ export function ModalVerTransaccion({ row, onClose }) {
                 </div>
               ) : (
                 <div className="max-h-[330px] overflow-auto">
-                  <table className="w-full min-w-[700px] text-sm">
+                <table className="w-full min-w-[820px] text-sm">
                   <thead>
                     <tr className="sticky top-0 z-10 border-b border-border/65 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-                      {['Producto', 'Cantidad', 'Precio de venta', 'Descuento', 'Importe'].map((label, index) => (
+                      {['Producto', 'Unidad', 'Cantidad', 'Precio de venta', 'Descuento', 'Importe'].map((label, index) => (
                         <th
                           key={label}
                           className={cn(
                             'px-4 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground',
-                            index === 0 ? 'text-left' : 'text-right',
+                            index === 0 ? 'text-left' : index === 1 ? 'text-center' : 'text-right',
                           )}
                         >
                           {label}
@@ -217,7 +217,7 @@ export function ModalVerTransaccion({ row, onClose }) {
                   <tbody className="divide-y divide-border/60">
                     {items.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-xs text-muted-foreground">
+                        <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
                           No hay productos en esta operación.
                         </td>
                       </tr>
@@ -239,6 +239,11 @@ export function ModalVerTransaccion({ row, onClose }) {
                                 <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{item.nivelCodigo || 'Sin código'}</p>
                               </div>
                             </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <span className="inline-flex rounded-md border border-border/60 bg-muted/25 px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                              {item.unidadMedida || '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-3.5 text-right text-xs font-semibold tabular-nums">{Number(item.cantidad || 0)}</td>
                           <td className="px-4 py-3.5 text-right text-xs tabular-nums">{formatMXN(item.precioVenta)}</td>

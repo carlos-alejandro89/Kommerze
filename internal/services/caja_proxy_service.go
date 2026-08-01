@@ -373,6 +373,14 @@ func (c *CajaProxyService) ObtenerOperacionSucursalActiva(sucursalID uint) *dto.
 	return &result
 }
 
+func (c *CajaProxyService) ObtenerResumenVentasOperacion(sucursalID uint) *dto.ResponseDto {
+	var result dto.ResponseDto
+	if err := c.get(fmt.Sprintf("/local/sucursal/operacion/resumen-ventas?sucursalId=%d", sucursalID), &result); err != nil {
+		return &dto.ResponseDto{Success: false, Message: err.Error()}
+	}
+	return &result
+}
+
 // ── OperacionesCaja (proxy al Servidor Local) ─────────────────────────────────
 
 // AbrirCaja delega la apertura de turno al Servidor Local.

@@ -40,7 +40,7 @@ export function TurnoGuard({ children }) {
 
 function SinJornadaScreen({ onRefresh }) {
   return (
-    <BlockScreen
+    <TurnoBlockScreen
       variant="danger"
       icon={ShieldAlert}
       title="Sucursal Cerrada"
@@ -59,7 +59,7 @@ function SinTurnoScreen({ onRefresh }) {
   const navigate = useNavigate();
 
   return (
-    <BlockScreen
+    <TurnoBlockScreen
       variant="warning"
       icon={Lock}
       title="Turno No Iniciado"
@@ -120,7 +120,7 @@ const VARIANTS = {
   },
 };
 
-function BlockScreen({ variant, icon: Icon, title, subtitle, description, actions }) {
+export function TurnoBlockScreen({ variant, icon: Icon, title, subtitle, description, actions }) {
   const c = VARIANTS[variant];
 
   return (
@@ -190,11 +190,12 @@ function BlockScreen({ variant, icon: Icon, title, subtitle, description, action
             </p>
           </div>
 
-          {/* ── Divider ── */}
-          <div className="h-px bg-white/5 mx-4" />
-
-          {/* ── Actions ── */}
-          <div>{actions}</div>
+          {actions && (
+            <>
+              <div className="h-px bg-white/5 mx-4" />
+              <div>{actions}</div>
+            </>
+          )}
         </div>
       </div>
 

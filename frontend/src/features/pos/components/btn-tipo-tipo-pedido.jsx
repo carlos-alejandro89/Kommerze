@@ -1,41 +1,41 @@
 import { cn } from '@/lib/utils';
-import { Package, FileText, ArrowRightLeft } from 'lucide-react';
+import { Check, FileText, ShoppingCart } from 'lucide-react';
 
 export function BtnTipoPedido({ tipoPedido, isActive, onClick }) {
     const Icons = {
-        'Venta': Package,
+        'Venta': ShoppingCart,
         'Cotización': FileText,
-        'Transferencia': ArrowRightLeft,
     }
 
-    const Icono = Icons[tipoPedido.Nombre] || Package
+    const Icono = Icons[tipoPedido.Nombre] || FileText;
+    const descripcion = tipoPedido.Nombre === 'Venta'
+        ? 'Registra la operación, procesa el pago y descuenta las existencias.'
+        : 'Genera una propuesta de venta sin afectar las existencias.';
 
     return (
         <button
+            type="button"
             onClick={() => onClick(tipoPedido.ID)}
             className={cn(
-                "w-full rounded-xl border p-3 flex flex-col justify-between text-left transition-all",
+                'flex min-h-[96px] w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all',
                 isActive
-                    ? "bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)]"
-                    : "bg-background border-border hover:border-primary/50"
+                    ? 'border-blue-500/70 bg-blue-50/65 shadow-[0_12px_30px_-25px_rgba(8,118,249,.8)] ring-1 ring-blue-500/15 dark:bg-blue-400/[.07]'
+                    : 'border-border/70 bg-background/55 hover:border-blue-300 hover:bg-blue-50/30 dark:hover:bg-blue-400/[.04]'
             )}
         >
-            <div className="mb-1">
-                <div className="flex items-center gap-1.5 mb-2">
-                    <div className={cn(
-                        "flex items-center justify-center size-6 rounded-md transition-colors",
-                        isActive ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
-                    )}>
-                        <Icono className="size-3.5" />
-                    </div>
-
-                </div>
-                <div className="font-semibold text-sm mb-1 text-foreground">{tipoPedido.Nombre}</div>
-                <div className="text-xs text-muted-foreground">
-                    {tipoPedido.Descripcion}
-                </div>
-
-            </div>
+            <span className={cn(
+                'flex size-12 shrink-0 items-center justify-center rounded-xl',
+                isActive ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-300',
+            )}>
+                <Icono className="size-6" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-foreground">{tipoPedido.Nombre}</span>
+                    {isActive && <Check className="size-4 text-blue-600 dark:text-blue-300" />}
+                </span>
+                <span className="mt-1 block max-w-md text-xs leading-relaxed text-muted-foreground">{descripcion}</span>
+            </span>
         </button>
     )
 }

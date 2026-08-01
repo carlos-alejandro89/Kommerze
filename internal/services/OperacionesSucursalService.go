@@ -34,6 +34,10 @@ func (o *OperacionesSucursalService) ObtenerOperacionSucursalActiva(sucursalID u
 	return o.operacionesSucursalRepo.ObtenerOperacionSucursalActiva(sucursalID)
 }
 
+func (o *OperacionesSucursalService) ObtenerResumenVentasOperacion(sucursalID uint) *dto.ResponseDto {
+	return o.operacionesSucursalRepo.ObtenerResumenVentasOperacion(sucursalID)
+}
+
 // CerrarOperacionSucursal calcula acumulados automáticamente y cierra la jornada.
 func (o *OperacionesSucursalService) CerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDto) *dto.ResponseDto {
 	return o.operacionesSucursalRepo.CerrarOperacionSucursal(datos)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Lock, CheckCircle, AlertCircle, RefreshCw, Store, User } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
+import { Wallet, Lock, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -9,7 +10,8 @@ import {
   ServiceObtenerOperacionCajeroActiva,
   ServiceAbrirCaja,
 } from '../../../../wailsjs/go/main/App';
-import { Alert, AlertIcon, AlertContent, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertIcon, AlertContent, AlertTitle } from '@/components/ui/alert';
+import { TurnoBlockScreen } from '@/components/TurnoGuard';
 
 export function AperturaCajaPage() {
   const { user } = useAuth();
@@ -21,8 +23,6 @@ export function AperturaCajaPage() {
 
   const [loading, setLoading]         = useState(true);
   const [submitting, setSubmitting]   = useState(false);
-  const [success, setSuccess]         = useState(false);
-
   const [opSucursal, setOpSucursal]   = useState(null);
   const [turnoActivo, setTurnoActivo] = useState(null);
 
@@ -71,7 +71,6 @@ export function AperturaCajaPage() {
         FondoCajaApertura:   parseFloat(fondoApertura),
       });
       if (res?.success) {
-        setSuccess(true);
         setTurnoActivo(res.data);
         toast.success('Caja abierta correctamente');
       } else {
@@ -95,45 +94,19 @@ export function AperturaCajaPage() {
 
   // ── Turno ya abierto ───────────────────────────────────────────────────────
   if (turnoActivo) {
-    return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-bg-subtle p-4">
-        <div className="w-full max-w-md rounded-2xl border border-success/30 bg-surface shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-8 text-center">
-            <CheckCircle className="mx-auto size-14 text-white mb-3" />
-            <h1 className="text-2xl font-bold text-white">Caja Abierta</h1>
-            <p className="text-emerald-100 text-sm mt-1">Tu turno ya está activo</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="rounded-xl bg-bg-subtle border border-border p-4 space-y-3">
-              <InfoRow icon={Store}  label="Caja"          value={turnoActivo?.CajaNombre || turnoActivo?.cajaNombre || '—'} />
-              <InfoRow icon={User}   label="Responsable"   value={turnoActivo?.ResponsableCaja?.Nombre || turnoActivo?.responsableCaja?.nombre || '—'} />
-              <InfoRow icon={Wallet} label="Fondo Apertura" value={`$${Number(turnoActivo?.FondoCajaApertura || turnoActivo?.fondoCajaApertura || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`} />
-            </div>
-            <p className="text-xs text-center text-muted-foreground">
-              Para cerrar tu turno, ve a <span className="font-semibold text-foreground">Cierre de Caja</span>.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/caja/cierre" replace />;
   }
 
   // ── Sin jornada activa ─────────────────────────────────────────────────────
   if (!opSucursal) {
     return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-bg-subtle p-4">
-        <Alert variant="warning" appearance="light" size="lg" className="w-full max-w-md shadow-lg">
-          <AlertIcon>
-            <AlertCircle />
-          </AlertIcon>
-          <AlertContent>
-            <AlertTitle>Sin Jornada Activa</AlertTitle>
-            <AlertDescription>
-              No hay una jornada de sucursal activa. El supervisor debe iniciar la jornada antes de abrir cajas.
-            </AlertDescription>
-          </AlertContent>
-        </Alert>
-      </div>
+      <TurnoBlockScreen
+        variant="warning"
+        icon={AlertTriangle}
+        title="Sin Jornada Activa"
+        subtitle="No hay una jornada de sucursal activa."
+        description="El supervisor debe iniciar la jornada antes de que se puedan abrir turnos de caja."
+      />
     );
   }
 
@@ -221,20 +194,6 @@ export function AperturaCajaPage() {
             }
           </button>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
-        <Icon className="size-4 text-muted-foreground" />
-      </div>
-      <div className="flex-1 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <span className="text-sm font-semibold text-foreground">{value}</span>
       </div>
     </div>
   );

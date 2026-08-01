@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Store, Clock, Home, Sun, Moon, LogOut, User, ChevronDown } from 'lucide-react';
+import { Clock, Sun, Moon, LogOut, User, ChevronDown } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
@@ -32,15 +32,14 @@ function useDarkMode() {
  * para adaptarse correctamente al tema claro/oscuro.
  *
  * Props:
- *   showHomeButton  boolean  — muestra el botón "← Inicio" (false en /home)
  *   showPageTitle   boolean  — muestra el título de la ruta activa (false en /home)
  *
  * Estructura:
- *   Izquierda │ Logo Kommerze [+ botón Inicio]
+ *   Izquierda │ Logo Kommerze (acceso al inicio)
  *   Centro    │ [Título de página +] Sucursal · Terminal
  *   Derecha   │ Reloj · Toggle Tema · Notificaciones · UserMenu (dropdown + logout)
  */
-export function AppHeader({ showHomeButton = true, showPageTitle = true }) {
+export function AppHeader({ showPageTitle = true }) {
   const { user, logout } = useAuth();
   const { store, operation, license } = useActivation();
   const location = useLocation();
@@ -97,39 +96,16 @@ export function AppHeader({ showHomeButton = true, showPageTitle = true }) {
   return (
     <header className="relative flex h-14 shrink-0 items-center justify-between px-4 border-b border-border bg-surface">
 
-      {/* ── Izquierda: Logo + botón Inicio ────────────── */}
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
-            <Store className="size-3.5 text-primary" strokeWidth={2} />
-          </div>
-          <span className="text-xs font-bold tracking-tight text-foreground hidden sm:block">
-            Kommerze
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground hidden sm:block">
-            POS
-          </span>
-        </div>
-
-        {showHomeButton && (
-          <>
-            <div className="h-4 w-px bg-border mx-1" />
-            <button
-              onClick={() => navigate('/home')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium',
-                'bg-primary/10 border border-primary/25 text-primary',
-                'hover:bg-primary/20 hover:border-primary/45',
-                'transition-all duration-150',
-              )}
-              aria-label="Volver al inicio"
-            >
-              <Home className="size-3.5" strokeWidth={2.2} />
-              <span>Inicio</span>
-            </button>
-          </>
-        )}
-      </div>
+      {/* ── Izquierda: marca y acceso al inicio ───────── */}
+      <button
+        type="button"
+        onClick={() => navigate('/home')}
+        className="group flex shrink-0 items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+        aria-label="Ir al inicio"
+      >
+        <img src="/media/app_icon.png" alt="" className="size-8 rounded-[9px] object-cover shadow-sm transition-transform group-hover:scale-[1.03]" />
+        <span className="hidden text-sm font-bold tracking-[-0.025em] text-foreground sm:block">Kommerze</span>
+      </button>
 
       {/* ── Centro: Título + Sucursal/Terminal ─────────── */}
       <div className="absolute inset-x-0 flex flex-col items-center pointer-events-none">
