@@ -18,6 +18,7 @@ type Services struct {
 	Pos                 *PosService
 	Auth                *AuthService
 	Clientes            *ClientesService
+	Proveedores         *ProveedoresService
 	License             *LicenseService
 	Auditoria           *AuditoriaService
 	OperacionesSucursal *OperacionesSucursalService
@@ -79,6 +80,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	auth := NewAuthService(repoUsuarios)
 	catalogos := NewCatalogosService(repo)
 	clientes := NewClientesService(db)
+	proveedores := NewProveedoresService(db)
 	cotizacion := NewCotizacionService(db, apiURL, cloudClient)
 	receipt := NewReceiptService(db)
 	operacionesCaja := NewOperacionesCajaService(db)
@@ -86,7 +88,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	netPayService := NewNetPayService(netPayBaseURL, apiURL, cloudClient)
 
 	// Levantar servidor HTTP interno para que las Cajas se conecten
-	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, cotizacion, receipt, operacionesSucursal, operacionesCaja)
+	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, proveedores, cotizacion, receipt, operacionesSucursal, operacionesCaja)
 	cotizacion.SetBroadcast(localServer.BroadcastToClients)
 	go localServer.Start(":8989")
 	log.Printf("[Services] Modo SERVIDOR LOCAL — API interna activa en :8989")
@@ -107,6 +109,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 		Auditoria:           auditoria,
 		Auth:                auth,
 		Clientes:            clientes,
+		Proveedores:         proveedores,
 		License:             NewLicenseService(db, apiURL),
 		OperacionesSucursal: operacionesSucursal,
 		OperacionesCaja:     operacionesCaja,

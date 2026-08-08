@@ -32,8 +32,11 @@ func MigrateTables(db *gorm.DB) error {
 		&models.SucursalProducto{},
 
 		// Ventas / Clientes
+		&models.RolesFiscales{},
+		&models.EntidadFiscal{},
+		&models.EntidadFiscalRol{},
 		&models.Cliente{},
-		&models.ReceptorFiscal{},
+		&models.ClienteEntidadFiscal{},
 		&models.Estatus{},
 		&models.TipoPedido{},
 
@@ -51,4 +54,3 @@ func MigrateTables(db *gorm.DB) error {
 		&models.AuditoriaProducto{},
 	)
 }
-

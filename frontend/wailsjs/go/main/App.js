@@ -26,6 +26,14 @@ export function ServiceBuscarClientes(arg1) {
   return window['go']['main']['App']['ServiceBuscarClientes'](arg1);
 }
 
+export function ServiceBuscarEntidadFiscalPorRFC(arg1) {
+  return window['go']['main']['App']['ServiceBuscarEntidadFiscalPorRFC'](arg1);
+}
+
+export function ServiceBuscarEntidadFiscalProveedor(arg1) {
+  return window['go']['main']['App']['ServiceBuscarEntidadFiscalProveedor'](arg1);
+}
+
 export function ServiceCerrarCaja(arg1) {
   return window['go']['main']['App']['ServiceCerrarCaja'](arg1);
 }
@@ -130,8 +138,16 @@ export function ServiceGetTiposAutorizacion() {
   return window['go']['main']['App']['ServiceGetTiposAutorizacion']();
 }
 
+export function ServiceGuardarCliente(arg1) {
+  return window['go']['main']['App']['ServiceGuardarCliente'](arg1);
+}
+
 export function ServiceGuardarInventarioJSON(arg1, arg2) {
   return window['go']['main']['App']['ServiceGuardarInventarioJSON'](arg1, arg2);
+}
+
+export function ServiceGuardarProveedor(arg1) {
+  return window['go']['main']['App']['ServiceGuardarProveedor'](arg1);
 }
 
 export function ServiceIniciarAuditoria(arg1, arg2) {
@@ -148,6 +164,10 @@ export function ServiceLoadCloudCredentials() {
 
 export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
+}
+
+export function ServiceObtenerCliente(arg1) {
+  return window['go']['main']['App']['ServiceObtenerCliente'](arg1);
 }
 
 export function ServiceObtenerOperacionCajeroActiva(arg1) {

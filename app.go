@@ -92,11 +92,23 @@ func (a *App) catalogosService() interface {
 func (a *App) clientesService() interface {
 	BuscarClientes(string) ([]dto.ClienteDto, error)
 	ListarClientes() ([]dto.ClienteDto, error)
+	ObtenerCliente(string) (*dto.ClienteDetalleDto, error)
+	GuardarCliente(dto.GuardarClienteDto) (*dto.ClienteDetalleDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
 	}
 	return a.services.Clientes
+}
+
+func (a *App) proveedoresService() interface {
+	BuscarEntidadFiscalPorRFC(string) (*dto.ProveedorFiscalDto, error)
+	GuardarProveedor(dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Proveedores
 }
 
 // cotizacionService devuelve la implementacion correcta segun el modo del dispositivo.
@@ -708,6 +720,28 @@ func (a *App) ServiceBuscarClientes(q string) ([]dto.ClienteDto, error) {
 // ServiceListarClientes obtiene el catálogo completo para el tablero.
 func (a *App) ServiceListarClientes() ([]dto.ClienteDto, error) {
 	return a.clientesService().ListarClientes()
+}
+
+func (a *App) ServiceObtenerCliente(guid string) (*dto.ClienteDetalleDto, error) {
+	return a.clientesService().ObtenerCliente(guid)
+}
+
+func (a *App) ServiceGuardarCliente(datos dto.GuardarClienteDto) (*dto.ClienteDetalleDto, error) {
+	return a.clientesService().GuardarCliente(datos)
+}
+
+func (a *App) ServiceBuscarEntidadFiscalProveedor(rfc string) (*dto.ProveedorFiscalDto, error) {
+	return a.proveedoresService().BuscarEntidadFiscalPorRFC(rfc)
+}
+
+// ServiceBuscarEntidadFiscalPorRFC es la consulta neutral que reutilizan los
+// flujos de clientes y proveedores antes de crear una entidad fiscal.
+func (a *App) ServiceBuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {
+	return a.proveedoresService().BuscarEntidadFiscalPorRFC(rfc)
+}
+
+func (a *App) ServiceGuardarProveedor(datos dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error) {
+	return a.proveedoresService().GuardarProveedor(datos)
 }
 
 // ── Cloud (solo Servidor Local) ───────────────────────────────────────────────

@@ -6,7 +6,23 @@ import (
 	"strings"
 
 	"BitComercio/internal/usecases/reports/models"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
 )
+
+// writeEscPosText convierte el texto UTF-8 de la aplicación a Windows-1252,
+// que corresponde a la tabla de caracteres 16 seleccionada con ESC t 16.
+// Los comandos ESC/POS se escriben por separado y nunca pasan por el encoder.
+func writeEscPosText(b *bytes.Buffer, text string) {
+	encoded, err := encoding.ReplaceUnsupported(charmap.Windows1252.NewEncoder()).String(text)
+	if err != nil {
+		// ReplaceUnsupported evita errores por caracteres fuera de la tabla; este
+		// fallback conserva una salida legible aun ante UTF-8 inválido.
+		encoded = strings.ToValidUTF8(text, "?")
+	}
+	b.WriteString(encoded)
+}
 
 func line(left, right string, width int) string {
 	leftRunes := []rune(left)
@@ -67,53 +83,55 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 		width = 32
 	}
 	var b bytes.Buffer
-	b.Write([]byte{0x1B, 0x40, 0x1B, 0x74, 0x10})
+	// Inicializar, seleccionar Windows-1252 y forzar Font A. Font A es la
+	// tipografía interna ESC/POS de aspecto más cercano a Arial/Helvetica.
+	b.Write([]byte{0x1B, 0x40, 0x1B, 0x74, 0x10, 0x1B, 0x4D, 0x00})
 	b.Write([]byte{0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
-	b.WriteString(strings.ToUpper(r.Negocio) + "\n")
+	writeEscPosText(&b, strings.ToUpper(r.Negocio)+"\n")
 	b.Write([]byte{0x1D, 0x21, 0x00})
-	b.WriteString("PUNTO DE VENTA\n")
+	writeEscPosText(&b, "PUNTO DE VENTA\n")
 	b.Write([]byte{0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00})
-	b.WriteString(strings.Repeat("-", width) + "\n")
-	b.WriteString(wrapReceiptText("Sucursal: "+r.Sucursal, width) + "\n")
-	b.WriteString(wrapReceiptText("Folio: "+r.Folio, width) + "\n")
-	b.WriteString(wrapReceiptText("Fecha: "+r.Fecha.Format("02/01/2006 15:04"), width) + "\n")
-	b.WriteString(wrapReceiptText("Cajero: "+r.Cajero, width) + "\n")
-	b.WriteString(strings.Repeat("-", width) + "\n")
-	b.WriteString(line("Descripcion", "Importe", width))
+	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
+	writeEscPosText(&b, wrapReceiptText("Sucursal: "+r.Sucursal, width)+"\n")
+	writeEscPosText(&b, wrapReceiptText("Folio: "+r.Folio, width)+"\n")
+	writeEscPosText(&b, wrapReceiptText("Fecha: "+r.Fecha.Format("02/01/2006 15:04"), width)+"\n")
+	writeEscPosText(&b, wrapReceiptText("Cajero: "+r.Cajero, width)+"\n")
+	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
+	writeEscPosText(&b, line("Descripción", "Importe", width))
 	for _, item := range r.Items {
-		b.WriteString(wrapReceiptText(strings.ToUpper(item.Descripcion), width) + "\n")
-		b.WriteString(line(fmt.Sprintf("%.2f x $%.2f", item.Cantidad, item.Precio), fmt.Sprintf("$%.2f", item.Importe), width))
+		writeEscPosText(&b, wrapReceiptText(strings.ToUpper(item.Descripcion), width)+"\n")
+		writeEscPosText(&b, line(fmt.Sprintf("%.2f x $%.2f", item.Cantidad, item.Precio), fmt.Sprintf("$%.2f", item.Importe), width))
 	}
-	b.WriteString(strings.Repeat("-", width) + "\n")
-	b.WriteString(line("Subtotal:", fmt.Sprintf("$%.2f", r.Subtotal), width))
-	b.WriteString(line("Descuento:", fmt.Sprintf("$%.2f", r.Descuento), width))
+	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
+	writeEscPosText(&b, line("Subtotal:", fmt.Sprintf("$%.2f", r.Subtotal), width))
+	writeEscPosText(&b, line("Descuento:", fmt.Sprintf("$%.2f", r.Descuento), width))
 	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
-	b.WriteString(line("TOTAL:", fmt.Sprintf("$%.2f", r.Total), width/2))
+	writeEscPosText(&b, line("TOTAL:", fmt.Sprintf("$%.2f", r.Total), width/2))
 	b.Write([]byte{0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00})
-	b.WriteString(line("Pago:", fmt.Sprintf("$%.2f", r.Pago), width))
-	b.WriteString(line("Cambio:", fmt.Sprintf("$%.2f", r.Cambio), width))
-	b.WriteString(strings.Repeat("-", width) + "\n")
+	writeEscPosText(&b, line("Pago:", fmt.Sprintf("$%.2f", r.Pago), width))
+	writeEscPosText(&b, line("Cambio:", fmt.Sprintf("$%.2f", r.Cambio), width))
+	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	b.Write([]byte{0x1B, 0x61, 0x01})
 	if len(r.LeyendaGrupos) > 0 {
 		for index, group := range r.LeyendaGrupos {
 			if index > 0 {
 				b.Write([]byte{0x1B, 0x45, 0x00})
-				b.WriteString(strings.Repeat("-", width) + "\n")
+				writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 			}
 			b.Write([]byte{0x1B, 0x45, boolByte(group.Bold)})
 			if text := strings.TrimSpace(group.Text); text != "" {
-				b.WriteString(wrapReceiptText(text, width) + "\n")
+				writeEscPosText(&b, wrapReceiptText(text, width)+"\n")
 			}
 		}
 		b.Write([]byte{0x1B, 0x45, 0x00})
 	} else {
 		for _, legend := range r.Leyendas {
 			if strings.TrimSpace(legend) != "" {
-				b.WriteString(wrapReceiptText(legend, width) + "\n")
+				writeEscPosText(&b, wrapReceiptText(legend, width)+"\n")
 			}
 		}
 	}
-	b.WriteString("\n\n\n")
+	writeEscPosText(&b, "\n\n\n")
 	if openDrawer {
 		// ESC p m t1 t2: pulso en el pin 2 del conector de cajón.
 		b.Write([]byte{0x1B, 0x70, 0x00, 0x19, 0xFA})

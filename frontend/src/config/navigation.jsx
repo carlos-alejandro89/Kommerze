@@ -8,6 +8,7 @@ import {
   Wallet,
   X,
   Building2,
+  Handshake,
 } from 'lucide-react';
 
 /**
@@ -46,6 +47,12 @@ export const MAIN_NAV = [
     icon: Package,
     path: '/products',
     serverOnly: true,
+  },
+  {
+    id: 'suppliers',
+    title: 'Proveedores',
+    icon: Handshake,
+    path: '/suppliers',
   },
 
   // ── Operaciones de Caja ────────────────────────────────────────────────

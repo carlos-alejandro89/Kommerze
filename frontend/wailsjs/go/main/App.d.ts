@@ -18,6 +18,10 @@ export function ServiceApiCrearProducto(arg1:requestdto.ProductoCreate):Promise<
 
 export function ServiceBuscarClientes(arg1:string):Promise<Array<dto.ClienteDto>>;
 
+export function ServiceBuscarEntidadFiscalPorRFC(arg1:string):Promise<dto.ProveedorFiscalDto>;
+
+export function ServiceBuscarEntidadFiscalProveedor(arg1:string):Promise<dto.ProveedorFiscalDto>;
+
 export function ServiceCerrarCaja(arg1:dto.CerrarCajaDto):Promise<dto.ResponseDto>;
 
 export function ServiceCerrarOperacionSucursal(arg1:dto.CerrarOperacionSucursalDto):Promise<dto.ResponseDto>;
@@ -70,7 +74,11 @@ export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;
 
+export function ServiceGuardarCliente(arg1:dto.GuardarClienteDto):Promise<dto.ClienteDetalleDto>;
+
 export function ServiceGuardarInventarioJSON(arg1:string,arg2:string):Promise<dto.ResponseDto>;
+
+export function ServiceGuardarProveedor(arg1:dto.GuardarProveedorDto):Promise<dto.ProveedorFiscalDto>;
 
 export function ServiceIniciarAuditoria(arg1:string,arg2:string):Promise<dto.ResponseDto>;
 
@@ -79,6 +87,8 @@ export function ServiceListarClientes():Promise<Array<dto.ClienteDto>>;
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
+
+export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
 
 export function ServiceObtenerOperacionCajeroActiva(arg1:number):Promise<dto.ResponseDto>;
 

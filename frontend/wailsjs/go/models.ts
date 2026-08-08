@@ -127,6 +127,90 @@ export namespace dto {
 		    return a;
 		}
 	}
+	export class EntidadFiscalClienteDto {
+	    ID: number;
+	    Guid: string;
+	    RegimenID?: number;
+	    RegimenClave: string;
+	    Regimen: string;
+	    RazonSocial: string;
+	    RFC: string;
+	    CodigoPostal: string;
+	    Correo: string;
+	    Telefono: string;
+	    Whatsapp: string;
+	    RolFiscal: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntidadFiscalClienteDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.RegimenID = source["RegimenID"];
+	        this.RegimenClave = source["RegimenClave"];
+	        this.Regimen = source["Regimen"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.CodigoPostal = source["CodigoPostal"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.Whatsapp = source["Whatsapp"];
+	        this.RolFiscal = source["RolFiscal"];
+	    }
+	}
+	export class ClienteDetalleDto {
+	    ID: number;
+	    Guid: string;
+	    RazonSocial: string;
+	    RFC: string;
+	    Correo: string;
+	    Telefono: string;
+	    CreditoMaximo: number;
+	    DiasCredito: number;
+	    Whatsapp: string;
+	    Puntos: number;
+	    EntidadesFiscales: EntidadFiscalClienteDto[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ClienteDetalleDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.CreditoMaximo = source["CreditoMaximo"];
+	        this.DiasCredito = source["DiasCredito"];
+	        this.Whatsapp = source["Whatsapp"];
+	        this.Puntos = source["Puntos"];
+	        this.EntidadesFiscales = this.convertValues(source["EntidadesFiscales"], EntidadFiscalClienteDto);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ClienteDto {
 	    ID: number;
 	    Guid: string;
@@ -256,6 +340,106 @@ export namespace dto {
 		}
 	}
 	
+	
+	export class GuardarEntidadFiscalClienteDto {
+	    Guid: string;
+	    RegimenID?: number;
+	    RazonSocial: string;
+	    RFC: string;
+	    CodigoPostal: string;
+	    Correo: string;
+	    Telefono: string;
+	    Whatsapp: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GuardarEntidadFiscalClienteDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Guid = source["Guid"];
+	        this.RegimenID = source["RegimenID"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.CodigoPostal = source["CodigoPostal"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.Whatsapp = source["Whatsapp"];
+	    }
+	}
+	export class GuardarClienteDto {
+	    Guid: string;
+	    RazonSocial: string;
+	    Correo: string;
+	    Telefono: string;
+	    Whatsapp: string;
+	    CreditoMaximo: number;
+	    DiasCredito: number;
+	    Puntos: number;
+	    EntidadesFiscales: GuardarEntidadFiscalClienteDto[];
+	
+	    static createFrom(source: any = {}) {
+	        return new GuardarClienteDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Guid = source["Guid"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.Whatsapp = source["Whatsapp"];
+	        this.CreditoMaximo = source["CreditoMaximo"];
+	        this.DiasCredito = source["DiasCredito"];
+	        this.Puntos = source["Puntos"];
+	        this.EntidadesFiscales = this.convertValues(source["EntidadesFiscales"], GuardarEntidadFiscalClienteDto);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class GuardarProveedorDto {
+	    EntidadGuid: string;
+	    RegimenID?: number;
+	    RazonSocial: string;
+	    RFC: string;
+	    CodigoPostal: string;
+	    Correo: string;
+	    Telefono: string;
+	    Whatsapp: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GuardarProveedorDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.EntidadGuid = source["EntidadGuid"];
+	        this.RegimenID = source["RegimenID"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.CodigoPostal = source["CodigoPostal"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.Whatsapp = source["Whatsapp"];
+	    }
+	}
 	export class InventarioDto {
 	    Codigo: string;
 	    CodigoBarra?: string;
@@ -501,6 +685,40 @@ export namespace dto {
 		    }
 		    return a;
 		}
+	}
+	export class ProveedorFiscalDto {
+	    ID: number;
+	    Guid: string;
+	    RegimenID?: number;
+	    RegimenClave: string;
+	    Regimen: string;
+	    RazonSocial: string;
+	    RFC: string;
+	    CodigoPostal: string;
+	    Correo: string;
+	    Telefono: string;
+	    Whatsapp: string;
+	    EsProveedor: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProveedorFiscalDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.RegimenID = source["RegimenID"];
+	        this.RegimenClave = source["RegimenClave"];
+	        this.Regimen = source["Regimen"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.RFC = source["RFC"];
+	        this.CodigoPostal = source["CodigoPostal"];
+	        this.Correo = source["Correo"];
+	        this.Telefono = source["Telefono"];
+	        this.Whatsapp = source["Whatsapp"];
+	        this.EsProveedor = source["EsProveedor"];
+	    }
 	}
 	export class ResponseDto {
 	    success: boolean;

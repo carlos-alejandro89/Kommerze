@@ -1,6 +1,7 @@
 package renders
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -28,6 +29,25 @@ func TestRenderReceiptEscPosUsesConfiguredPaperWidth(t *testing.T) {
 	}
 }
 
+func TestRenderReceiptEscPosEncodesSpanishTextAsWindows1252(t *testing.T) {
+	receipt := models.Receipt{
+		Negocio: "Comercio México",
+		LeyendaGrupos: []models.ReceiptLegendGroup{
+			{Text: "No hay devolución en artículos electrónicos"},
+		},
+	}
+
+	output := RenderReceiptEscPos(receipt, 80, false, false)
+	for _, expected := range [][]byte{[]byte("devoluci\xf3n"), []byte("art\xedculos"), []byte("electr\xf3nicos")} {
+		if !bytes.Contains(output, expected) {
+			t.Fatalf("expected Windows-1252 encoded text; output does not contain %v", expected)
+		}
+	}
+	if bytes.Contains(output, []byte("devolución")) {
+		t.Fatal("receipt must not send UTF-8 multibyte text to the ESC/POS code page")
+	}
+}
+
 func TestRenderReceiptEscPosOptionalPeripheralCommands(t *testing.T) {
 	receipt := models.Receipt{Negocio: "Kommerze"}
 	cutCommand := string([]byte{0x1D, 0x56, 0x01})
@@ -44,6 +64,14 @@ func TestRenderReceiptEscPosOptionalPeripheralCommands(t *testing.T) {
 	}
 	if !strings.Contains(withPeripherals, drawerCommand) {
 		t.Fatal("expected cash drawer pulse command")
+	}
+}
+
+func TestRenderReceiptEscPosSelectsFontA(t *testing.T) {
+	output := RenderReceiptEscPos(models.Receipt{Negocio: "Kommerze"}, 80, false, false)
+	fontACommand := []byte{0x1B, 0x4D, 0x00}
+	if !bytes.Contains(output, fontACommand) {
+		t.Fatal("expected ESC/POS Font A selection command")
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -314,6 +315,50 @@ func (c *CajaProxyService) ListarClientes() ([]dto.ClienteDto, error) {
 		return nil, err
 	}
 	return result.Data, nil
+}
+
+func (c *CajaProxyService) ObtenerCliente(guid string) (*dto.ClienteDetalleDto, error) {
+	var result struct {
+		Success bool                  `json:"success"`
+		Data    dto.ClienteDetalleDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/clientes/detalle?guid=%s", url.QueryEscape(guid)), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (c *CajaProxyService) GuardarCliente(datos dto.GuardarClienteDto) (*dto.ClienteDetalleDto, error) {
+	var result struct {
+		Success bool                  `json:"success"`
+		Data    dto.ClienteDetalleDto `json:"data"`
+	}
+	if err := c.post("/local/clientes/guardar", datos, &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (c *CajaProxyService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {
+	var result struct {
+		Success bool                    `json:"success"`
+		Data    *dto.ProveedorFiscalDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/proveedores/buscar-rfc?rfc=%s", url.QueryEscape(rfc)), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) GuardarProveedor(datos dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error) {
+	var result struct {
+		Success bool                   `json:"success"`
+		Data    dto.ProveedorFiscalDto `json:"data"`
+	}
+	if err := c.post("/local/proveedores/guardar", datos, &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
 }
 
 // ── CotizacionService equivalentes ────────────────────────────────────────────

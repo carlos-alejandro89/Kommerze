@@ -59,6 +59,7 @@ type LocalServerService struct {
 	auth                *AuthService
 	catalogos           *CatalogosService
 	clientes            *ClientesService
+	proveedores         *ProveedoresService
 	cotizacion          *CotizacionService
 	receipt             *ReceiptService
 	operacionesSucursal *OperacionesSucursalService
@@ -67,13 +68,14 @@ type LocalServerService struct {
 	server              *http.Server
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
 		auth:                auth,
 		catalogos:           cat,
 		clientes:            clientes,
+		proveedores:         proveedores,
 		cotizacion:          cotizacion,
 		receipt:             receipt,
 		operacionesSucursal: opSucursal,
@@ -106,6 +108,10 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/existencias", l.handleExistencias)
 	mux.HandleFunc("/local/clientes", l.handleClientes)
 	mux.HandleFunc("/local/clientes/listado", l.handleListadoClientes)
+	mux.HandleFunc("/local/clientes/detalle", l.handleDetalleCliente)
+	mux.HandleFunc("/local/clientes/guardar", l.handleGuardarCliente)
+	mux.HandleFunc("/local/proveedores/buscar-rfc", l.handleBuscarProveedorRFC)
+	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -399,6 +405,68 @@ func (l *LocalServerService) handleListadoClientes(w http.ResponseWriter, r *htt
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": clientes})
+}
+
+func (l *LocalServerService) handleDetalleCliente(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	client, err := l.clientes.ObtenerCliente(r.URL.Query().Get("guid"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": client})
+}
+
+func (l *LocalServerService) handleGuardarCliente(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body dto.GuardarClienteDto
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	client, err := l.clientes.GuardarCliente(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": client})
+}
+
+func (l *LocalServerService) handleBuscarProveedorRFC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	entity, err := l.proveedores.BuscarEntidadFiscalPorRFC(r.URL.Query().Get("rfc"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": entity})
+}
+
+func (l *LocalServerService) handleGuardarProveedor(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body dto.GuardarProveedorDto
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	entity, err := l.proveedores.GuardarProveedor(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": entity})
 }
 
 // ── Catalogos handlers ────────────────────────────────────────────────────────

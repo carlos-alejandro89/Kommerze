@@ -10,7 +10,7 @@ type Factura struct {
 	BaseModel
 
 	ReceptorID *uint
-	Receptor   ReceptorFiscal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Receptor   EntidadFiscal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 
 	UsoCFDIID *uint
 	UsoCFDI   SATUsoCFDI `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
@@ -30,7 +30,7 @@ type Factura struct {
 	SelloEmisor string `gorm:"type:text"`
 	SelloSAT    string `gorm:"type:text"`
 
-	PAC string `gorm:"size:150"`
+	PAC        string `gorm:"size:150"`
 	VersionTFD string `gorm:"size:20"`
 
 	FechaFactura time.Time `gorm:"type:timestamptz;not null;index"`
@@ -38,14 +38,14 @@ type Factura struct {
 	EsGlobal bool `gorm:"default:false"`
 
 	// Totales congelados
-	Subtotal   decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
-	Impuestos  decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
-	Descuento  decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
-	Total      decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
+	Subtotal  decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
+	Impuestos decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
+	Descuento decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
+	Total     decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
 
 	// Estado
 	Estatus string `gorm:"size:30;default:'vigente';index"`
 
-	ArchivoXML              string `gorm:"type:text"`
-	ArchivoXMLCancelacion   string `gorm:"type:text"`
+	ArchivoXML            string `gorm:"type:text"`
+	ArchivoXMLCancelacion string `gorm:"type:text"`
 }

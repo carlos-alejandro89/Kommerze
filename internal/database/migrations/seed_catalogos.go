@@ -6,6 +6,12 @@ import "gorm.io/gorm"
 // del POS. Usa INSERT ... ON CONFLICT DO NOTHING para ser completamente idempotente.
 func SeedCatalogos(db *gorm.DB) error {
 	sqls := []string{
+		// ── Roles fiscales ───────────────────────────────────────────────────
+		`INSERT INTO roles_fiscales (id, nombre) VALUES
+			(1, 'RECEPTOR'),
+			(2, 'PROVEEDOR'),
+			(3, 'ACREEDOR')
+		 ON CONFLICT (id) DO UPDATE SET nombre = EXCLUDED.nombre`,
 		// ── Estatus de pedido ────────────────────────────────────────────────
 		`INSERT INTO estatus (id, nombre) VALUES
 			(1, 'Pendiente'),
@@ -69,6 +75,7 @@ func SeedCatalogos(db *gorm.DB) error {
 		`SELECT setval('estatus_id_seq',        (SELECT MAX(id) FROM estatus))`,
 		`SELECT setval('tipos_pedido_id_seq',   (SELECT MAX(id) FROM tipos_pedido))`,
 		`SELECT setval('clientes_id_seq',       (SELECT MAX(id) FROM clientes))`,
+		`SELECT setval('roles_fiscales_id_seq', (SELECT MAX(id) FROM roles_fiscales))`,
 	}
 
 	for _, sql := range sqls {
