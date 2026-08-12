@@ -3,13 +3,14 @@ import {
   Save, Server, Shield, Cloud, HardDrive, RefreshCw,
   Monitor, Globe, RotateCcw, Wifi, Copy, Check,
   ReceiptText, Mail, Plus, Trash2, Bold, Printer,
-  ArrowLeft, Settings,
+  ArrowLeft, Settings, PackagePlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
 import { DialogAlert } from '@/components/common/dialog-alert';
+import { InventoryImportPanel } from '@/features/inventory-import/pages/InventoryImportPage';
 import {
   ServiceLoadCloudCredentials,
   ServiceSaveCloudCredentials,
@@ -34,15 +35,19 @@ const settingsLabelClass = 'text-xs font-semibold text-[#334a70] dark:text-slate
 const settingsPanelClass = 'overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]';
 const settingsPanelHeaderClass = 'flex items-center gap-3 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.025] to-transparent px-6 py-4 dark:border-white/10 dark:from-blue-400/[.09] dark:via-blue-400/[.025]';
 const settingsInsetClass = 'rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p-4 shadow-[0_10px_30px_-27px_rgba(30,64,120,.42)] dark:border-white/10 dark:bg-white/[.035]';
+const DEFAULT_CLOUD_API_URL = 'https://kommerze-cloud-api.developers-lab.com';
 
 export function SettingsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { deviceRole, localServerURL: ctxServerURL } = useActivation();
 
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
+  const [cloudAPIURL, setCloudAPIURL] = useState(DEFAULT_CLOUD_API_URL);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('dispositivo');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dispositivo');
+  const [inventoryImportState, setInventoryImportState] = useState({ canSubmit: false, isSaving: false });
 
   // Caja: config de conexión al Servidor Local
   const [serverURL, setServerURL]     = useState(ctxServerURL || '');
@@ -76,6 +81,7 @@ export function SettingsPage() {
       try {
         const cfg = await ServiceGetKommerzConfig();
         if (cfg?.localServerUrl) setServerURL(cfg.localServerUrl);
+        setCloudAPIURL(cfg?.cloudApiUrl || DEFAULT_CLOUD_API_URL);
         if (cfg?.receipt) {
           const configuredGroups = cfg.receipt.legendGroups?.length
             ? cfg.receipt.legendGroups
@@ -108,11 +114,20 @@ export function SettingsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!email || !password) { toast.error('Por favor ingresa correo y contraseña'); return; }
+    if (!email || !password || !cloudAPIURL.trim()) { toast.error('Completa la URL, correo y contraseña'); return; }
+    try {
+      const parsed = new URL(cloudAPIURL.trim());
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+    } catch {
+      toast.error('Ingresa una URL válida para el API de Kommerze Cloud');
+      return;
+    }
     setIsLoading(true);
     try {
+      const current = await ServiceGetKommerzConfig();
+      await ServiceSaveKommerzConfig({ ...(current || {}), cloudApiUrl: cloudAPIURL.trim().replace(/\/+$/, '') });
       await ServiceSaveCloudCredentials(email, password);
-      toast.success('Credenciales de la Nube guardadas exitosamente');
+      toast.success('Configuración de la Nube guardada. Reinicia Kommerze para aplicar la nueva URL.');
     } catch (err) {
       toast.error('Error al guardar credenciales: ' + String(err));
     } finally { setIsLoading(false); }
@@ -221,6 +236,7 @@ export function SettingsPage() {
     { id: 'impresora',   label: 'Impresora',             icon: Printer },
     { id: 'correo',      label: 'Correo SMTP',           icon: Mail },
     { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud,     serverOnly: true },
+    { id: 'inventario',  label: 'Importar inventario',   icon: PackagePlus, serverOnly: true },
     { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
     { id: 'security',    label: 'Seguridad',              icon: Shield,    serverOnly: true },
   ];
@@ -627,6 +643,16 @@ export function SettingsPage() {
                 <form id="settings-cloud-form" onSubmit={handleSave} className="p-6 space-y-5">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
+                      <label htmlFor="cloud-api-url" className={settingsLabelClass}>URL del API de Kommerze Cloud</label>
+                      <div className="relative">
+                        <Globe className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7790b6]" />
+                        <input id="cloud-api-url" type="url" placeholder={DEFAULT_CLOUD_API_URL}
+                          value={cloudAPIURL} onChange={(e) => setCloudAPIURL(e.target.value)} disabled={isLoading}
+                          className={`${settingsInputClass} pl-11`} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Dirección base usada para autenticación, consultas y sincronización. El cambio se aplica al reiniciar Kommerze.</p>
+                    </div>
+                    <div className="space-y-1.5">
                       <label htmlFor="email" className={settingsLabelClass}>Correo Electrónico Central</label>
                       <input id="email" type="email" placeholder="usuario@sistema-central.com"
                         value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading}
@@ -654,6 +680,19 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
+            </>
+          )}
+
+          {activeTab === 'inventario' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Importa productos y existencias desde un archivo JSON validado.
+              </p>
+              <InventoryImportPanel
+                formId="settings-inventory-import-form"
+                onStateChange={setInventoryImportState}
+                showSubmitAction={false}
+              />
             </>
           )}
 
@@ -711,7 +750,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
+      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || activeTab === 'inventario' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
         <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl lg:px-6">
           <div className="mx-auto flex max-w-[1320px] justify-end">
             {activeTab === 'dispositivo' && deviceRole === 'caja' && (
@@ -747,6 +786,12 @@ export function SettingsPage() {
               <button form="settings-cloud-form" type="submit" disabled={isLoading} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
                 {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Guardar credenciales
+              </button>
+            )}
+            {activeTab === 'inventario' && (
+              <button form="settings-inventory-import-form" type="submit" disabled={!inventoryImportState.canSubmit || inventoryImportState.isSaving} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50">
+                {inventoryImportState.isSaving ? <RefreshCw className="size-4 animate-spin" /> : <PackagePlus className="size-4" />}
+                {inventoryImportState.isSaving ? 'Importando…' : 'Importar inventario'}
               </button>
             )}
           </div>

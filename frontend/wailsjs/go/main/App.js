@@ -258,6 +258,10 @@ export function ServiceVerifyLicense() {
   return window['go']['main']['App']['ServiceVerifyLicense']();
 }
 
+export function SyncClientes() {
+  return window['go']['main']['App']['SyncClientes']();
+}
+
 export function SyncEmpaques() {
   return window['go']['main']['App']['SyncEmpaques']();
 }
@@ -288,6 +292,10 @@ export function SyncPerfiles() {
 
 export function SyncProductos() {
   return window['go']['main']['App']['SyncProductos']();
+}
+
+export function SyncRolesFiscales() {
+  return window['go']['main']['App']['SyncRolesFiscales']();
 }
 
 export function SyncSatFormasPago() {

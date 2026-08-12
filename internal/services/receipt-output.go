@@ -80,6 +80,47 @@ func EmailReceipt(r reportmodels.Receipt, recipient string, cfg ReceiptConfig) e
 	return nil
 }
 
+func EmailQuotation(q reportmodels.Quotation, recipient string, cfg ReceiptConfig) error {
+	if cfg.SMTPHost == "" || cfg.SMTPPort == "" || cfg.SMTPUser == "" || cfg.SMTPPassword == "" {
+		return fmt.Errorf("configura el servidor SMTP y sus credenciales")
+	}
+	recipient = strings.TrimSpace(recipient)
+	if _, err := mail.ParseAddress(recipient); err != nil {
+		return fmt.Errorf("correo del destinatario inválido: %w", err)
+	}
+	pdf, err := renders.RenderQuotationPDF(q)
+	if err != nil {
+		return fmt.Errorf("no se pudo generar el PDF: %w", err)
+	}
+	envelopeFrom := cfg.SMTPUser
+	mixedBoundary, alternativeBoundary := "kommerze-quotation-mixed", "kommerze-quotation-alternative"
+	subject, fileName := "Cotización "+q.Folio, "cotizacion-"+q.Folio+".pdf"
+	var msg bytes.Buffer
+	fmt.Fprintf(&msg, "From: %s\r\nTo: %s\r\nSubject: %s\r\n", formatEmailFrom(q.Negocio, envelopeFrom), recipient, mime.QEncoding.Encode("UTF-8", subject))
+	if replyTo := strings.TrimSpace(cfg.SMTPFrom); replyTo != "" && !strings.EqualFold(replyTo, envelopeFrom) {
+		fmt.Fprintf(&msg, "Reply-To: %s\r\n", replyTo)
+	}
+	fmt.Fprintf(&msg, "Date: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%q\r\n\r\n", time.Now().Format(time.RFC1123Z), mixedBoundary)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: multipart/alternative; boundary=%q\r\n\r\n", mixedBoundary, alternativeBoundary)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nAdjuntamos la cotización %s por un total de $%.2f MXN.\r\n", alternativeBoundary, q.Folio, q.Total)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n%s\r\n--%s--\r\n\r\n", alternativeBoundary, quotationEmailHTML(q), alternativeBoundary)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: application/pdf; name=%q\r\nContent-Disposition: attachment; filename=%q\r\nContent-Transfer-Encoding: base64\r\n\r\n", mixedBoundary, fileName, fileName)
+	encoded := base64.StdEncoding.EncodeToString(pdf)
+	for len(encoded) > 76 {
+		msg.WriteString(encoded[:76] + "\r\n")
+		encoded = encoded[76:]
+	}
+	msg.WriteString(encoded + "\r\n--" + mixedBoundary + "--\r\n")
+	if err := sendSMTP(cfg, envelopeFrom, recipient, msg.Bytes()); err != nil {
+		return fmt.Errorf("el servidor SMTP rechazó el envío: %w", err)
+	}
+	return nil
+}
+
+func quotationEmailHTML(q reportmodels.Quotation) string {
+	return fmt.Sprintf(`<!doctype html><html lang="es"><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033"><table width="100%%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 32px rgba(15,35,70,.10)"><tr><td style="background:#002366;padding:30px 36px;color:#fff"><div style="font-size:25px;font-weight:800">%s</div><div style="margin-top:7px;color:#b9cdf8;letter-spacing:2px">COTIZACIÓN</div></td></tr><tr><td style="padding:34px 36px"><div style="font-size:22px;font-weight:700">Preparamos tu cotización</div><p style="color:#647087;line-height:1.65">Hola %s, adjuntamos el documento PDF con el detalle de productos y precios solicitados.</p><table width="100%%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border:1px solid #e5eaf2;border-radius:12px;padding:8px 18px"><tr><td style="padding:13px 0;color:#718096">Folio</td><td align="right" style="font-weight:700">%s</td></tr><tr><td style="padding:13px 0;border-top:1px solid #e5eaf2;color:#718096">Vigencia</td><td align="right" style="border-top:1px solid #e5eaf2">%d días</td></tr><tr><td style="padding:15px 0;border-top:1px solid #e5eaf2;font-weight:700">Total</td><td align="right" style="padding:15px 0;border-top:1px solid #e5eaf2;color:#002366;font-size:21px;font-weight:800">$%.2f MXN</td></tr></table><p style="margin-top:24px;color:#647087;font-size:13px">Quedamos atentos para ayudarte con cualquier duda sobre esta propuesta.</p></td></tr><tr><td style="padding:18px;background:#f7f9fc;text-align:center;color:#8a95a8;font-size:11px">Documento generado por Kommerze POS.</td></tr></table></td></tr></table></body></html>`, html.EscapeString(q.Negocio), html.EscapeString(q.Cliente), html.EscapeString(q.Folio), q.VigenciaDias, q.Total)
+}
+
 func formatEmailFrom(name, address string) string {
 	return (&mail.Address{Name: strings.TrimSpace(name), Address: strings.TrimSpace(address)}).String()
 }

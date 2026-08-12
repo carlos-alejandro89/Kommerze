@@ -158,7 +158,7 @@ export function HomePage() {
     const handleHiddenInventoryImport = (event) => {
       if (event.altKey && event.key === 'F3') {
         event.preventDefault();
-        navigate('/inventario/importar-json');
+        navigate('/settings?tab=inventario');
       }
     };
 

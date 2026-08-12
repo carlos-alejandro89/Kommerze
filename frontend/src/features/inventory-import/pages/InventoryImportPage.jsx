@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -23,8 +23,7 @@ async function guardarInventarioJSON(nombreArchivo, contenido) {
   return service(nombreArchivo, contenido);
 }
 
-export function InventoryImportPage() {
-  const navigate = useNavigate();
+export function InventoryImportPanel({ formId = 'inventory-import-form', onStateChange, showSubmitAction = true }) {
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [content, setContent] = useState('');
@@ -32,6 +31,10 @@ export function InventoryImportPage() {
   const [result, setResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    onStateChange?.({ canSubmit: Boolean(file && content), isSaving });
+  }, [content, file, isSaving, onStateChange]);
 
   const preview = useMemo(() => {
     if (!content) return '';
@@ -70,7 +73,8 @@ export function InventoryImportPage() {
     handleFile(event.dataTransfer.files?.[0]);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (event) => {
+    event?.preventDefault();
     if (!file || !content) {
       setError('Selecciona un archivo JSON antes de guardar');
       return;
@@ -94,30 +98,7 @@ export function InventoryImportPage() {
   };
 
   return (
-    <div className="relative min-h-full overflow-hidden bg-[#f5f8fc] px-6 py-5 dark:bg-background">
-      <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
-
-      <div className="relative z-[var(--z-layer-base)] mx-auto flex w-full max-w-5xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
-              Modulo oculto
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-foreground">
-              Importar JSON de inventario
-            </h1>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">
-              Carga un archivo local y guardalo en disco desde el backend.
-            </p>
-          </div>
-
-          <Button variant="outline" className="gap-2" onClick={() => navigate('/home')}>
-            <ArrowLeft className="size-4" />
-            Volver
-          </Button>
-        </header>
-
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <form id={formId} onSubmit={handleSave} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="overflow-hidden rounded-[1.35rem] border-white/65 bg-white/70 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055]">
             <CardContent className="p-4">
               <button
@@ -186,14 +167,16 @@ export function InventoryImportPage() {
                   </div>
                 </div>
 
-                <Button
-                  className="mt-4 w-full gap-2"
-                  disabled={!file || isSaving}
-                  onClick={handleSave}
-                >
-                  {isSaving ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-                  Guardar JSON
-                </Button>
+                {showSubmitAction ? (
+                  <Button type="submit" className="mt-4 w-full gap-2" disabled={!file || isSaving}>
+                    {isSaving ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+                    {isSaving ? 'Importando…' : 'Importar inventario'}
+                  </Button>
+                ) : (
+                  <p className="mt-4 text-xs font-medium leading-5 text-muted-foreground">
+                    Selecciona un archivo válido y utiliza el botón fijo al pie para iniciar la importación.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -223,7 +206,28 @@ export function InventoryImportPage() {
               </div>
             )}
           </aside>
-        </div>
+    </form>
+  );
+}
+
+export function InventoryImportPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="relative min-h-full overflow-hidden bg-[#f5f8fc] px-6 py-5 dark:bg-background">
+      <div className="kommerze-gradient-bg pointer-events-none absolute inset-0" />
+      <div className="relative z-[var(--z-layer-base)] mx-auto flex w-full max-w-5xl flex-col gap-4">
+        <header className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal text-foreground">Importar JSON de inventario</h1>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">Carga y valida un archivo de inventario.</p>
+          </div>
+          <Button variant="outline" className="gap-2" onClick={() => navigate('/home')}>
+            <ArrowLeft className="size-4" />
+            Volver
+          </Button>
+        </header>
+        <InventoryImportPanel />
       </div>
     </div>
   );

@@ -110,7 +110,7 @@ export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
 export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
 
-export function ServicePrintReceipt(arg1:string):Promise<void>;
+export function ServicePrintReceipt(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
@@ -134,6 +134,8 @@ export function ServiceVerificarAuditoriasEnCurso():Promise<dto.ResponseDto>;
 
 export function ServiceVerifyLicense():Promise<dto.ResponseDto>;
 
+export function SyncClientes():Promise<string>;
+
 export function SyncEmpaques():Promise<string>;
 
 export function SyncEmpresas():Promise<string>;
@@ -149,6 +151,8 @@ export function SyncNivelesEmpaque():Promise<string>;
 export function SyncPerfiles():Promise<string>;
 
 export function SyncProductos():Promise<string>;
+
+export function SyncRolesFiscales():Promise<string>;
 
 export function SyncSatFormasPago():Promise<string>;
 

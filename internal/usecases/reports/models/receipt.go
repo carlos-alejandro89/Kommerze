@@ -16,6 +16,7 @@ type ReceiptLegendGroup struct {
 }
 
 type Receipt struct {
+	TipoPedidoID  uint                 `json:"tipoPedidoId"`
 	Folio         string               `json:"folio"`
 	Negocio       string               `json:"negocio"`
 	Sucursal      string               `json:"sucursal"`

@@ -17,20 +17,24 @@ type EntidadFiscalClienteDto struct {
 
 type ClienteDetalleDto struct {
 	ClienteDto
-	Whatsapp          string                    `json:"Whatsapp"`
-	Puntos            int                       `json:"Puntos"`
-	EntidadesFiscales []EntidadFiscalClienteDto `json:"EntidadesFiscales"`
+	Whatsapp string `json:"Whatsapp"`
+	Puntos   int    `json:"Puntos"`
+	// Se carga con una consulta separada en ClientesService.ObtenerCliente.
+	// gorm:"-" evita que GORM intente inferir esta colección del DTO como
+	// una relación persistente sin clave foránea.
+	EntidadesFiscales []EntidadFiscalClienteDto `json:"EntidadesFiscales" gorm:"-"`
 }
 
 type GuardarEntidadFiscalClienteDto struct {
-	Guid         string `json:"Guid"`
-	RegimenID    *uint  `json:"RegimenID"`
-	RazonSocial  string `json:"RazonSocial"`
-	RFC          string `json:"RFC"`
-	CodigoPostal string `json:"CodigoPostal"`
-	Correo       string `json:"Correo"`
-	Telefono     string `json:"Telefono"`
-	Whatsapp     string `json:"Whatsapp"`
+	RolFiscalGuid string `json:"RolFiscalGuid"`
+	Guid          string `json:"Guid"`
+	RegimenID     *uint  `json:"RegimenID"`
+	RazonSocial   string `json:"RazonSocial"`
+	RFC           string `json:"RFC"`
+	CodigoPostal  string `json:"CodigoPostal"`
+	Correo        string `json:"Correo"`
+	Telefono      string `json:"Telefono"`
+	Whatsapp      string `json:"Whatsapp"`
 }
 
 type GuardarClienteDto struct {

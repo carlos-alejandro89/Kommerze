@@ -15,7 +15,7 @@ import {
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
   SyncPerfiles, SyncUsuarios, SyncTiposPedido,
-  SyncTiposAutorizacion, SyncEstatus,
+  SyncTiposAutorizacion, SyncEstatus, SyncRolesFiscales, SyncClientes,
   ServiceGetSucursalGuid,
 } from "../../../../wailsjs/go/main/App";
 
@@ -41,6 +41,7 @@ const STAGES = [
       { id: 2,  name: 'Marcas',                   endpoint: '/catalogos/marcas/get',                icon: Users,      sync: SyncMarcas },
       { id: 3,  name: 'Empaques',                 endpoint: '/catalogos/empaques/get',              icon: Database,   sync: SyncEmpaques },
       { id: 14, name: 'Perfiles',                 endpoint: '/catalogos/perfiles/get',              icon: Users,      sync: SyncPerfiles },
+      { id: 19, name: 'Roles fiscales',           endpoint: '/catalogos/roles-fiscales/get',        icon: Users,      sync: SyncRolesFiscales },
       { id: 15, name: 'Tipos de Pedido',          endpoint: '/catalogos/tipos-pedido/get',          icon: LayoutGrid, sync: SyncTiposPedido },
       { id: 16, name: 'Tipos de Autorización',    endpoint: '/catalogos/tipos-autorizacion/get',    icon: LayoutGrid, sync: SyncTiposAutorizacion },
       { id: 17, name: 'Estatus',                  endpoint: '/catalogos/estatus/get',               icon: LayoutGrid, sync: SyncEstatus },
@@ -57,6 +58,7 @@ const STAGES = [
     catalogs: [
       { id: 11, name: 'Empresas',               endpoint: '/catalogos/empresas/get',            icon: LayoutGrid, sync: SyncEmpresas },
       { id: 18, name: 'Usuarios',               endpoint: '/catalogos/usuarios/get',            icon: Users,      sync: SyncUsuarios },
+      { id: 20, name: 'Clientes y datos fiscales', endpoint: '/clientes/sync',                   icon: Users,      sync: SyncClientes },
     ],
   },
   {

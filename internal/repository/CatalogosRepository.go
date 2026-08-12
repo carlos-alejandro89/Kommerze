@@ -5,6 +5,8 @@ import (
 	"BitComercio/internal/repository/dto"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -564,6 +566,103 @@ func (c *CatalogosRepository) SavePerfiles(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) SaveRolesFiscales(data []any) error {
+	for _, fila := range data {
+		fMap, ok := fila.(map[string]any)
+		if !ok {
+			continue
+		}
+		guid, err := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		if err != nil {
+			return fmt.Errorf("GUID de rol fiscal inválido: %w", err)
+		}
+		role := models.RolesFiscales{BaseModel: models.BaseModel{Guid: guid}, Nombre: strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", fMap["nombre"])))}
+		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&role).Error; err != nil {
+			return fmt.Errorf("error insertando rol fiscal: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *CatalogosRepository) SaveClientesSync(data dto.ClientesSyncDto) error {
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		syncNow := time.Now().UTC()
+		for _, item := range data.Clientes {
+			guid, err := uuid.Parse(item.Guid)
+			if err != nil {
+				return fmt.Errorf("GUID de cliente inválido: %w", err)
+			}
+			createdAt, updatedAt := validSyncDates(item.CreatedAt.Time, item.UpdatedAt.Time, syncNow)
+			client := models.Cliente{BaseModel: models.BaseModel{Guid: guid, CreatedAt: createdAt, UpdatedAt: updatedAt}, RazonSocial: item.RazonSocial, Correo: item.Correo, Telefono: item.Telefono, CreditoMaximo: decimal.NewFromFloat(item.CreditoMaximo), DiasCredito: item.DiasCredito}
+			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, DoUpdates: clause.AssignmentColumns([]string{"razon_social", "correo", "telefono", "credito_maximo", "dias_credito", "updated_at", "deleted_at"})}).Create(&client).Error; err != nil {
+				return fmt.Errorf("error sincronizando cliente: %w", err)
+			}
+		}
+		for _, item := range data.EntidadesFiscales {
+			guid, err := uuid.Parse(item.Guid)
+			if err != nil {
+				return fmt.Errorf("GUID de entidad fiscal inválido: %w", err)
+			}
+			var regimenID *uint
+			if item.RegimenGuid != nil && *item.RegimenGuid != "" {
+				if regimenGuid, parseErr := uuid.Parse(*item.RegimenGuid); parseErr == nil {
+					var regimen models.SATRegimenFiscal
+					if tx.Where("guid = ?", regimenGuid).First(&regimen).Error == nil {
+						regimenID = &regimen.ID
+					}
+				}
+			}
+			createdAt, updatedAt := validSyncDates(item.CreatedAt.Time, item.UpdatedAt.Time, syncNow)
+			entity := models.EntidadFiscal{BaseModel: models.BaseModel{Guid: guid, CreatedAt: createdAt, UpdatedAt: updatedAt}, RegimenID: regimenID, RazonSocial: item.RazonSocial, RFC: normalizeSyncRFC(item.RFC), CodigoPostal: item.CodigoPostal, Correo: item.Correo, Telefono: item.Telefono, Whatsapp: item.Whatsapp}
+			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, DoUpdates: clause.AssignmentColumns([]string{"regimen_id", "razon_social", "rfc", "codigo_postal", "correo", "telefono", "whatsapp", "updated_at", "deleted_at"})}).Create(&entity).Error; err != nil {
+				return fmt.Errorf("error sincronizando entidad fiscal: %w", err)
+			}
+		}
+		var receptor models.RolesFiscales
+		if err := tx.Where("nombre = ? AND deleted_at IS NULL", "RECEPTOR").First(&receptor).Error; err != nil {
+			return fmt.Errorf("sincronice primero Roles fiscales: %w", err)
+		}
+		for _, item := range data.ClienteEntidadFiscal {
+			guid, err := uuid.Parse(item.Guid)
+			if err != nil {
+				return fmt.Errorf("GUID de relación fiscal inválido: %w", err)
+			}
+			var client models.Cliente
+			if err := tx.Where("guid = ?", item.ClienteGuid).First(&client).Error; err != nil {
+				return fmt.Errorf("cliente relacionado no encontrado: %w", err)
+			}
+			var entity models.EntidadFiscal
+			if err := tx.Where("guid = ?", item.EntidadFiscalGuid).First(&entity).Error; err != nil {
+				return fmt.Errorf("entidad relacionada no encontrada: %w", err)
+			}
+			createdAt, updatedAt := validSyncDates(item.CreatedAt.Time, item.UpdatedAt.Time, syncNow)
+			relation := models.ClienteEntidadFiscal{BaseModel: models.BaseModel{Guid: guid, CreatedAt: createdAt, UpdatedAt: updatedAt}, ClienteID: client.ID, EntidadFiscalID: entity.ID}
+			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, DoUpdates: clause.AssignmentColumns([]string{"cliente_id", "entidad_fiscal_id", "updated_at", "deleted_at"})}).Create(&relation).Error; err != nil {
+				return fmt.Errorf("error sincronizando relación fiscal: %w", err)
+			}
+			roleLink := models.EntidadFiscalRol{EntidadFiscalID: entity.ID, RolID: receptor.ID}
+			if err := tx.Where("entidad_fiscal_id = ? AND rol_id = ?", entity.ID, receptor.ID).FirstOrCreate(&roleLink).Error; err != nil {
+				return fmt.Errorf("error vinculando rol RECEPTOR: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func validSyncDates(createdAt, updatedAt, fallback time.Time) (time.Time, time.Time) {
+	if createdAt.IsZero() || createdAt.Year() <= 1 {
+		createdAt = fallback
+	}
+	if updatedAt.IsZero() || updatedAt.Year() <= 1 {
+		updatedAt = createdAt
+	}
+	return createdAt.UTC(), updatedAt.UTC()
+}
+
+func normalizeSyncRFC(value string) string {
+	return strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(strings.TrimSpace(value)))
 }
 
 func (c *CatalogosRepository) SaveUsuarios(data []any) error {

@@ -37,6 +37,7 @@ export function HomeStatusBar() {
         {[
           { key: 'F1',  label: 'Ayuda' },
           { key: 'F5',  label: 'Actualizar' },
+          ...(!isCaja ? [{ key: 'F6', label: 'Sync' }] : []),
           { key: 'F12', label: 'POS' },
         ].map(({ key, label }) => (
           <span key={key} className="flex items-center gap-1 text-[10px]">

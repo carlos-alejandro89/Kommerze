@@ -38,6 +38,7 @@ export function CartOrderPlaced() {
     const [sendDialogOpen, setSendDialogOpen] = React.useState(false);
     const [recipientEmail, setRecipientEmail] = React.useState('');
     const [sendError, setSendError] = React.useState('');
+	const [pdfViewer, setPdfViewer] = React.useState({ open: false, url: '', fileName: '' });
     const pedidoGuid = React.useMemo(() => localStorage.getItem('pedidoGuid') || '', []);
 
     const prefixes = {
@@ -65,6 +66,11 @@ export function CartOrderPlaced() {
             return '';
         }
     });
+	const isQuotation = operationPrefix === 'COT';
+
+	React.useEffect(() => () => {
+		if (pdfViewer.url) URL.revokeObjectURL(pdfViewer.url);
+	}, [pdfViewer.url]);
 
     React.useEffect(() => {
 
@@ -114,8 +120,18 @@ export function CartOrderPlaced() {
         if (!pedidoGuid) { toast.error('No se encontró el identificador de la venta'); return; }
         setIsPrinting(true);
         try {
-            await posService.imprimirRecibo(pedidoGuid);
-            toast.success('Recibo enviado a la miniprinter');
+			const result = await posService.imprimirRecibo(pedidoGuid);
+			if (result?.kind === 'pdf' && result.dataBase64) {
+				const bytes = Uint8Array.from(atob(result.dataBase64), char => char.charCodeAt(0));
+				const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+				setPdfViewer(current => {
+					if (current.url) URL.revokeObjectURL(current.url);
+					return { open: true, url, fileName: result.fileName || 'cotizacion.pdf' };
+				});
+				toast.success('Cotización PDF generada');
+			} else {
+				toast.success('Recibo enviado a la miniprinter');
+			}
         } catch (error) {
             toast.error('No se pudo imprimir: ' + String(error));
         } finally { setIsPrinting(false); }
@@ -143,7 +159,7 @@ export function CartOrderPlaced() {
             await posService.enviarRecibo(pedidoGuid, correo);
             setSendDialogOpen(false);
             setRecipientEmail('');
-            toast.success('Recibo PDF enviado por correo');
+			toast.success(`${isQuotation ? 'Cotización' : 'Recibo'} PDF enviado por correo`);
         } catch (error) {
             const message = String(error || 'Error desconocido');
             setSendError(message);
@@ -300,9 +316,9 @@ export function CartOrderPlaced() {
                             <Mail className="size-5" />
                         </div>
                         <DialogHeader className="mb-0">
-                            <DialogTitle className="text-xl text-white">Enviar recibo por correo</DialogTitle>
+							<DialogTitle className="text-xl text-white">Enviar {isQuotation ? 'cotización' : 'recibo'} por correo</DialogTitle>
                             <DialogDescription className="text-blue-100/80">
-                                Se enviará un mensaje HTML con el recibo PDF de la venta {folio ? `#${operationPrefix}-${String(folio).padStart(6, '0')}` : ''}.
+								Se enviará un mensaje HTML profesional con {isQuotation ? 'la cotización' : 'el recibo'} PDF {folio ? `#${operationPrefix}-${String(folio).padStart(6, '0')}` : ''}.
                             </DialogDescription>
                         </DialogHeader>
                     </div>
@@ -351,13 +367,23 @@ export function CartOrderPlaced() {
                                 {isSending ? (
                                     <><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Enviando…</>
                                 ) : (
-                                    <><Mail className="size-4" />Enviar recibo</>
+									<><Mail className="size-4" />Enviar {isQuotation ? 'cotización' : 'recibo'}</>
                                 )}
                             </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
+
+			<Dialog open={pdfViewer.open} onOpenChange={(open) => setPdfViewer(current => ({ ...current, open }))}>
+				<DialogContent className="flex h-[92vh] w-[min(1100px,96vw)] max-w-none flex-col overflow-hidden rounded-2xl border-border/70 p-0">
+					<DialogHeader className="border-b border-border bg-surface px-6 py-4 text-left">
+						<DialogTitle>Cotización {folio ? `#COT-${String(folio).padStart(6, '0')}` : ''}</DialogTitle>
+						<DialogDescription>Vista previa del documento PDF generado con los datos registrados.</DialogDescription>
+					</DialogHeader>
+					{pdfViewer.url && <iframe title={pdfViewer.fileName} src={pdfViewer.url} className="min-h-0 w-full flex-1 bg-zinc-100" />}
+				</DialogContent>
+			</Dialog>
 
             <style jsx>{`
                 @keyframes shimmer {

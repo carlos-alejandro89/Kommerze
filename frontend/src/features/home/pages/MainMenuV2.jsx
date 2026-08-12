@@ -217,6 +217,13 @@ export function MainMenuV2() {
       } else if (event.key === 'F5') {
         event.preventDefault();
         window.location.reload();
+      } else if (event.key === 'F6') {
+        event.preventDefault();
+        if (isCaja) {
+          toast.warning('La sincronización sólo está disponible en el Servidor Local');
+          return;
+        }
+        navigate('/sync');
       } else if (event.key === 'F12') {
         event.preventDefault();
         navigate('/pos');
@@ -224,7 +231,7 @@ export function MainMenuV2() {
     };
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, [navigate]);
+  }, [isCaja, navigate]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);

@@ -182,6 +182,17 @@ func (c *CajaProxyService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) BuildQuotation(pedidoGuid string) (reportmodels.Quotation, error) {
+	var result struct {
+		Success bool                   `json:"success"`
+		Data    reportmodels.Quotation `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/cotizaciones/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
+		return reportmodels.Quotation{}, err
+	}
+	return result.Data, nil
+}
+
 // SetContext inicia la conexión WebSocket hacia el Servidor Local
 // para recibir eventos en tiempo real y emitirlos al frontend de esta Caja.
 func (c *CajaProxyService) SetContext(ctx context.Context) {
@@ -337,6 +348,17 @@ func (c *CajaProxyService) GuardarCliente(datos dto.GuardarClienteDto) (*dto.Cli
 		return nil, err
 	}
 	return &result.Data, nil
+}
+
+func (c *CajaProxyService) ConsultarEntidadFiscalCloud(rfc string) (*dto.ProveedorFiscalDto, error) {
+	var result struct {
+		Success bool                    `json:"success"`
+		Data    *dto.ProveedorFiscalDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/clientes/entidad-fiscal?rfc=%s", url.QueryEscape(rfc)), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
 }
 
 func (c *CajaProxyService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {

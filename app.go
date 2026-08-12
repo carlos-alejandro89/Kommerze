@@ -7,7 +7,9 @@ import (
 	"BitComercio/internal/services"
 	requestdto "BitComercio/internal/services/requestDto"
 	reportmodels "BitComercio/internal/usecases/reports/models"
+	"BitComercio/internal/usecases/reports/renders"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -94,6 +96,7 @@ func (a *App) clientesService() interface {
 	ListarClientes() ([]dto.ClienteDto, error)
 	ObtenerCliente(string) (*dto.ClienteDetalleDto, error)
 	GuardarCliente(dto.GuardarClienteDto) (*dto.ClienteDetalleDto, error)
+	ConsultarEntidadFiscalCloud(string) (*dto.ProveedorFiscalDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -125,6 +128,7 @@ func (a *App) cotizacionService() interface {
 
 func (a *App) receiptService() interface {
 	BuildReceipt(string) (reportmodels.Receipt, error)
+	BuildQuotation(string) (reportmodels.Quotation, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -288,6 +292,28 @@ func (a *App) SyncPerfiles() (string, error) {
 	return "Sincronizado", nil
 }
 
+func (a *App) SyncRolesFiscales() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncRolesFiscales()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
+func (a *App) SyncClientes() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncClientes()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
 func (a *App) SyncUsuarios() (string, error) {
 	if a.services.Sync == nil {
 		return "", fmt.Errorf("sincronización no disponible en modo Caja")
@@ -369,21 +395,35 @@ func (a *App) ServiceConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	return a.posService().ConsultarTransferencias()
 }
 
-func (a *App) ServicePrintReceipt(pedidoGuid string) error {
+func (a *App) ServicePrintReceipt(pedidoGuid string) (*reportmodels.DocumentOutput, error) {
 	receipt, err := a.receiptService().BuildReceipt(pedidoGuid)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if receipt.TipoPedidoID == 2 {
+		quotation, err := a.receiptService().BuildQuotation(pedidoGuid)
+		if err != nil {
+			return nil, err
+		}
+		pdf, err := renders.RenderQuotationPDF(quotation)
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo generar la cotización PDF: %w", err)
+		}
+		return &reportmodels.DocumentOutput{Kind: "pdf", FileName: "cotizacion-" + quotation.Folio + ".pdf", DataBase64: base64.StdEncoding.EncodeToString(pdf)}, nil
 	}
 	cfg, err := services.LoadKommerzConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if cfg.Receipt.BusinessName != "" {
 		receipt.Negocio = cfg.Receipt.BusinessName
 	}
 	receipt.Leyendas = cfg.Receipt.Legends
 	receipt.LeyendaGrupos = receiptLegendGroups(cfg.Receipt.LegendGroups)
-	return services.PrintReceipt(receipt, cfg.Receipt)
+	if err := services.PrintReceipt(receipt, cfg.Receipt); err != nil {
+		return nil, err
+	}
+	return &reportmodels.DocumentOutput{Kind: "printed"}, nil
 }
 
 func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
@@ -394,6 +434,13 @@ func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
 	cfg, err := services.LoadKommerzConfig()
 	if err != nil {
 		return err
+	}
+	if receipt.TipoPedidoID == 2 {
+		quotation, err := a.receiptService().BuildQuotation(pedidoGuid)
+		if err != nil {
+			return err
+		}
+		return services.EmailQuotation(quotation, recipient, cfg.Receipt)
 	}
 	if cfg.Receipt.BusinessName != "" {
 		receipt.Negocio = cfg.Receipt.BusinessName
@@ -737,7 +784,7 @@ func (a *App) ServiceBuscarEntidadFiscalProveedor(rfc string) (*dto.ProveedorFis
 // ServiceBuscarEntidadFiscalPorRFC es la consulta neutral que reutilizan los
 // flujos de clientes y proveedores antes de crear una entidad fiscal.
 func (a *App) ServiceBuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {
-	return a.proveedoresService().BuscarEntidadFiscalPorRFC(rfc)
+	return a.clientesService().ConsultarEntidadFiscalCloud(rfc)
 }
 
 func (a *App) ServiceGuardarProveedor(datos dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error) {

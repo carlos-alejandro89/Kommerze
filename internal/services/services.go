@@ -8,9 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// apiCloudBaseURL es la URL base del API de Kommerze Cloud.
-// Valor fijo del sistema; no varía por instalación.
-const apiCloudBaseURL = "https://kommerze-cloud-api.developers-lab.com"
 const netPayBaseURL = "https://api-154.api-netpay.com"
 
 type Services struct {
@@ -66,7 +63,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	}
 
 	// ── Servidor Local (comportamiento actual) ──────────────────────────────
-	apiURL := apiCloudBaseURL
+	apiURL := cfg.EffectiveCloudAPIURL()
 	repo := repository.NewCatalogosRepository(db)
 	repoPrecios := repository.NewListaPreciosRepository(db)
 	repoUsuarios := repository.NewUsuarioRepository(db)
@@ -79,8 +76,8 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	auditoria := NewAuditoriaService(repoAuditoria, apiURL, cloudClient)
 	auth := NewAuthService(repoUsuarios)
 	catalogos := NewCatalogosService(repo)
-	clientes := NewClientesService(db)
-	proveedores := NewProveedoresService(db)
+	clientes := NewClientesService(db, apiURL, cloudClient)
+	proveedores := NewProveedoresService(db, apiURL, cloudClient)
 	cotizacion := NewCotizacionService(db, apiURL, cloudClient)
 	receipt := NewReceiptService(db)
 	operacionesCaja := NewOperacionesCajaService(db)

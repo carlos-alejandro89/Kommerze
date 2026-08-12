@@ -110,6 +110,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/clientes/listado", l.handleListadoClientes)
 	mux.HandleFunc("/local/clientes/detalle", l.handleDetalleCliente)
 	mux.HandleFunc("/local/clientes/guardar", l.handleGuardarCliente)
+	mux.HandleFunc("/local/clientes/entidad-fiscal", l.handleBuscarEntidadFiscalCloud)
 	mux.HandleFunc("/local/proveedores/buscar-rfc", l.handleBuscarProveedorRFC)
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
@@ -123,6 +124,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
 	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
+	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
 	mux.HandleFunc("/local/cotizaciones/detalle", l.handleDetalleCotizacion)
@@ -156,6 +158,20 @@ func (l *LocalServerService) handleReceipt(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	result, err := l.receipt.BuildReceipt(guid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleQuotationPDFData(w http.ResponseWriter, r *http.Request) {
+	guid := r.URL.Query().Get("pedidoGuid")
+	if guid == "" {
+		writeError(w, http.StatusBadRequest, "pedidoGuid requerido")
+		return
+	}
+	result, err := l.receipt.BuildQuotation(guid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -436,6 +452,19 @@ func (l *LocalServerService) handleGuardarCliente(w http.ResponseWriter, r *http
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": client})
+}
+
+func (l *LocalServerService) handleBuscarEntidadFiscalCloud(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	entity, err := l.clientes.ConsultarEntidadFiscalCloud(r.URL.Query().Get("rfc"))
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": entity})
 }
 
 func (l *LocalServerService) handleBuscarProveedorRFC(w http.ResponseWriter, r *http.Request) {

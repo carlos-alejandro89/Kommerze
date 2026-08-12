@@ -16,12 +16,13 @@ type ProveedorFiscalDto struct {
 }
 
 type GuardarProveedorDto struct {
-	EntidadGuid  string `json:"EntidadGuid"`
-	RegimenID    *uint  `json:"RegimenID"`
-	RazonSocial  string `json:"RazonSocial"`
-	RFC          string `json:"RFC"`
-	CodigoPostal string `json:"CodigoPostal"`
-	Correo       string `json:"Correo"`
-	Telefono     string `json:"Telefono"`
-	Whatsapp     string `json:"Whatsapp"`
+	RolFiscalGuid string `json:"RolFiscalGuid"`
+	EntidadGuid   string `json:"EntidadGuid"`
+	RegimenID     *uint  `json:"RegimenID"`
+	RazonSocial   string `json:"RazonSocial"`
+	RFC           string `json:"RFC"`
+	CodigoPostal  string `json:"CodigoPostal"`
+	Correo        string `json:"Correo"`
+	Telefono      string `json:"Telefono"`
+	Whatsapp      string `json:"Whatsapp"`
 }

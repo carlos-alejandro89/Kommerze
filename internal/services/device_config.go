@@ -2,9 +2,14 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+const DefaultCloudAPIURL = "https://kommerze-cloud-api.developers-lab.com"
 
 // defaultStr devuelve fallback si s está vacío.
 func defaultStr(s, fallback string) string {
@@ -86,6 +91,7 @@ type KommerzConfig struct {
 	// Credenciales de sincronización con la nube (solo Servidor Local)
 	CloudEmail    string `json:"cloudEmail,omitempty"`
 	CloudPassword string `json:"cloudPassword,omitempty"`
+	CloudAPIURL   string `json:"cloudApiUrl,omitempty"`
 
 	// Credenciales de NetPay
 	NetPayUser         string `json:"netPayUser,omitempty"`
@@ -110,6 +116,20 @@ type KommerzConfig struct {
 
 	// Ticket térmico, impresora de red y correo SMTP (configuración local).
 	Receipt ReceiptConfig `json:"receipt,omitempty"`
+}
+
+// EffectiveCloudAPIURL conserva compatibilidad con instalaciones que todavía
+// no tienen cloudApiUrl en su archivo de configuración.
+func (c *KommerzConfig) EffectiveCloudAPIURL() string {
+	return strings.TrimRight(defaultStr(strings.TrimSpace(c.CloudAPIURL), DefaultCloudAPIURL), "/")
+}
+
+func ValidateCloudAPIURL(value string) error {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("la URL del API debe ser una dirección HTTP o HTTPS válida")
+	}
+	return nil
 }
 
 // EffectiveDBConfig devuelve los valores de conexión a la BD aplicando
@@ -164,6 +184,12 @@ func LoadKommerzConfig() (*KommerzConfig, error) {
 
 // SaveKommerzConfig persiste la configuración del dispositivo en disco.
 func SaveKommerzConfig(cfg *KommerzConfig) error {
+	if strings.TrimSpace(cfg.CloudAPIURL) != "" {
+		if err := ValidateCloudAPIURL(cfg.CloudAPIURL); err != nil {
+			return err
+		}
+		cfg.CloudAPIURL = strings.TrimRight(strings.TrimSpace(cfg.CloudAPIURL), "/")
+	}
 	path, err := GetKommerzConfigPath()
 	if err != nil {
 		return err

@@ -342,6 +342,7 @@ export namespace dto {
 	
 	
 	export class GuardarEntidadFiscalClienteDto {
+	    RolFiscalGuid: string;
 	    Guid: string;
 	    RegimenID?: number;
 	    RazonSocial: string;
@@ -357,6 +358,7 @@ export namespace dto {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.RolFiscalGuid = source["RolFiscalGuid"];
 	        this.Guid = source["Guid"];
 	        this.RegimenID = source["RegimenID"];
 	        this.RazonSocial = source["RazonSocial"];
@@ -415,6 +417,7 @@ export namespace dto {
 	}
 	
 	export class GuardarProveedorDto {
+	    RolFiscalGuid: string;
 	    EntidadGuid: string;
 	    RegimenID?: number;
 	    RazonSocial: string;
@@ -430,6 +433,7 @@ export namespace dto {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.RolFiscalGuid = source["RolFiscalGuid"];
 	        this.EntidadGuid = source["EntidadGuid"];
 	        this.RegimenID = source["RegimenID"];
 	        this.RazonSocial = source["RazonSocial"];
@@ -934,6 +938,22 @@ export namespace dto {
 
 export namespace models {
 	
+	export class DocumentOutput {
+	    kind: string;
+	    fileName?: string;
+	    dataBase64?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentOutput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.fileName = source["fileName"];
+	        this.dataBase64 = source["dataBase64"];
+	    }
+	}
 	export class Perfil {
 	    ID: number;
 	    Guid: number[];
@@ -1356,6 +1376,7 @@ export namespace services {
 	    localServerUrl?: string;
 	    cloudEmail?: string;
 	    cloudPassword?: string;
+	    cloudApiUrl?: string;
 	    netPayUser?: string;
 	    netPayPassword?: string;
 	    netPayStoreId?: string;
@@ -1380,6 +1401,7 @@ export namespace services {
 	        this.localServerUrl = source["localServerUrl"];
 	        this.cloudEmail = source["cloudEmail"];
 	        this.cloudPassword = source["cloudPassword"];
+	        this.cloudApiUrl = source["cloudApiUrl"];
 	        this.netPayUser = source["netPayUser"];
 	        this.netPayPassword = source["netPayPassword"];
 	        this.netPayStoreId = source["netPayStoreId"];

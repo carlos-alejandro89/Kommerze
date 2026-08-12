@@ -2,6 +2,7 @@ package services
 
 import (
 	"BitComercio/internal/repository"
+	"BitComercio/internal/repository/dto"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -379,6 +380,51 @@ func (s *SyncService) SyncPerfiles() ([]any, error) {
 	return result.Data, nil
 }
 
+func (s *SyncService) SyncRolesFiscales() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/roles-fiscales/get", s.apiBaseURL))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	if err := s.repo.SaveRolesFiscales(result.Data); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (s *SyncService) SyncClientes() (*dto.ClientesSyncDto, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/clientes/sync", s.apiBaseURL))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+	var result struct {
+		Success bool                `json:"success"`
+		Mensaje string              `json:"mensaje"`
+		Data    dto.ClientesSyncDto `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("%s", result.Mensaje)
+	}
+	if err := s.repo.SaveClientesSync(result.Data); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
 func (s *SyncService) SyncUsuarios() ([]any, error) {
 	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/usuarios/get", s.apiBaseURL))
 	if err != nil {
@@ -470,4 +516,3 @@ func (s *SyncService) SyncEstatus() ([]any, error) {
 
 	return result.Data, nil
 }
-

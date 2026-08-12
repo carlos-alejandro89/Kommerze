@@ -3,22 +3,29 @@ package services
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type ProveedoresService struct {
-	db *gorm.DB
+	db         *gorm.DB
+	apiBaseURL string
+	cloud      *CloudHttpClient
 }
 
-func NewProveedoresService(db *gorm.DB) *ProveedoresService {
-	return &ProveedoresService{db: db}
+func NewProveedoresService(db *gorm.DB, apiBaseURL string, cloud *CloudHttpClient) *ProveedoresService {
+	return &ProveedoresService{db: db, apiBaseURL: strings.TrimRight(apiBaseURL, "/"), cloud: cloud}
 }
 
 func normalizeRFC(value string) string {
-	return strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(value), " ", ""))
+	return strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(strings.TrimSpace(value)))
 }
 
 func (s *ProveedoresService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {
@@ -26,7 +33,42 @@ func (s *ProveedoresService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.Proveed
 	if rfc == "" {
 		return nil, fmt.Errorf("el RFC es obligatorio")
 	}
+	resp, err := s.cloud.Get(fmt.Sprintf("%s/clientes/entidad-fiscal/consultar/%s", s.apiBaseURL, url.PathEscape(rfc)))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	var cloudResult cloudAPIResponse[*cloudEntidadFiscal]
+	if err := json.NewDecoder(resp.Body).Decode(&cloudResult); err != nil {
+		return nil, err
+	}
+	if !cloudResult.Success || cloudResult.Data == nil {
+		return nil, fmt.Errorf("%s", cloudResult.Mensaje)
+	}
 	var entity dto.ProveedorFiscalDto
+	item := cloudResult.Data
+	entity.Guid = item.Guid
+	entity.RegimenID = item.RegimenID
+	entity.RazonSocial = item.RazonSocial
+	entity.RFC = item.RFC
+	entity.CodigoPostal = item.CodigoPostal
+	entity.Correo = item.Correo
+	entity.Telefono = item.Telefono
+	entity.Whatsapp = item.Whatsapp
+	if item.Regimen != nil {
+		entity.RegimenClave, entity.Regimen = item.Regimen.Clave, item.Regimen.Descripcion
+	}
+	var supplierRole models.RolesFiscales
+	if err := s.db.Where("nombre = ? AND deleted_at IS NULL", "PROVEEDOR").First(&supplierRole).Error; err == nil {
+		var count int64
+		s.db.Model(&models.EntidadFiscalRol{}).Where("rol_id = ?", supplierRole.ID).Joins("JOIN entidades_fiscales ef ON ef.id = entidad_fiscal_roles.entidad_fiscal_id").Where("ef.guid = ?", item.Guid).Count(&count)
+		entity.EsProveedor = count > 0
+	}
+	return &entity, nil
+	/*var entity dto.ProveedorFiscalDto
 	err := s.db.Raw(`
 		SELECT ef.id, ef.guid, ef.regimen_id, COALESCE(sr.clave, '') AS regimen_clave,
 		       COALESCE(sr.descripcion, '') AS regimen, ef.razon_social, ef.rfc,
@@ -46,7 +88,7 @@ func (s *ProveedoresService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.Proveed
 	if entity.ID == 0 {
 		return nil, nil
 	}
-	return &entity, nil
+	return &entity, nil*/
 }
 
 func (s *ProveedoresService) GuardarProveedor(datos dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error) {
@@ -54,8 +96,27 @@ func (s *ProveedoresService) GuardarProveedor(datos dto.GuardarProveedorDto) (*d
 	if rfc == "" {
 		return nil, fmt.Errorf("el RFC es obligatorio")
 	}
+	var supplierRole models.RolesFiscales
+	if err := s.db.Where("nombre = ? AND deleted_at IS NULL", "PROVEEDOR").First(&supplierRole).Error; err != nil {
+		return nil, fmt.Errorf("sincronice el catálogo de Roles fiscales: %w", err)
+	}
+	datos.RolFiscalGuid = supplierRole.Guid.String()
+	payload, _ := json.Marshal(map[string]any{"guid": datos.EntidadGuid, "rolFiscalGuid": datos.RolFiscalGuid, "regimenID": datos.RegimenID, "razonSocial": datos.RazonSocial, "rfc": rfc, "codigoPostal": datos.CodigoPostal, "correo": datos.Correo, "telefono": datos.Telefono, "whatsapp": datos.Whatsapp})
+	resp, err := s.cloud.Post(s.apiBaseURL+"/clientes/entidad-fiscal/guardar-rol", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var remote cloudAPIResponse[*cloudEntidadFiscal]
+	if err := json.NewDecoder(resp.Body).Decode(&remote); err != nil {
+		return nil, err
+	}
+	if !remote.Success || remote.Data == nil {
+		return nil, fmt.Errorf("%s", remote.Mensaje)
+	}
+	datos.EntidadGuid = remote.Data.Guid
 	var entityGuid string
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		// Serializa altas concurrentes del mismo RFC entre distintas Cajas.
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", rfc).Error; err != nil {
 			return err
@@ -70,6 +131,9 @@ func (s *ProveedoresService) GuardarProveedor(datos dto.GuardarProveedorDto) (*d
 			if strings.TrimSpace(datos.RazonSocial) == "" || datos.RegimenID == nil || strings.TrimSpace(datos.CodigoPostal) == "" {
 				return fmt.Errorf("razón social, régimen fiscal y código postal son obligatorios")
 			}
+			if parsed, parseErr := uuid.Parse(datos.EntidadGuid); parseErr == nil {
+				entity.Guid = parsed
+			}
 			entity.RegimenID = datos.RegimenID
 			entity.RazonSocial = strings.TrimSpace(datos.RazonSocial)
 			entity.RFC = rfc
@@ -83,10 +147,6 @@ func (s *ProveedoresService) GuardarProveedor(datos dto.GuardarProveedorDto) (*d
 		}
 		entityGuid = entity.Guid.String()
 
-		var supplierRole models.RolesFiscales
-		if err := tx.Where("nombre = ? AND deleted_at IS NULL", "PROVEEDOR").First(&supplierRole).Error; err != nil {
-			return fmt.Errorf("rol fiscal PROVEEDOR no disponible: %w", err)
-		}
 		return tx.Where("entidad_fiscal_id = ? AND rol_id = ?", entity.ID, supplierRole.ID).
 			FirstOrCreate(&models.EntidadFiscalRol{EntidadFiscalID: entity.ID, RolID: supplierRole.ID}).Error
 	})

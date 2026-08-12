@@ -15,8 +15,8 @@ import {
 } from '../../../../wailsjs/go/main/App';
 
 const TABS = [
-  { id: 'jornada',    label: 'Jornada',    icon: Building2 },
-  { id: 'cajas',      label: 'Turnos',     icon: Users },
+  { id: 'jornada', label: 'Jornada', icon: Building2 },
+  { id: 'cajas', label: 'Turnos', icon: Users },
   { id: 'financiero', label: 'Financiero', icon: BarChart3 },
 ];
 
@@ -30,15 +30,15 @@ export function CortesSucursalPage() {
 
   // SucursalID viene de store (ActivationProvider) — el Usuario no tiene ese campo.
   const sucursalID = store?.ID ?? store?.id ?? 0;
-  const userID     = user?.ID ?? user?.id ?? 0;
+  const userID = user?.ID ?? user?.id ?? 0;
 
-  const [activeTab, setActiveTab]     = useState('jornada');
-  const [loading, setLoading]         = useState(true);
-  const [submitting, setSubmitting]   = useState(false);
+  const [activeTab, setActiveTab] = useState('jornada');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [opSucursal, setOpSucursal]   = useState(null);
-  const [turnos, setTurnos]           = useState([]);
-  const [inventario, setInventario]   = useState(0);
+  const [opSucursal, setOpSucursal] = useState(null);
+  const [turnos, setTurnos] = useState([]);
+  const [inventario, setInventario] = useState(0);
 
   const [alertAction, setAlertAction] = useState(null);
 
@@ -48,6 +48,7 @@ export function CortesSucursalPage() {
     try {
       const res = await ServiceObtenerOperacionSucursalActiva(sucursalID);
       const op = res?.success ? res.data : null;
+      console.log(res)
       setOpSucursal(op);
 
       if (op?.ID || op?.id) {
@@ -71,7 +72,7 @@ export function CortesSucursalPage() {
       setLoading(true);
       return;
     }
-    
+
     if (sucursalID) {
       fetchDatos();
     } else {
@@ -93,10 +94,10 @@ export function CortesSucursalPage() {
     setSubmitting(true);
     try {
       const res = await ServiceSucursalInicioOperacion({
-        Sucursal:               sucursalID,
-        Usuario:                userID,
+        Sucursal: sucursalID,
+        Usuario: userID,
         ValorInventarioInicial: inventario,
-        FechaInicio:            new Date().toISOString(),
+        FechaInicio: new Date().toISOString(),
       });
       if (res?.success) {
         toast.success('Jornada iniciada correctamente');
@@ -132,7 +133,7 @@ export function CortesSucursalPage() {
     setSubmitting(true);
     try {
       const res = await ServiceCerrarOperacionSucursal({
-        OperacionID:     opSucursal?.ID || opSucursal?.id,
+        OperacionID: opSucursal?.ID || opSucursal?.id,
         UsuarioCierreID: userID,
       });
       if (res?.success) {
@@ -149,7 +150,9 @@ export function CortesSucursalPage() {
     }
   };
 
-  const jornadaActiva = opSucursal && (opSucursal?.EstatusID === 1 || opSucursal?.estatusID === 1);
+  const estatusJornadaID = opSucursal?.EstatusID ?? opSucursal?.estatusID;
+  const jornadaActiva = Boolean(opSucursal && Number(estatusJornadaID) === 1);
+  const tituloJornada = jornadaActiva ? 'Cierre de jornada' : 'Iniciar jornada';
   const turnosActivos = turnos.filter((turno) => {
     const estatusID = turno?.EstatusID ?? turno?.estatusID;
     const fechaFin = turno?.FechaFin ?? turno?.fechaFin;
@@ -174,7 +177,7 @@ export function CortesSucursalPage() {
           <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
             <span>/</span>
-            <span className="text-foreground">Cierre de jornada</span>
+            <span className="text-foreground">{tituloJornada}</span>
           </nav>
 
           {/* Título + badge estado */}
@@ -184,8 +187,12 @@ export function CortesSucursalPage() {
                 <Building2 className="size-6" strokeWidth={1.8} />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Cierre de jornada</h1>
-                <p className="mt-0.5 text-xs text-muted-foreground">Control y seguimiento de la operación diaria de la sucursal.</p>
+                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">{tituloJornada}</h1>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {jornadaActiva
+                    ? 'Control y seguimiento de la operación diaria de la sucursal.'
+                    : 'Inicia la operación diaria para habilitar las cajas de la sucursal.'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -201,26 +208,26 @@ export function CortesSucursalPage() {
 
           {/* Tabs */}
           <div className="mt-4 flex justify-end rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/35 p-1" role="tablist">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
-                    isActive ? 'border border-border/60 bg-background text-primary shadow-sm' : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
-                  )}
-                >
-                  <tab.icon className="size-3.5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+            <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/35 p-1" role="tablist">
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      'relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
+                      isActive ? 'border border-border/60 bg-background text-primary shadow-sm' : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                    )}
+                  >
+                    <tab.icon className="size-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -237,7 +244,7 @@ export function CortesSucursalPage() {
                 <p className="mt-1 text-xs text-muted-foreground">Consulta el periodo operativo, el inventario y los turnos asociados.</p>
               </div>
 
-              {opSucursal ? (
+              {jornadaActiva ? (
                 <>
                   <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
                     <div className="flex flex-col justify-between gap-5 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.075] via-blue-500/[.025] to-transparent px-5 py-5 dark:border-white/10 dark:from-blue-400/[.09] sm:flex-row sm:items-center">
@@ -384,18 +391,18 @@ export function CortesSucursalPage() {
                 <>
                   <Section title="Ventas e Inventario" icon={Package} iconColor="text-violet-500">
                     <Row label="Inventario Inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
-                    <Row label="Valor Ventas"        value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
-                    <Row label="Descuentos"           value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
-                    <Row label="Inventario Final"    value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} />
+                    <Row label="Valor Ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
+                    <Row label="Descuentos" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
+                    <Row label="Inventario Final" value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} />
                   </Section>
 
                   <Section title="Ingresos por Forma de Pago" icon={DollarSign} iconColor="text-emerald-500">
                     {[
-                      { label: 'Efectivo',      val: opSucursal?.IngresoEfectivo      || opSucursal?.ingresoEfectivo,      icon: Banknote,       color: 'text-emerald-500' },
-                      { label: 'Tarjetas',      val: opSucursal?.IngresoTarjetas      || opSucursal?.ingresoTarjetas,      icon: CreditCard,     color: 'text-blue-500' },
-                      { label: 'Cheques',       val: opSucursal?.IngresoCheques       || opSucursal?.ingresoCheques,       icon: FileText,       color: 'text-amber-500' },
-                      { label: 'Transferencia', val: opSucursal?.IngresoTransferencia || opSucursal?.ingresoTransferencia, icon: DollarSign,     color: 'text-violet-500' },
-                      { label: 'Otros',         val: opSucursal?.IngresoOtros         || opSucursal?.ingresoOtros,         icon: MoreHorizontal, color: 'text-muted-foreground' },
+                      { label: 'Efectivo', val: opSucursal?.IngresoEfectivo || opSucursal?.ingresoEfectivo, icon: Banknote, color: 'text-emerald-500' },
+                      { label: 'Tarjetas', val: opSucursal?.IngresoTarjetas || opSucursal?.ingresoTarjetas, icon: CreditCard, color: 'text-blue-500' },
+                      { label: 'Cheques', val: opSucursal?.IngresoCheques || opSucursal?.ingresoCheques, icon: FileText, color: 'text-amber-500' },
+                      { label: 'Transferencia', val: opSucursal?.IngresoTransferencia || opSucursal?.ingresoTransferencia, icon: DollarSign, color: 'text-violet-500' },
+                      { label: 'Otros', val: opSucursal?.IngresoOtros || opSucursal?.ingresoOtros, icon: MoreHorizontal, color: 'text-muted-foreground' },
                     ].map(({ label, val, icon: Icon, color }) => (
                       <div key={label} className="flex items-center gap-2 py-2.5 border-b border-border last:border-0">
                         <Icon className={cn('size-3.5 shrink-0', color)} />
@@ -407,11 +414,11 @@ export function CortesSucursalPage() {
 
                   <Section title="CFDI por Forma de Pago" icon={FileText} iconColor="text-amber-500">
                     {[
-                      ['Efectivo',      'CFDIEfectivo',      'cfdiEfectivo'],
-                      ['Tarjetas',      'CFDITarjetas',      'cfdiTarjetas'],
-                      ['Cheques',       'CFDICheques',       'cfdiCheques'],
+                      ['Efectivo', 'CFDIEfectivo', 'cfdiEfectivo'],
+                      ['Tarjetas', 'CFDITarjetas', 'cfdiTarjetas'],
+                      ['Cheques', 'CFDICheques', 'cfdiCheques'],
                       ['Transferencia', 'CFDITransferencia', 'cfdiTransferencia'],
-                      ['Otros',         'CFDIOtros',         'cfdiOtros'],
+                      ['Otros', 'CFDIOtros', 'cfdiOtros'],
                     ].map(([label, key1, key2]) => (
                       <Row key={label} label={label} value={`${opSucursal?.[key1] || opSucursal?.[key2] || 0} cfdi`} />
                     ))}
@@ -431,7 +438,7 @@ export function CortesSucursalPage() {
               <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} /> Actualizar
             </button>
             {!jornadaActiva && (
-              <button onClick={handleIniciarJornada} disabled={submitting || !!opSucursal || !sucursalID} className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(5,150,105,.8)] transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
+              <button onClick={handleIniciarJornada} disabled={submitting || !sucursalID} className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(5,150,105,.8)] transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
                 {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />} Iniciar jornada
               </button>
             )}
@@ -444,8 +451,8 @@ export function CortesSucursalPage() {
         </footer>
       )}
 
-      <DialogAlert 
-        open={alertAction !== null} 
+      <DialogAlert
+        open={alertAction !== null}
         onOpenChange={(open) => !open && setAlertAction(null)}
         title={alertAction === 'iniciar' ? 'Iniciar Jornada' : alertAction === 'cajas-abiertas' ? 'Hay cajas abiertas' : 'Cerrar Jornada'}
         description={alertAction === 'iniciar'

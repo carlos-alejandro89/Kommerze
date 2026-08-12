@@ -3,6 +3,7 @@ package main
 import (
 	"BitComercio/internal/database"
 	"BitComercio/internal/services"
+	"BitComercio/internal/usecases/reports/renders"
 	"embed"
 	"log"
 	"time"
@@ -15,7 +16,11 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed frontend/public/media/kommerze-logo-horizontal.png
+var kommerzeHorizontalLogo []byte
+
 func main() {
+	renders.SetKommerzeHorizontalLogo(kommerzeHorizontalLogo)
 	// Leer configuración del dispositivo
 	cfg, err := services.LoadKommerzConfig()
 	if err != nil {
@@ -69,7 +74,7 @@ func main() {
 
 	// Correr Wails
 	err = wails.Run(&options.App{
-		Title:         "Kommerze",
+		Title:            "Kommerze",
 		Width:            1280,
 		Height:           800,
 		DisableResize:    false,
