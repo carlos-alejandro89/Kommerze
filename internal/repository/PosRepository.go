@@ -80,7 +80,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	query := `select p.id, p.guid as pedido_guid, p.folio, p.fecha, p.es_credito,
 				coalesce(c.razon_social, 'Publico General') as razon_social,
 				coalesce(c.correo, '') as correo, coalesce(c.telefono, '') as telefono,
-				tp.nombre as tipo_operacion, tp.id as tipo_pedido_id,
+				tp.nombre as tipo_operacion, tp.id as tipo_pedido_id, tp.guid::text as tipo_pedido_guid,
 				e.nombre as estatus,
 				p.estatus_autorizacion,
 				sum(pd.cantidad * pd.precio_venta) - sum(pd.descuento) as monto_transaccion
@@ -104,7 +104,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	}
 
 	query += ` group by p.id, p.guid, p.folio, p.fecha, p.es_credito, c.razon_social, c.correo, c.telefono,
-				tp.nombre, tp.id, e.nombre, p.estatus_autorizacion
+				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion
 				order by p.fecha desc, p.folio desc`
 
 	err := r.db.Raw(query, args...).Scan(&transacciones).Error
@@ -214,17 +214,24 @@ func (r *PosRepository) ConsultarExistenciaProductos(productosGuids []uuid.UUID)
 }
 
 func (r *PosRepository) BeforeCreate(p *models.Pedido, tx *gorm.DB) (err error) {
+	if p.TipoPedidoID == nil {
+		return fmt.Errorf("tipo de pedido requerido")
+	}
+	var tipo models.TipoPedido
+	if err := tx.First(&tipo, *p.TipoPedidoID).Error; err != nil {
+		return fmt.Errorf("tipo de pedido no encontrado: %w", err)
+	}
 	var seqName string
 
-	switch *p.TipoPedidoID {
-	case 1:
+	switch tipo.Guid.String() {
+	case models.TipoPedidoVentaGuid:
 		seqName = "consecutivo_folio_pedido"
-	case 2:
+	case models.TipoPedidoCotizacionGuid:
 		seqName = "consecutivo_folio_cotizacion"
-	case 3:
+	case models.TipoPedidoTraspasoGuid:
 		seqName = "consecutivo_folio_transferencia"
 	default:
-		return fmt.Errorf("tipo de pedido desconocido: %d", *p.TipoPedidoID)
+		return fmt.Errorf("tipo de pedido no permitido en POS: %s", tipo.Guid)
 	}
 
 	var siguienteFolio int
@@ -282,14 +289,17 @@ func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, p
 }
 
 func (r *PosRepository) RegistrarTraspaso(tx *gorm.DB, pedido *models.Pedido, sucursalOrigen *uint, sucursalDestino *uint) error {
-
+	var estatus models.Estatus
+	if err := tx.Where("guid = ?", estatusTraspasoEnTransitoGuid).First(&estatus).Error; err != nil {
+		return fmt.Errorf("estatus En Tránsito no encontrado: %w", err)
+	}
 	var tr models.Traspaso
 
 	tr.PedidoID = pedido.ID
 	tr.SucursalOrigenID = *sucursalOrigen
 	tr.SucursalDestinoID = *sucursalDestino
 	tr.FechaEnvio = time.Now()
-	tr.EstatusID = 1
+	tr.EstatusID = estatus.ID
 	tr.Sync = false
 
 	if err := tx.Create(&tr).Error; err != nil {
@@ -307,24 +317,32 @@ func (r *PosRepository) ConfirmarTransaccion(
 	sucursalDestino *uint,
 	operacionCajeroID *uint,
 ) (*dto.ResponseDto, error) {
+	if tipoOperacion == nil {
+		return dto.NewResponseDto(false, "Tipo de transacción requerido", nil, nil), fmt.Errorf("tipo de transacción requerido")
+	}
 
 	var pedido models.Pedido
 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-
-		// Estatus según tipo de operación:
-		//   1 = Venta       → 2 Completado  (pago inmediato)
-		//   2 = Cotización  → 1 Pendiente
-		//   3 = Transferencia → 4 En proceso
-		var estatus uint = 1
-		if tipoOperacion != nil {
-			switch *tipoOperacion {
-			case 1:
-				estatus = 2 // Completado
-			case 3:
-				estatus = 4 // En proceso
-			}
+		var tipo models.TipoPedido
+		if err := tx.First(&tipo, *tipoOperacion).Error; err != nil {
+			return fmt.Errorf("tipo de transacción no encontrado: %w", err)
 		}
+		tipoGuid := tipo.Guid.String()
+		if tipoGuid != models.TipoPedidoVentaGuid && tipoGuid != models.TipoPedidoCotizacionGuid && tipoGuid != models.TipoPedidoTraspasoGuid {
+			return fmt.Errorf("tipo de transacción no permitido: %s", tipo.Nombre)
+		}
+		estatusNombre := "Pendiente"
+		if tipoGuid == models.TipoPedidoVentaGuid {
+			estatusNombre = "Completado"
+		} else if tipoGuid == models.TipoPedidoTraspasoGuid {
+			estatusNombre = "En proceso"
+		}
+		var estatusModel models.Estatus
+		if err := tx.Where("LOWER(nombre) = LOWER(?)", estatusNombre).First(&estatusModel).Error; err != nil {
+			return fmt.Errorf("estatus %s no encontrado: %w", estatusNombre, err)
+		}
+		estatus := estatusModel.ID
 		var cliente uint = 1
 
 		pedido = models.Pedido{
@@ -388,21 +406,21 @@ func (r *PosRepository) ConfirmarTransaccion(
 		}
 
 		//Registrar Pagos
-		if *tipoOperacion == 1 {
+		if tipoGuid == models.TipoPedidoVentaGuid {
 			if err := r.RegistrarPagos(pagosAplicados, &pedido, tx); err != nil {
 				return err
 			}
 		}
 
 		//Actualizar existencias
-		if *tipoOperacion != 2 {
+		if tipoGuid != models.TipoPedidoCotizacionGuid {
 			if err := r.ActualizarExistencias(itemsPedido, tx); err != nil {
 				return err
 			}
 		}
 
 		//Registrar Traspaso
-		if *tipoOperacion == 3 && sucursalDestino != nil && sucursalOrigen != nil {
+		if tipoGuid == models.TipoPedidoTraspasoGuid && sucursalDestino != nil && sucursalOrigen != nil {
 			if err := r.RegistrarTraspaso(tx, &pedido, sucursalOrigen, sucursalDestino); err != nil {
 				return err
 			}
@@ -420,14 +438,12 @@ func (r *PosRepository) ConfirmarTransaccion(
 }
 
 const (
-	tipoPedidoBajaMercanciaGuid   = "7a117386-2369-4fce-b2e7-b1dbd38ecf58"
-	tipoPedidoTransferenciaGuid   = "f1b2c3d4-e5f6-4a7b-8c9d-012345678903"
 	estatusTraspasoEnTransitoGuid = "86968037-975a-43ce-880c-043003010104"
 )
 
 func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
 	tipoGuid, err := uuid.Parse(solicitud.TipoPedidoGuid)
-	if err != nil || (tipoGuid.String() != tipoPedidoBajaMercanciaGuid && tipoGuid.String() != tipoPedidoTransferenciaGuid) {
+	if err != nil || (tipoGuid.String() != models.TipoPedidoBajaMercanciaGuid && tipoGuid.String() != models.TipoPedidoTraspasoGuid) {
 		return dto.NewResponseDto(false, "Tipo de solicitud inválido", nil, nil), fmt.Errorf("tipo de solicitud inválido")
 	}
 	if len(solicitud.Productos) == 0 {
@@ -436,7 +452,7 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 	if solicitud.SucursalOrigenID == 0 {
 		return dto.NewResponseDto(false, "No se identificó la sucursal de origen", nil, nil), fmt.Errorf("sucursal de origen requerida")
 	}
-	esTransferencia := tipoGuid.String() == tipoPedidoTransferenciaGuid
+	esTransferencia := tipoGuid.String() == models.TipoPedidoTraspasoGuid
 	if esTransferencia {
 		if solicitud.SucursalDestinoID == nil || *solicitud.SucursalDestinoID == 0 {
 			return dto.NewResponseDto(false, "Selecciona una sucursal destino", nil, nil), fmt.Errorf("sucursal destino requerida")

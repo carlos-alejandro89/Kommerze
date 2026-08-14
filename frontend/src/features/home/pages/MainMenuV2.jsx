@@ -71,6 +71,7 @@ const ACTIVITY_META = {
   venta: { icon: ShoppingCart, color: '#1779f5', label: 'Venta' },
   cotizacion: { icon: FileText, color: '#8654df', label: 'Cotización' },
   transferencia: { icon: ArrowLeftRight, color: '#13aa68', label: 'Transferencia' },
+  compra: { icon: ShoppingBag, color: '#168bea', label: 'Compra' },
   baja: { icon: Package, color: '#e6a80a', label: 'Baja de mercancía' },
   pedido: { icon: ClipboardCheck, color: '#607996', label: 'Operación' },
 };

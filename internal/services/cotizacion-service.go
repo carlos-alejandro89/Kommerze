@@ -349,7 +349,7 @@ func (s *CotizacionService) ConvertirAVenta(
 		}
 
 		// 2. Validar que es una cotizacion y que puede convertirse
-		if pedido.TipoPedidoID == nil || *pedido.TipoPedidoID != 2 {
+		if pedido.TipoPedidoID == nil || pedido.TipoPedido.Guid.String() != models.TipoPedidoCotizacionGuid {
 			return fmt.Errorf("el pedido no es una cotizacion")
 		}
 		if pedido.EstatusAutorizacion == "solicitada" {
@@ -359,9 +359,17 @@ func (s *CotizacionService) ConvertirAVenta(
 			return fmt.Errorf("la cotizacion fue rechazada por el autorizador")
 		}
 
-		// 3. Cambiar tipo a Venta (1) y estatus a Completado (2)
-		tipoPedidoVenta := uint(1)
-		estatusCompletado := uint(2)
+		// 3. Resolver Venta y Completado desde los catálogos sincronizados.
+		var tipoVenta models.TipoPedido
+		if err := tx.Where("guid = ?", models.TipoPedidoVentaGuid).First(&tipoVenta).Error; err != nil {
+			return fmt.Errorf("tipo de pedido Venta no encontrado: %w", err)
+		}
+		var estatusVenta models.Estatus
+		if err := tx.Where("LOWER(nombre) = LOWER(?)", "Completado").First(&estatusVenta).Error; err != nil {
+			return fmt.Errorf("estatus Completado no encontrado: %w", err)
+		}
+		tipoPedidoVenta := tipoVenta.ID
+		estatusCompletado := estatusVenta.ID
 
 		pedido.TipoPedidoID = &tipoPedidoVenta
 		pedido.EstatusID = &estatusCompletado

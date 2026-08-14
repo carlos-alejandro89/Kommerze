@@ -42,9 +42,13 @@ export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.Cotizac
 
 export function ServiceCotizacionSolicitarAutorizacion(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<dto.ItemDescuentoDto>):Promise<dto.ResponseDto>;
 
+export function ServiceCrearCompra(arg1:dto.CrearCompraDto):Promise<dto.ResponseDto>;
+
 export function ServiceCrearSolicitudProductos(arg1:dto.SolicitudProductosDto):Promise<dto.ResponseDto>;
 
 export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
+
+export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 

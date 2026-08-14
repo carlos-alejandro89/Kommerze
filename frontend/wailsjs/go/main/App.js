@@ -74,12 +74,20 @@ export function ServiceCotizacionSolicitarAutorizacion(arg1, arg2, arg3, arg4, a
   return window['go']['main']['App']['ServiceCotizacionSolicitarAutorizacion'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function ServiceCrearCompra(arg1) {
+  return window['go']['main']['App']['ServiceCrearCompra'](arg1);
+}
+
 export function ServiceCrearSolicitudProductos(arg1) {
   return window['go']['main']['App']['ServiceCrearSolicitudProductos'](arg1);
 }
 
 export function ServiceEmailReceipt(arg1, arg2) {
   return window['go']['main']['App']['ServiceEmailReceipt'](arg1, arg2);
+}
+
+export function ServiceGeneratePurchaseReport(arg1) {
+  return window['go']['main']['App']['ServiceGeneratePurchaseReport'](arg1);
 }
 
 export function ServiceGetEmpaques() {

@@ -15,14 +15,15 @@ import { ModalSolicitarDescuento } from '../components/ModalSolicitarDescuento';
 import { ModalConvertirVenta } from '../components/ModalConvertirVenta';
 import { ModalVerTransaccion } from '../components/ModalVerTransaccion';
 import { toast } from 'sonner';
+import { TRANSACTION_TYPES, isTransactionType } from '@/features/pos/transaction-types';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
 
 const TIPO_TABS = [
   { id: null,  label: 'Todos',          icon: LayoutList },
-  { id: 1,     label: 'Ventas',         icon: ShoppingCart },
-  { id: 2,     label: 'Cotizaciones',   icon: FileText },
+  { id: TRANSACTION_TYPES.VENTA.id,      label: 'Ventas',         icon: ShoppingCart },
+  { id: TRANSACTION_TYPES.COTIZACION.id, label: 'Cotizaciones',   icon: FileText },
 ];
 
 /* ── Helpers ── */
@@ -80,7 +81,7 @@ function AuthBadge({ estatus }) {
 
 /* ── Botones de acción contextuales para cotizaciones ── */
 function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
-  if (row.TipoPedidoID !== 2) return null;
+  if (!isTransactionType(row, TRANSACTION_TYPES.COTIZACION)) return null;
   if (row.Estatus === 'Completada' || row.Estatus === 'Completado') return null;
 
   const auth = row.EstatusAutorizacion || '';
@@ -145,7 +146,7 @@ export function HistoryPage() {
       const res = await consultarTransacciones(tipoFiltro, null);
       if (!res.success) { setError(res.message || 'Error al obtener transacciones'); return; }
       const data = Array.isArray(res.data) ? res.data : [];
-      setTransacciones(data.filter(item => item.TipoPedidoID === 1 || item.TipoPedidoID === 2));
+      setTransacciones(data.filter(item => isTransactionType(item, TRANSACTION_TYPES.VENTA) || isTransactionType(item, TRANSACTION_TYPES.COTIZACION)));
     } catch (e) {
       setError(e?.message ?? String(e));
     } finally {
@@ -201,7 +202,7 @@ export function HistoryPage() {
 
   /* ── Resumen del día ── */
   const resumen = useMemo(() => {
-    const hoy         = transacciones.filter(t => t.TipoPedidoID === 1 && esHoy(t.Fecha));
+    const hoy         = transacciones.filter(t => isTransactionType(t, TRANSACTION_TYPES.VENTA) && esHoy(t.Fecha));
     const completados = hoy.filter(t => t.Estatus === 'Completado' || t.Estatus === 'Completada');
     const pendientes  = hoy.filter(t => t.Estatus === 'Pendiente');
     const totalHoy    = completados.reduce((acc, t) => acc + (t.MontoTransaccion ?? 0), 0);
@@ -299,7 +300,7 @@ export function HistoryPage() {
               const Icon = tab.icon;
               const active = tipoFiltro === tab.id;
               const pending = tab.id === 2
-                ? transacciones.filter(t => t.TipoPedidoID === 2 && t.EstatusAutorizacion === 'solicitada').length
+                ? transacciones.filter(t => isTransactionType(t, TRANSACTION_TYPES.COTIZACION) && t.EstatusAutorizacion === 'solicitada').length
                 : 0;
               return (
                 <button
@@ -380,7 +381,7 @@ export function HistoryPage() {
                       const { fecha, hora } = parseFecha(t.Fecha);
                       let sc                = getStatusConfig(t.Estatus);
                       let displayEstatus    = t.Estatus;
-                      const esCotizacion    = t.TipoPedidoID === 2;
+                      const esCotizacion    = isTransactionType(t, TRANSACTION_TYPES.COTIZACION);
 
                       if (esCotizacion) {
                         if (t.EstatusAutorizacion === 'solicitada') {

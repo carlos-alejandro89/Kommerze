@@ -57,6 +57,7 @@ func MigrateTables(db *gorm.DB) error {
 		&models.OperacionSucursal{},
 		&models.Pedido{},
 		&models.PedidoDetalle{},
+		&models.Compra{},
 		&models.Factura{},
 		&models.Pago{},
 		&models.Traspaso{},

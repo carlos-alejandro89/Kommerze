@@ -1,6 +1,7 @@
 package services
 
 import (
+	"BitComercio/internal/models"
 	reportmodels "BitComercio/internal/usecases/reports/models"
 	"fmt"
 	"strings"
@@ -17,22 +18,108 @@ func NewReceiptService(db *gorm.DB) *ReceiptService {
 	return &ReceiptService{db: db}
 }
 
+func (s *ReceiptService) BuildPurchaseReport(pedidoGuid string) (reportmodels.PurchaseReport, error) {
+	var report reportmodels.PurchaseReport
+	var header struct {
+		PedidoGuid, CompraGuid, Proveedor, RFCProveedor, RegimenProveedor        string
+		TelefonoProveedor, CorreoProveedor, CodigoPostalProveedor, OrigenCaptura string
+		UUIDFiscal, FolioFactura, Moneda, TipoComprobante, MetodoPago            string
+		Folio                                                                    int
+		FechaCompra                                                              time.Time
+		FechaDocumento, FechaTimbrado                                            *time.Time
+		SubtotalCompra, DescuentoCompra, ImpuestosCompra, TotalCompra            float64
+	}
+	if err := s.db.Raw(`
+		SELECT p.guid::text pedido_guid, c.guid::text compra_guid, p.folio, p.fecha fecha_compra,
+		       c.origen_captura, COALESCE(c.uuid_fiscal,'') uuid_fiscal,
+		       COALESCE(c.folio_factura,'') folio_factura, c.fecha_factura fecha_documento,
+		       c.fecha_timbrado, COALESCE(c.moneda,'MXN') moneda,
+		       COALESCE(c.tipo_comprobante,'') tipo_comprobante, COALESCE(c.metodo_pago,'') metodo_pago,
+		       c.subtotal subtotal_compra, c.descuento descuento_compra,
+		       c.impuestos impuestos_compra, c.total total_compra,
+		       ef.razon_social proveedor, ef.rfc rfc_proveedor,
+		       COALESCE(sr.clave || ' - ' || sr.descripcion,'') regimen_proveedor,
+		       COALESCE(ef.telefono,'') telefono_proveedor, COALESCE(ef.correo,'') correo_proveedor,
+		       COALESCE(ef.codigo_postal,'') codigo_postal_proveedor
+		FROM compras c
+		JOIN pedidos p ON p.id=c.pedido_id AND p.deleted_at IS NULL
+		JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.guid=?
+		JOIN entidades_fiscales ef ON ef.id=c.proveedor_id AND ef.deleted_at IS NULL
+		LEFT JOIN sat_regimen_fiscal sr ON sr.id=ef.regimen_id
+		WHERE p.guid=? AND c.deleted_at IS NULL`, models.TipoPedidoCompraGuid, pedidoGuid).Scan(&header).Error; err != nil {
+		return report, err
+	}
+	if header.CompraGuid == "" {
+		return report, fmt.Errorf("compra no encontrada")
+	}
+	report = reportmodels.PurchaseReport{
+		PedidoGuid: header.PedidoGuid, CompraGuid: header.CompraGuid, Folio: fmt.Sprintf("CP-%06d", header.Folio),
+		OrigenCaptura: header.OrigenCaptura, Proveedor: header.Proveedor, RFCProveedor: header.RFCProveedor,
+		RegimenProveedor: header.RegimenProveedor, TelefonoProveedor: header.TelefonoProveedor,
+		CorreoProveedor: header.CorreoProveedor, CodigoPostalProveedor: header.CodigoPostalProveedor,
+		FechaCompra: header.FechaCompra, FechaDocumento: header.FechaDocumento, FechaTimbrado: header.FechaTimbrado,
+		UUIDFiscal: header.UUIDFiscal, FolioFactura: header.FolioFactura, Moneda: header.Moneda,
+		TipoComprobante: header.TipoComprobante, MetodoPago: header.MetodoPago,
+		SubtotalCompra: header.SubtotalCompra, DescuentoCompra: header.DescuentoCompra,
+		ImpuestosCompra: header.ImpuestosCompra, TotalCompra: header.TotalCompra,
+		Notas: "Compra registrada conforme a la información capturada.",
+	}
+	var rows []struct {
+		Codigo, Descripcion, Unidad         string
+		Cantidad, PrecioCompra, PrecioVenta float64
+	}
+	if err := s.db.Raw(`
+		SELECT COALESCE(ne.codigo,'') codigo, COALESCE(pr.descripcion,'Producto') descripcion,
+		       COALESCE(em.empaque,'Unidad') unidad, pd.cantidad,
+		       pd.precio_compra, pd.precio_venta
+		FROM pedido_detalle pd
+		JOIN nivel_empaque ne ON ne.id=pd.nivel_id
+		JOIN productos pr ON pr.id=ne.producto_id
+		LEFT JOIN empaques em ON em.id=ne.empaque_id
+		JOIN pedidos p ON p.id=pd.pedido_id
+		WHERE p.guid=? AND pd.deleted_at IS NULL ORDER BY pd.id`, pedidoGuid).Scan(&rows).Error; err != nil {
+		return report, err
+	}
+	baseCompra := 0.0
+	for _, row := range rows {
+		baseCompra += row.Cantidad * row.PrecioCompra
+	}
+	for _, row := range rows {
+		importeCompraSinImpuesto := row.Cantidad * row.PrecioCompra
+		impuesto := 0.0
+		if baseCompra > 0 {
+			impuesto = report.ImpuestosCompra * importeCompraSinImpuesto / baseCompra
+		}
+		item := reportmodels.PurchaseReportItem{
+			Codigo: row.Codigo, Descripcion: row.Descripcion, Unidad: row.Unidad, Cantidad: row.Cantidad,
+			PrecioCompra: row.PrecioCompra, Impuestos: impuesto,
+			ImporteCompra: importeCompraSinImpuesto + impuesto,
+			PrecioVenta:   row.PrecioVenta, ImporteVenta: row.Cantidad * row.PrecioVenta,
+		}
+		report.Items = append(report.Items, item)
+		report.TotalVenta += item.ImporteVenta
+	}
+	return report, nil
+}
+
 func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, error) {
 	var header struct {
-		Folio        int
-		TipoPedidoID uint
-		Fecha        time.Time
-		Sucursal     string
-		Negocio      string
-		Cajero       string
+		Folio          int
+		TipoPedidoID   uint
+		TipoPedidoGuid string
+		Fecha          time.Time
+		Sucursal       string
+		Negocio        string
+		Cajero         string
 	}
 	err := s.db.Raw(`
-		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id,
+		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id, COALESCE(tp.guid::text, '') tipo_pedido_guid,
 		       COALESCE(s.nombre_sucursal, 'Sucursal') sucursal,
 		       COALESCE(NULLIF(e.nombre_comercial, ''), NULLIF(e.razon_social, ''), 'KOMMERZE') negocio,
 		       COALESCE(u.nombre, 'Cajero') cajero
 		  FROM pedidos p
 		  LEFT JOIN sucursales s ON s.id = p.sucursal_origen_id
+		  LEFT JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
 		  LEFT JOIN empresas e ON e.id = s.empresa_id
 		  LEFT JOIN operacion_cajero oc ON oc.id = p.operacion_cajero_id
 		  LEFT JOIN usuarios u ON u.id = oc.responsable_caja_id
@@ -67,8 +154,9 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 
 	cfg, _ := LoadKommerzConfig()
 	r := reportmodels.Receipt{
-		TipoPedidoID: header.TipoPedidoID,
-		Folio:        fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
+		TipoPedidoID:   header.TipoPedidoID,
+		TipoPedidoGuid: header.TipoPedidoGuid,
+		Folio:          fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
 		Sucursal: header.Sucursal, Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,
 	}
 	if cfg != nil {
@@ -104,11 +192,12 @@ func (s *ReceiptService) BuildQuotation(pedidoGuid string) (reportmodels.Quotati
 		Folio                                                                                                                        int
 		Fecha                                                                                                                        time.Time
 		TipoPedidoID                                                                                                                 uint
+		TipoPedidoGuid                                                                                                               string
 		Negocio, RFCNegocio, Sucursal, Calle, Exterior, Interior, Colonia, Ciudad, Estado, CodigoPostal                              string
 		TelefonoSucursal, CorreoSucursal, Asesor, Cliente, TelefonoCliente, CorreoCliente, RFCCliente, RegimenCliente, Observaciones string
 	}
 	err := s.db.Raw(`
-		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id,
+		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id, COALESCE(tp.guid::text, '') tipo_pedido_guid,
 		       COALESCE(NULLIF(e.nombre_comercial,''), NULLIF(e.razon_social,''), 'KOMMERZE') negocio,
 		       COALESCE(e.rfc,'') rfc_negocio, COALESCE(s.nombre_sucursal,'Sucursal') sucursal,
 		       COALESCE(s.calle,'' ) calle, COALESCE(s.exterior,'') exterior, COALESCE(s.interior,'') interior,
@@ -121,6 +210,7 @@ func (s *ReceiptService) BuildQuotation(pedidoGuid string) (reportmodels.Quotati
 		       COALESCE(p.comentarios,'') observaciones
 		  FROM pedidos p
 		  LEFT JOIN sucursales s ON s.id=p.sucursal_origen_id
+		  LEFT JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id
 		  LEFT JOIN empresas e ON e.id=s.empresa_id
 		  LEFT JOIN operacion_cajero oc ON oc.id=p.operacion_cajero_id
 		  LEFT JOIN usuarios u ON u.id=oc.responsable_caja_id
@@ -140,7 +230,7 @@ func (s *ReceiptService) BuildQuotation(pedidoGuid string) (reportmodels.Quotati
 	if header.Folio == 0 {
 		return q, fmt.Errorf("cotización no encontrada")
 	}
-	if header.TipoPedidoID != 2 {
+	if header.TipoPedidoGuid != models.TipoPedidoCotizacionGuid {
 		return q, fmt.Errorf("el pedido no es una cotización")
 	}
 	address := []string{}

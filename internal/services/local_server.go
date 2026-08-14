@@ -60,6 +60,7 @@ type LocalServerService struct {
 	catalogos           *CatalogosService
 	clientes            *ClientesService
 	proveedores         *ProveedoresService
+	compras             *ComprasService
 	cotizacion          *CotizacionService
 	receipt             *ReceiptService
 	operacionesSucursal *OperacionesSucursalService
@@ -68,7 +69,7 @@ type LocalServerService struct {
 	server              *http.Server
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
@@ -76,6 +77,7 @@ func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat 
 		catalogos:           cat,
 		clientes:            clientes,
 		proveedores:         proveedores,
+		compras:             compras,
 		cotizacion:          cotizacion,
 		receipt:             receipt,
 		operacionesSucursal: opSucursal,
@@ -113,6 +115,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/clientes/entidad-fiscal", l.handleBuscarEntidadFiscalCloud)
 	mux.HandleFunc("/local/proveedores/buscar-rfc", l.handleBuscarProveedorRFC)
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
+	mux.HandleFunc("/local/compras", l.handleCrearCompra)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -125,6 +128,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
+	mux.HandleFunc("/local/compras/pdf-data", l.handlePurchasePDFData)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
 	mux.HandleFunc("/local/cotizaciones/detalle", l.handleDetalleCotizacion)
@@ -172,6 +176,20 @@ func (l *LocalServerService) handleQuotationPDFData(w http.ResponseWriter, r *ht
 		return
 	}
 	result, err := l.receipt.BuildQuotation(guid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handlePurchasePDFData(w http.ResponseWriter, r *http.Request) {
+	guid := r.URL.Query().Get("pedidoGuid")
+	if guid == "" {
+		writeError(w, http.StatusBadRequest, "pedidoGuid requerido")
+		return
+	}
+	result, err := l.receipt.BuildPurchaseReport(guid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -346,6 +364,24 @@ func (l *LocalServerService) handleSolicitudesProductos(w http.ResponseWriter, r
 		return
 	}
 	result, err := l.pos.CrearSolicitudProductos(solicitud)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleCrearCompra(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var datos dto.CrearCompraDto
+	if err := json.NewDecoder(r.Body).Decode(&datos); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result, err := l.compras.CrearCompra(datos)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return

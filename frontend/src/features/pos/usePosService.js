@@ -28,6 +28,7 @@ import {
     ServiceConsultarExistenciaProductos,
     ServiceConfirmarTransaccion,
     ServiceCrearSolicitudProductos,
+    ServiceCrearCompra,
     ServiceObtenerTiposPedido,
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
@@ -39,6 +40,7 @@ import {
     ServiceGetTiposAutorizacion,
     ServicePrintReceipt,
     ServiceEmailReceipt,
+    ServiceGeneratePurchaseReport,
     ServiceBuscarEntidadFiscalProveedor,
 } from '../../../wailsjs/go/main/App';
 
@@ -122,9 +124,11 @@ export function usePosService() {
         ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID);
 
     const crearSolicitudProductos = (solicitud) => ServiceCrearSolicitudProductos(solicitud);
+    const crearCompra = (datos) => ServiceCrearCompra(datos);
 
     const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
     const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
+    const generarReporteCompra = (pedidoGuid) => ServiceGeneratePurchaseReport(pedidoGuid);
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
@@ -181,10 +185,12 @@ export function usePosService() {
         // Transacciones
         confirmarTransaccion,
         crearSolicitudProductos,
+        crearCompra,
         consultarTransacciones,
         consultarTransferencias,
         imprimirRecibo,
         enviarRecibo,
+        generarReporteCompra,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

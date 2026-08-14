@@ -24,6 +24,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTurno } from '@/providers/TurnoProvider';
 import { toast } from 'sonner';
 import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
+import { TRANSACTION_TYPES } from '../transaction-types';
 
 // ── Configuración visual por estatus de autorización ─────────────────────────
 const STATUS_CONFIG = {
@@ -161,7 +162,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
 
     // ── Guardar cotización en BD y devuelve el GUID ──────────────────────────
     const guardarCotizacion = async () => {
-        const tipoCotizacion = 2;
+        const tipoCotizacion = TRANSACTION_TYPES.COTIZACION.id;
         const itemsPedido = buildItemsPedido();
 
         const result = await posService.confirmarTransaccion(
@@ -247,7 +248,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
 
         // Persistir folio y tipo de operación para cart-order-placed
         localStorage.setItem('folio', JSON.stringify(pedidoFolio));
-        localStorage.setItem('operationType', JSON.stringify(1)); // Convertido a Venta
+        localStorage.setItem('operationType', JSON.stringify(TRANSACTION_TYPES.VENTA.id)); // Convertido a Venta
 
         const totalNeto = cart.reduce((sum, item) => {
             const pct = getPct(item.id);

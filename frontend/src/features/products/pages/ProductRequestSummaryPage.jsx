@@ -10,6 +10,7 @@ import { QuantityControl } from '@/components/common/quantity-control';
 import { DialogSucursales } from '@/features/pos/components/dialog-sucursales';
 import { loadProductRequestItems, saveProductRequestItems, clearProductRequestItems } from '../request-storage';
 import { usePosService } from '@/features/pos/usePosService';
+import { TRANSACTION_TYPES } from '@/features/pos/transaction-types';
 import { useActivation } from '@/providers/ActivationProvider';
 
 const money = (value) => Number(value || 0).toLocaleString('es-MX', {
@@ -19,8 +20,8 @@ const money = (value) => Number(value || 0).toLocaleString('es-MX', {
 
 const itemKey = (product) => product.Guid || product.ProductoGuid || product.Codigo;
 const TYPE_GUIDS = {
-  baja: '7a117386-2369-4fce-b2e7-b1dbd38ecf58',
-  transferencia: 'f1b2c3d4-e5f6-4a7b-8c9d-012345678903',
+  baja: TRANSACTION_TYPES.BAJA_MERCANCIA.guid,
+  transferencia: TRANSACTION_TYPES.TRASPASO.guid,
 };
 
 export function ProductRequestSummaryPage() {

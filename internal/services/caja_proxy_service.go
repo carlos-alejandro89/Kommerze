@@ -139,6 +139,14 @@ func (c *CajaProxyService) CrearSolicitudProductos(solicitud dto.SolicitudProduc
 	return &result, nil
 }
 
+func (c *CajaProxyService) CrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto, error) {
+	var result dto.ResponseDto
+	if err := c.post("/local/compras", datos, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	path := "/local/transacciones/historial"
 	params := ""
@@ -189,6 +197,17 @@ func (c *CajaProxyService) BuildQuotation(pedidoGuid string) (reportmodels.Quota
 	}
 	if err := c.get(fmt.Sprintf("/local/cotizaciones/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
 		return reportmodels.Quotation{}, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) BuildPurchaseReport(pedidoGuid string) (reportmodels.PurchaseReport, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    reportmodels.PurchaseReport `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/compras/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
+		return reportmodels.PurchaseReport{}, err
 	}
 	return result.Data, nil
 }

@@ -9,6 +9,7 @@ import { useActivation } from '@/providers/ActivationProvider';
 import { usePosService } from './usePosService';
 import { useTurno } from '@/providers/TurnoProvider';
 import { cn } from '@/lib/utils';
+import { TRANSACTION_TYPES } from './transaction-types';
 
 export function ResumenCuenta({ subtotal, descuento, total, countItems, currentStep }) {
     const { store } = useActivation();
@@ -31,14 +32,14 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         0: () => countItems > 0,
         1: async (operationType) => {
 
-            const inventarioValido = (operationType === 2) ? true : await ConsultarExistencias(posService.consultarExistencias, setInvalidItems)
+            const inventarioValido = (operationType === TRANSACTION_TYPES.COTIZACION.id) ? true : await ConsultarExistencias(posService.consultarExistencias, setInvalidItems)
             if (!inventarioValido) {
                 setIsModalOpen(true)
                 return false
             }
 
 
-            if (parseInt(operationType) === 2 || parseInt(operationType) === 3) {
+            if (parseInt(operationType) === TRANSACTION_TYPES.COTIZACION.id || parseInt(operationType) === TRANSACTION_TYPES.TRASPASO.id) {
                 const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store, turnoActivo)
                 setNextPage(currentStep + 2)
                 return transaccionValida
@@ -48,7 +49,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
         },
         2: async (operationType) => {
-            if (operationType === 1) {
+            if (operationType === TRANSACTION_TYPES.VENTA.id) {
                 const pagoValido = await validarPago(total, setAlertConfig)
                 if (!pagoValido) {
                     return false
@@ -110,7 +111,7 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
         const rawOperationType = localStorage.getItem('operationType');
         const operationType = rawOperationType ? JSON.parse(rawOperationType) : null;
 
-        let calcNextPage = (operationType <= 1) ? currentStep + 1 : currentStep + 2;
+        let calcNextPage = (operationType === TRANSACTION_TYPES.VENTA.id) ? currentStep + 1 : currentStep + 2;
         setNextPage(calcNextPage);
 
         const validatorForCurrentStep = stepValidation[currentStep];

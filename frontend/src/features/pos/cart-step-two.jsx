@@ -24,6 +24,7 @@ import { ResumenCuenta } from './resumen';
 import { BtnTipoPedido } from './components/btn-tipo-tipo-pedido';
 import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { usePosService } from './usePosService';
+import { TRANSACTION_TYPES, transactionGuid } from './transaction-types';
 // Mock data for initial items
 const shoppingCart = [
 
@@ -36,7 +37,7 @@ export function CartStepTwo() {
     const [cart, setCart] = React.useState(shoppingCart);
     const [open, setOpen] = React.useState(false);
     const [itemSelected, setItemSelected] = React.useState({});
-    const [operationType, setOperationType] = React.useState(1);
+    const [operationType, setOperationType] = React.useState(TRANSACTION_TYPES.VENTA.id);
     const [tiposPedido, setTiposPedido] = React.useState([]);
     const [sucursales, setSucursales] = React.useState([]);
     const [sucursalSeleccionada, setSucursalSeleccionada] = React.useState(null);
@@ -45,8 +46,8 @@ export function CartStepTwo() {
         try {
             const res = await posService.obtenerTiposPedido();
             setTiposPedido((res || []).filter(tipo => {
-                const nombre = String(tipo.Nombre || '').trim().toLocaleLowerCase('es-MX');
-                return tipo.ID === 1 || tipo.ID === 2 || nombre === 'venta' || nombre === 'cotizacion' || nombre === 'cotización';
+                const guid = transactionGuid(tipo);
+                return guid === TRANSACTION_TYPES.VENTA.guid || guid === TRANSACTION_TYPES.COTIZACION.guid;
             }));
         } catch (error) {
             console.error('Error al llamar a obtenerTiposPedido:', error);
@@ -160,7 +161,7 @@ export function CartStepTwo() {
                                     </header>
 
                                     {/* Quick Action: Público General o Sucursal Destino */}
-                                    {operationType === 3 ? (
+                                    {operationType === TRANSACTION_TYPES.TRASPASO.id ? (
                                         <div className={cn("w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all", sucursalSeleccionada ? "bg-emerald-500/5 border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.2)] dark:bg-emerald-500/10 dark:border-emerald-500/20" : "border-dashed border-muted-foreground/30 bg-muted/10")}>
                                             <div className="flex items-start gap-4 w-full">
                                                 <div className={cn("flex size-16 rounded-full mt-0.5 shrink-0 items-center justify-center shadow-sm transition-all", sucursalSeleccionada ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-dashed border-muted-foreground/30")}>
@@ -253,7 +254,7 @@ export function CartStepTwo() {
                                     </div>
 
                                     {/* ── Panel Solicitar Descuento (solo en Cotización) ── */}
-                                    {operationType === 2 && cart.length > 0 && (
+                                    {operationType === TRANSACTION_TYPES.COTIZACION.id && cart.length > 0 && (
                                         <PanelSolicitarDescuento
                                             cart={cart}
                                             sucursalGuid={sucursalSeleccionada?.Guid || ''}
@@ -267,9 +268,9 @@ export function CartStepTwo() {
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-slate-500 tracking-tighter mb-2">Nota de Sistema</p>
                                             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                {operationType === 1 && "Las ventas reservan el inventario al instante de la venta."}
-                                                {operationType === 2 && "Las cotizaciones no reservan mercancía y tienen vigencia máxima de 15 días. Al aplicar una cotización, el cliente recibe un comprobante de precios validado para la fecha."}
-                                                {operationType === 3 && "Las transferencias requieren la validación de stock en la sucursal de origen antes de proceder al siguiente paso."}
+                                                {operationType === TRANSACTION_TYPES.VENTA.id && "Las ventas reservan el inventario al instante de la venta."}
+                                                {operationType === TRANSACTION_TYPES.COTIZACION.id && "Las cotizaciones no reservan mercancía y tienen vigencia máxima de 15 días. Al aplicar una cotización, el cliente recibe un comprobante de precios validado para la fecha."}
+                                                {operationType === TRANSACTION_TYPES.TRASPASO.id && "Las transferencias requieren la validación de stock en la sucursal de origen antes de proceder al siguiente paso."}
                                             </p>
                                         </div>
                                     </div>

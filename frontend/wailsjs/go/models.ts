@@ -237,6 +237,22 @@ export namespace dto {
 	        this.DiasCredito = source["DiasCredito"];
 	    }
 	}
+	export class CompraProductoDto {
+	    nivelGuid: string;
+	    cantidad: number;
+	    costo: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CompraProductoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nivelGuid = source["nivelGuid"];
+	        this.cantidad = source["cantidad"];
+	        this.costo = source["costo"];
+	    }
+	}
 	export class CotizacionItemDto {
 	    nivelGuid: string;
 	    nivelCodigo: string;
@@ -340,6 +356,64 @@ export namespace dto {
 		}
 	}
 	
+	export class CrearCompraDto {
+	    sucursalID: number;
+	    proveedorGuid: string;
+	    origenCaptura: string;
+	    uuidFiscal: string;
+	    folioFactura: string;
+	    fechaFactura: string;
+	    fechaTimbrado: string;
+	    moneda: string;
+	    tipoComprobante: string;
+	    metodoPago: string;
+	    subtotal: number;
+	    descuento: number;
+	    impuestos: number;
+	    total: number;
+	    productos: CompraProductoDto[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CrearCompraDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sucursalID = source["sucursalID"];
+	        this.proveedorGuid = source["proveedorGuid"];
+	        this.origenCaptura = source["origenCaptura"];
+	        this.uuidFiscal = source["uuidFiscal"];
+	        this.folioFactura = source["folioFactura"];
+	        this.fechaFactura = source["fechaFactura"];
+	        this.fechaTimbrado = source["fechaTimbrado"];
+	        this.moneda = source["moneda"];
+	        this.tipoComprobante = source["tipoComprobante"];
+	        this.metodoPago = source["metodoPago"];
+	        this.subtotal = source["subtotal"];
+	        this.descuento = source["descuento"];
+	        this.impuestos = source["impuestos"];
+	        this.total = source["total"];
+	        this.productos = this.convertValues(source["productos"], CompraProductoDto);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	export class GuardarEntidadFiscalClienteDto {
 	    RolFiscalGuid: string;

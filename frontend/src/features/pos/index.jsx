@@ -22,6 +22,7 @@ import { PromotionsCarousel } from './components/PromotionsCarousel';
 import { useCartState } from './useCartState';
 import { usePosService } from './usePosService';
 import { QuantityControl } from '@/components/common/quantity-control';
+import { TRANSACTION_TYPES } from './transaction-types';
 
 // ── Constante de imagen placeholder ─────────────────────────────────────────
 const PLACEHOLDER_IMG = 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg';
@@ -77,7 +78,7 @@ export default function POSPage() {
     // ── Inicialización ────────────────────────────────────────────────────────
     React.useEffect(() => {
         // Establecer operationType = 1 (Venta) siempre al iniciar el POS
-        localStorage.setItem('operationType', JSON.stringify(1));
+        localStorage.setItem('operationType', JSON.stringify(TRANSACTION_TYPES.VENTA.id));
         // Auto-foco en el campo de búsqueda
         searchInputRef.current?.focus();
     }, []);

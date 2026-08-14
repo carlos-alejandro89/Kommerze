@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { QuantityControl } from '@/components/common/quantity-control';
 import { usePosService } from '@/features/pos/usePosService';
+import { useActivation } from '@/providers/ActivationProvider';
 
 const money = value => Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 const CFDI_TYPES = { I: 'Ingreso', E: 'Egreso', P: 'Pago', N: 'Nómina', T: 'Traslado' };
@@ -100,9 +101,11 @@ function parseCFDI(text, fileName) {
 export function PurchasesPage() {
   const navigate = useNavigate();
   const posService = usePosService();
+  const { store } = useActivation();
   const [items, setItems] = useState([]);
   const [supplier, setSupplier] = useState(null);
   const [supplierRFC, setSupplierRFC] = useState('');
+  const [manualInvoiceNumber, setManualInvoiceNumber] = useState('');
   const [searchingSupplier, setSearchingSupplier] = useState(false);
   const [xmlInfo, setXmlInfo] = useState(null);
   const [query, setQuery] = useState('');
@@ -110,6 +113,7 @@ export function PurchasesPage() {
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [searching, setSearching] = useState(false);
   const [loadingXML, setLoadingXML] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [showXMLUploader, setShowXMLUploader] = useState(true);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -241,12 +245,14 @@ export function PurchasesPage() {
   const total = subtotal - discount + tax;
   const unmatched = items.filter(item => !item.matched).length;
   const isXMLMode = Boolean(xmlInfo);
+  const isSupplierUnlinked = Boolean(supplier && !(supplier?.Guid || supplier?.guid));
   const supplierInitial = String(supplier?.RazonSocial || 'P').trim().charAt(0).toUpperCase() || 'P';
 
   const clearDraft = () => {
     setItems([]);
     setSupplier(null);
     setSupplierRFC('');
+    setManualInvoiceNumber('');
     setXmlInfo(null);
     setQuery('');
     setSuggestions([]);
@@ -255,6 +261,60 @@ export function PurchasesPage() {
     setShowXMLUploader(true);
     setListRevision(revision => revision + 1);
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const savePurchase = async () => {
+    const sucursalID = Number(store?.ID ?? store?.id ?? 0);
+    const proveedorGuid = supplier?.Guid || supplier?.guid || '';
+    if (!sucursalID) { toast.error('No se pudo identificar la sucursal'); return; }
+    if (!proveedorGuid) { toast.error('Selecciona un proveedor registrado antes de continuar'); return; }
+    if (!items.length || unmatched > 0) { toast.error('Todos los artículos deben estar vinculados al catálogo'); return; }
+    if (!isXMLMode && !manualInvoiceNumber.trim()) { toast.error('Ingresa el folio de la factura'); return; }
+
+    setSaving(true);
+    try {
+      const response = await posService.crearCompra({
+        sucursalID,
+        proveedorGuid,
+        origenCaptura: isXMLMode ? 'XML' : 'MANUAL',
+        uuidFiscal: xmlInfo?.uuid || '',
+        folioFactura: isXMLMode ? (xmlInfo?.invoiceNumber || '') : manualInvoiceNumber.trim(),
+        fechaFactura: xmlInfo?.fecha || '',
+        fechaTimbrado: xmlInfo?.certificationDate || '',
+        moneda: xmlInfo?.currency || 'MXN',
+        tipoComprobante: xmlInfo?.documentType || '',
+        metodoPago: xmlInfo?.paymentMethod || '',
+        subtotal,
+        descuento: discount,
+        impuestos: tax,
+        total,
+        productos: items.map(item => ({
+          nivelGuid: item.id,
+          cantidad: Number(item.quantity || 0),
+          costo: Number(item.cost || 0),
+        })),
+      });
+      if (!response?.success) throw new Error(response?.message || 'No se pudo registrar la compra');
+      const folio = response?.data?.folio;
+      toast.success(folio ? `Compra #${folio} registrada correctamente` : 'Compra registrada correctamente');
+      localStorage.setItem('purchaseCompletion', JSON.stringify({
+        pedidoGuid: response?.data?.pedidoGuid,
+        compraGuid: response?.data?.compraGuid,
+        folio,
+        supplier: { razonSocial: supplier?.RazonSocial, rfc: supplier?.RFC },
+        itemCount: items.length,
+        unitCount: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        totalCompra: total,
+        totalVenta: items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.salePrice || 0), 0),
+        origenCaptura: isXMLMode ? 'XML' : 'MANUAL',
+        folioFactura: isXMLMode ? (xmlInfo?.invoiceNumber || '') : manualInvoiceNumber.trim(),
+      }));
+      navigate('/purchases/completed');
+    } catch (error) {
+      toast.error(error?.message || String(error) || 'No se pudo registrar la compra');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -297,13 +357,17 @@ export function PurchasesPage() {
               </div>
               <section>
                 {supplier ? (
-                  <div className="flex w-full items-start gap-4 rounded-xl border border-primary bg-primary/5 p-4 text-left shadow-[0_0_0_1px_rgba(var(--primary),.2)] transition-all dark:border-primary/20 dark:bg-primary/10">
-                    <div className="mt-0.5 flex size-16 shrink-0 items-center justify-center rounded-xl bg-primary text-xl font-bold text-primary-foreground shadow-sm">
-                      {supplierInitial}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="w-full rounded-xl border border-primary bg-primary/5 p-4 text-left shadow-[0_0_0_1px_rgba(var(--primary),.2)] transition-all dark:border-primary/20 dark:bg-primary/10">
+                    <div className="flex w-full items-start gap-4">
+                      <div className="mt-0.5 flex size-16 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground shadow-sm">
+                        {supplierInitial}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col">
                       <div className="mb-1 flex w-full items-start justify-between gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Proveedor actual</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Proveedor actual</span>
+                          {isSupplierUnlinked && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400">Entidad fiscal no registrada</span>}
+                        </div>
                         {!isXMLMode && <button type="button" onClick={() => { setSupplier(null); setSupplierRFC(''); window.setTimeout(() => document.querySelector('#purchase-supplier-rfc')?.focus(), 20); }} className="h-auto shrink-0 p-0 text-[10px] font-bold uppercase text-primary transition hover:text-primary/80">Cambiar proveedor</button>}
                       </div>
                       <h4 className="mb-1 truncate text-sm font-semibold leading-none text-foreground" title={supplier.RazonSocial}>{supplier.RazonSocial || 'Proveedor sin nombre'}</h4>
@@ -316,7 +380,9 @@ export function PurchasesPage() {
                         <div className="text-[11px] leading-tight">RFC: <span className="font-semibold text-foreground/80">{supplier.RFC || 'Sin RFC'}</span></div>
                       </div>
                       {supplier.EsProveedor === false && <p className="mt-2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">La entidad existe, pero aún no tiene rol de proveedor.</p>}
+                      </div>
                     </div>
+                    {isSupplierUnlinked && <div className="mt-3 flex w-full items-start gap-2 rounded-xl border border-amber-300/60 bg-amber-50/80 px-3 py-2.5 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/[.07] dark:text-amber-200"><AlertCircle className="mt-0.5 size-3.5 shrink-0 text-amber-500" /><p className="text-[9px] leading-relaxed">No encontramos una entidad fiscal registrada para el RFC del comprobante. Registra o vincula al proveedor para continuar con la compra.</p></div>}
                   </div>
                 ) : (
                   <>
@@ -326,6 +392,15 @@ export function PurchasesPage() {
                   </>
                 )}
               </section>
+
+              {!isXMLMode && <section className="border-t border-border/50 pt-4">
+                <label htmlFor="purchase-invoice-number" className="mb-2 block text-[11px] font-semibold text-[#334a70] dark:text-slate-300">Folio de la factura <span className="text-red-500">*</span></label>
+                <div className="group flex h-11 items-center rounded-2xl border border-[#dce7f6] bg-white/90 px-4 shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] transition-all focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065]">
+                  <FileText className="mr-3 size-4 shrink-0 text-[#6481ad] group-focus-within:text-blue-600 dark:text-slate-400" />
+                  <input id="purchase-invoice-number" value={manualInvoiceNumber} onChange={event => setManualInvoiceNumber(event.target.value)} maxLength={100} placeholder="Ej. FAC-000123" className="w-full min-w-0 bg-transparent text-sm font-medium uppercase text-[#1b3154] outline-none placeholder:normal-case placeholder:text-[#7790b6] dark:text-slate-100 dark:placeholder:text-slate-500" />
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">Identificador proporcionado por el proveedor.</p>
+              </section>}
 
               <section className="border-t border-border/50 pt-4">
                 {!xmlInfo || showXMLUploader ? <>
@@ -364,7 +439,7 @@ export function PurchasesPage() {
                   <div className="flex flex-col"><span className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase leading-none tracking-widest text-blue-200/60">Total neto<ChevronDown className={cn('size-4 transition-transform duration-300', summaryExpanded && 'rotate-180')} strokeWidth={2.4} /></span><span className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-sm tabular-nums">{money(total)}</span></div>
                   <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-200/80">{items.length} Art.</span>
                 </button>
-                <button disabled={!items.length || unmatched > 0 || !supplier} onClick={() => toast.info('La captura está lista. El registro contable e inventario se integrará en el siguiente paso.')} className="relative z-[var(--z-layer-raised)] mt-4 flex h-11 w-full items-center justify-between rounded-lg border-none bg-white px-4 text-xs font-black uppercase tracking-wide text-[#002366] shadow-[0_4px_14px_rgba(255,255,255,.15)] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="flex items-center gap-2"><FileText className="size-4" />Continuar</span><ArrowLeft className="size-4 rotate-180 opacity-70" /></button>
+                <button disabled={saving || !items.length || unmatched > 0 || !supplier || isSupplierUnlinked || !(store?.ID ?? store?.id) || (!isXMLMode && !manualInvoiceNumber.trim())} onClick={savePurchase} className="relative z-[var(--z-layer-raised)] mt-4 flex h-11 w-full items-center justify-between rounded-lg border-none bg-white px-4 text-xs font-black uppercase tracking-wide text-[#002366] shadow-[0_4px_14px_rgba(255,255,255,.15)] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="flex items-center gap-2">{saving ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}{saving ? 'Guardando compra' : 'Registrar compra'}</span><ArrowLeft className="size-4 rotate-180 opacity-70" /></button>
               </section>
             </aside>
           </div>

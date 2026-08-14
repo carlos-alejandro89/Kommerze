@@ -186,13 +186,11 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 	if err := o.db.Raw(`
 		SELECT
 			CASE
-				WHEN p.tipo_pedido_id = 1 THEN 'venta'
-				WHEN p.tipo_pedido_id = 2 THEN 'cotizacion'
-				WHEN t.id IS NOT NULL
-				  OR p.tipo_pedido_id = 3
-				  OR lower(COALESCE(tp.nombre, '')) LIKE '%transfer%'
-				  OR lower(COALESCE(tp.nombre, '')) LIKE '%traspas%' THEN 'transferencia'
-				WHEN lower(tp.nombre) LIKE '%baja%' THEN 'baja'
+				WHEN tp.guid::text = ? THEN 'venta'
+				WHEN tp.guid::text = ? THEN 'cotizacion'
+				WHEN tp.guid::text = ? THEN 'transferencia'
+				WHEN tp.guid::text = ? THEN 'compra'
+				WHEN tp.guid::text = ? THEN 'baja'
 				ELSE 'pedido'
 			END AS tipo,
 			p.folio,
@@ -210,7 +208,10 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 		GROUP BY p.id, p.tipo_pedido_id, tp.nombre, t.id, sd.nombre_sucursal
 		ORDER BY p.fecha DESC
 		LIMIT 5
-	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&actividades).Error; err != nil {
+	`, models.TipoPedidoVentaGuid, models.TipoPedidoCotizacionGuid,
+		models.TipoPedidoTraspasoGuid, models.TipoPedidoCompraGuid,
+		models.TipoPedidoBajaMercanciaGuid,
+		sucursalID, operacion.FechaInicio, fechaFin).Scan(&actividades).Error; err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 

@@ -114,6 +114,15 @@ func (a *App) proveedoresService() interface {
 	return a.services.Proveedores
 }
 
+func (a *App) comprasService() interface {
+	CrearCompra(dto.CrearCompraDto) (*dto.ResponseDto, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Compras
+}
+
 // cotizacionService devuelve la implementacion correcta segun el modo del dispositivo.
 func (a *App) cotizacionService() interface {
 	SolicitarAutorizacion(string, string, string, string, string, []dto.ItemDescuentoDto) (*dto.ResponseDto, error)
@@ -129,11 +138,24 @@ func (a *App) cotizacionService() interface {
 func (a *App) receiptService() interface {
 	BuildReceipt(string) (reportmodels.Receipt, error)
 	BuildQuotation(string) (reportmodels.Quotation, error)
+	BuildPurchaseReport(string) (reportmodels.PurchaseReport, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
 	}
 	return a.services.Receipt
+}
+
+func (a *App) ServiceGeneratePurchaseReport(pedidoGuid string) (*reportmodels.DocumentOutput, error) {
+	report, err := a.receiptService().BuildPurchaseReport(pedidoGuid)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderPurchasePDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el reporte de compra: %w", err)
+	}
+	return &reportmodels.DocumentOutput{Kind: "pdf", FileName: "reporte-compra-" + report.Folio + ".pdf", DataBase64: base64.StdEncoding.EncodeToString(pdf)}, nil
 }
 
 // ── Sync (solo Servidor Local) ────────────────────────────────────────────────
@@ -387,6 +409,10 @@ func (a *App) ServiceCrearSolicitudProductos(solicitud dto.SolicitudProductosDto
 	return a.posService().CrearSolicitudProductos(solicitud)
 }
 
+func (a *App) ServiceCrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto, error) {
+	return a.comprasService().CrearCompra(datos)
+}
+
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
 }
@@ -400,7 +426,7 @@ func (a *App) ServicePrintReceipt(pedidoGuid string) (*reportmodels.DocumentOutp
 	if err != nil {
 		return nil, err
 	}
-	if receipt.TipoPedidoID == 2 {
+	if receipt.TipoPedidoGuid == models.TipoPedidoCotizacionGuid {
 		quotation, err := a.receiptService().BuildQuotation(pedidoGuid)
 		if err != nil {
 			return nil, err
@@ -435,7 +461,7 @@ func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
 	if err != nil {
 		return err
 	}
-	if receipt.TipoPedidoID == 2 {
+	if receipt.TipoPedidoGuid == models.TipoPedidoCotizacionGuid {
 		quotation, err := a.receiptService().BuildQuotation(pedidoGuid)
 		if err != nil {
 			return err
