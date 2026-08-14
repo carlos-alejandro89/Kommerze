@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Loader2, PackageSearch, Package } from 'lucide-react';
 import { moneyFormat } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,16 @@ function stockLabel(existencia) {
  *  - onSelect    : (producto) => void
  *  - onClose     : () => void
  */
-export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClose }) {
+export function SearchDropdown({ suggestions, isLoading, query, activeIndex = -1, onActiveIndexChange, onSelect, onClose }) {
+    const listRef = useRef(null);
+
+    useEffect(() => {
+        if (activeIndex < 0) return;
+        listRef.current
+            ?.querySelector(`[data-suggestion-index="${activeIndex}"]`)
+            ?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex]);
+
     if (!query || query.trim().length < 2) return null;
 
     return (
@@ -58,21 +68,23 @@ export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClos
                 </div>
 
             ) : (
-                <ul className="max-h-[360px] overflow-y-auto divide-y divide-border/50 py-1">
+                <ul ref={listRef} role="listbox" className="max-h-[360px] overflow-y-auto divide-y divide-border/50 py-1">
                     {suggestions.map((product, index) => {
-                        console.log("Product", product);
-                        console.log("Image Url", `${import.meta.env.VITE_CLOUD_API_URL}${product.ImagenReferencia}`);
-
                         const sinStock = (parseFloat(product.Existencia) || 0) <= 0;
+                        const isActive = activeIndex === index;
 
                         return (
-                            <li key={product.Guid}>
+                            <li key={product.Guid} role="option" aria-selected={isActive}>
                                 <button
                                     type="button"
+                                    data-suggestion-index={index}
+                                    onMouseEnter={() => onActiveIndexChange?.(index)}
                                     onClick={() => onSelect(product)}
                                     className={cn(
                                         'w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left group',
-                                        sinStock
+                                        isActive
+                                            ? 'bg-blue-50 text-blue-950 ring-1 ring-inset ring-blue-200 dark:bg-blue-500/15 dark:text-blue-100 dark:ring-blue-400/20'
+                                            : sinStock
                                             ? 'hover:bg-red-50/50 dark:hover:bg-red-950/20 opacity-75'
                                             : 'hover:bg-slate-50 dark:hover:bg-zinc-800'
                                     )}
@@ -137,7 +149,7 @@ export function SearchDropdown({ suggestions, isLoading, query, onSelect, onClos
                                     </div>
 
                                     {/* Indicador "primer resultado = Enter" */}
-                                    {index === 0 && (
+                                    {isActive && (
                                         <span className="shrink-0 self-center text-[9px] font-black uppercase text-muted-foreground/50 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-border/50">
                                             Enter
                                         </span>

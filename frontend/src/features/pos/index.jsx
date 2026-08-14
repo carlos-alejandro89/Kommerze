@@ -54,6 +54,7 @@ export default function POSPage() {
     const [suggestions, setSuggestions] = React.useState([]);
     const [isSearching, setIsSearching] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
+    const [activeSuggestion, setActiveSuggestion] = React.useState(-1);
     const searchInputRef = React.useRef(null);
 
     // ── Sheet de detalles ────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ export default function POSPage() {
         // Limpiar búsqueda y recuperar foco
         setSearchQuery('');
         setSuggestions([]);
+        setActiveSuggestion(-1);
         setShowSuggestions(false);
         setTimeout(() => searchInputRef.current?.focus(), 50);
     }, [addItem, showToast]);
@@ -105,19 +107,23 @@ export default function POSPage() {
     React.useEffect(() => {
         if (!searchQuery || searchQuery.trim().length < 2) {
             setSuggestions([]);
+            setActiveSuggestion(-1);
             setShowSuggestions(false);
             return;
         }
 
         setShowSuggestions(true);
+        setActiveSuggestion(-1);
         setIsSearching(true);
 
         const timer = setTimeout(async () => {
             try {
                 const result = await posService.buscarProductos(searchQuery.toUpperCase());
                 setSuggestions(result || []);
+                setActiveSuggestion(-1);
             } catch {
                 setSuggestions([]);
+                setActiveSuggestion(-1);
             } finally {
                 setIsSearching(false);
             }
@@ -188,17 +194,31 @@ export default function POSPage() {
     // ── Búsqueda manual con Enter en el input ────────────────────────────────
     const handleSearchKeyDown = async (event) => {
         if (event.key === 'Escape') {
+            event.preventDefault();
             setSearchQuery('');
             setSuggestions([]);
+            setActiveSuggestion(-1);
             setShowSuggestions(false);
+            return;
+        }
+
+        if (showSuggestions && suggestions.length > 0 && event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveSuggestion(current => current < suggestions.length - 1 ? current + 1 : 0);
+            return;
+        }
+
+        if (showSuggestions && suggestions.length > 0 && event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveSuggestion(current => current > 0 ? current - 1 : suggestions.length - 1);
             return;
         }
 
         if (event.key === 'Enter' && searchQuery.trim().length >= 2) {
             event.preventDefault();
-            // Usar el primer resultado si ya están cargados, si no buscar
+            // Usa el resultado seleccionado con flechas o el primero por defecto.
             if (suggestions.length > 0) {
-                addProductToCart(suggestions[0]);
+                addProductToCart(suggestions[activeSuggestion >= 0 ? activeSuggestion : 0]);
             } else {
                 setIsSearching(true);
                 try {
@@ -297,6 +317,8 @@ export default function POSPage() {
                                             suggestions={suggestions}
                                             isLoading={isSearching}
                                             query={searchQuery}
+                                            activeIndex={activeSuggestion}
+                                            onActiveIndexChange={setActiveSuggestion}
                                             onSelect={(producto) => addProductToCart(producto)}
                                             onClose={() => setShowSuggestions(false)}
                                         />

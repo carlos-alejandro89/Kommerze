@@ -56,7 +56,7 @@ const MODULES = [
   { id: 'clientes', title: 'Clientes', subtitle: 'Catálogo y gestión de clientes', icon: Users, color: '#7645df', to: '/clients' },
   { id: 'transferencias', title: 'Transferencias', subtitle: 'Seguimiento a envío y recepción de productos', icon: ArrowLeftRight, color: '#12aeb4', to: '/transfers' },
 
-  { id: 'compras', title: 'Compras', subtitle: 'Órdenes y control de compras', icon: ShoppingCart, color: '#168bea' },
+  { id: 'compras', title: 'Compras', subtitle: 'Órdenes y control de compras', icon: ShoppingCart, color: '#168bea', to: '/purchases' },
   { id: 'proveedores', title: 'Proveedores', subtitle: 'Alta y datos fiscales de proveedores', icon: Handshake, color: '#ff8a28', to: '/suppliers' },
   { id: 'auditorias', title: 'Auditorías', subtitle: 'Conteos y auditorías de inventario', icon: PackageCheck, color: '#df2864', to: '/auditoria', serverOnly: true },
 

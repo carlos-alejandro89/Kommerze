@@ -39,6 +39,7 @@ import {
     ServiceGetTiposAutorizacion,
     ServicePrintReceipt,
     ServiceEmailReceipt,
+    ServiceBuscarEntidadFiscalProveedor,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -68,6 +69,7 @@ export function usePosService() {
      * @returns {Promise<ClienteDto[]>}
      */
     const buscarClientes = (q) => ServiceBuscarClientes(q);
+    const buscarProveedorPorRFC = (rfc) => ServiceBuscarEntidadFiscalProveedor(rfc);
 
     // ── Catálogos POS ─────────────────────────────────────────────────────────
 
@@ -171,6 +173,7 @@ export function usePosService() {
         consultarExistencias,
         // Clientes
         buscarClientes,
+        buscarProveedorPorRFC,
         // Catálogos
         obtenerTiposPedido,
         obtenerSucursales,

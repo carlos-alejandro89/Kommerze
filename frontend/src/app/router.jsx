@@ -38,6 +38,7 @@ const TransfersPage = lazy(() => import('@/features/transfers/pages/TransfersPag
 const ClientsPage = lazy(() => import('@/features/clients/pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
 const ClientFormPage = lazy(() => import('@/features/clients/pages/ClientFormPage').then(m => ({ default: m.ClientFormPage })));
 const SuppliersPage = lazy(() => import('@/features/suppliers/pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const PurchasesPage = lazy(() => import('@/features/purchases/pages/PurchasesPage').then(m => ({ default: m.PurchasesPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const SyncPage = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
 const InventoryImportPage = lazy(() => import('@/features/inventory-import/pages/InventoryImportPage').then(m => ({ default: m.InventoryImportPage })));
@@ -188,6 +189,10 @@ export const router = createBrowserRouter(
         {
           path: '/suppliers',
           element: <SuspensePage><SuppliersPage /></SuspensePage>,
+        },
+        {
+          path: '/purchases',
+          element: <SuspensePage><PurchasesPage /></SuspensePage>,
         },
         {
           path: '/settings',
