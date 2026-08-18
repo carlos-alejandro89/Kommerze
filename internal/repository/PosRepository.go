@@ -316,6 +316,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 	sucursalOrigen *uint,
 	sucursalDestino *uint,
 	operacionCajeroID *uint,
+	clienteGuid string,
 ) (*dto.ResponseDto, error) {
 	if tipoOperacion == nil {
 		return dto.NewResponseDto(false, "Tipo de transacción requerido", nil, nil), fmt.Errorf("tipo de transacción requerido")
@@ -344,6 +345,17 @@ func (r *PosRepository) ConfirmarTransaccion(
 		}
 		estatus := estatusModel.ID
 		var cliente uint = 1
+		if strings.TrimSpace(clienteGuid) != "" {
+			guid, parseErr := uuid.Parse(strings.TrimSpace(clienteGuid))
+			if parseErr != nil {
+				return fmt.Errorf("cliente inválido")
+			}
+			var clienteModel models.Cliente
+			if err := tx.Where("guid = ? AND deleted_at IS NULL", guid).First(&clienteModel).Error; err != nil {
+				return fmt.Errorf("cliente seleccionado no encontrado: %w", err)
+			}
+			cliente = clienteModel.ID
+		}
 
 		pedido = models.Pedido{
 			EstatusID:         &estatus,

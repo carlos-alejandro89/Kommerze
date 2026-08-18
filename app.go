@@ -50,7 +50,7 @@ func (a *App) posService() interface {
 	ConsultaProductos(string, bool) ([]dto.ProductoDto, error)
 	ObtenerTiposPedido() ([]models.TipoPedido, error)
 	ConsultarExistenciaProductos([]uuid.UUID) ([]dto.InventarioDto, error)
-	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint, *uint) (*dto.ResponseDto, error)
+	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint, *uint, string) (*dto.ResponseDto, error)
 	CrearSolicitudProductos(dto.SolicitudProductosDto) (*dto.ResponseDto, error)
 	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
 	ConsultarTransferencias() ([]dto.TransferenciaDto, error)
@@ -105,6 +105,7 @@ func (a *App) clientesService() interface {
 }
 
 func (a *App) proveedoresService() interface {
+	BuscarProveedores(string) ([]dto.ProveedorFiscalDto, error)
 	BuscarEntidadFiscalPorRFC(string) (*dto.ProveedorFiscalDto, error)
 	GuardarProveedor(dto.GuardarProveedorDto) (*dto.ProveedorFiscalDto, error)
 } {
@@ -401,8 +402,8 @@ func (a *App) ServiceGuardarInventarioJSON(nombreArchivo string, contenido strin
 	return a.services.Inventario.GuardarArchivoJSON(nombreArchivo, contenido)
 }
 
-func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint, operacionCajeroID *uint) (*dto.ResponseDto, error) {
-	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID)
+func (a *App) ServiceConfirmarTransaccion(tipoOperacion *uint, pagosAplicados []dto.PagosAplicadosDto, itemsPedido []dto.PedidoProductoDto, sucursalOrigen *uint, sucursalDestino *uint, operacionCajeroID *uint, clienteGuid string) (*dto.ResponseDto, error) {
+	return a.posService().ConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID, clienteGuid)
 }
 
 func (a *App) ServiceCrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
@@ -805,6 +806,10 @@ func (a *App) ServiceGuardarCliente(datos dto.GuardarClienteDto) (*dto.ClienteDe
 
 func (a *App) ServiceBuscarEntidadFiscalProveedor(rfc string) (*dto.ProveedorFiscalDto, error) {
 	return a.proveedoresService().BuscarEntidadFiscalPorRFC(rfc)
+}
+
+func (a *App) ServiceBuscarProveedores(termino string) ([]dto.ProveedorFiscalDto, error) {
+	return a.proveedoresService().BuscarProveedores(termino)
 }
 
 // ServiceBuscarEntidadFiscalPorRFC es la consulta neutral que reutilizan los

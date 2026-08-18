@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { QuantityControl } from '@/components/common/quantity-control';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePosService } from '@/features/pos/usePosService';
 import { useActivation } from '@/providers/ActivationProvider';
 
@@ -104,8 +105,10 @@ export function PurchasesPage() {
   const { store } = useActivation();
   const [items, setItems] = useState([]);
   const [supplier, setSupplier] = useState(null);
-  const [supplierRFC, setSupplierRFC] = useState('');
   const [manualInvoiceNumber, setManualInvoiceNumber] = useState('');
+  const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
+  const [supplierQuery, setSupplierQuery] = useState('');
+  const [supplierResults, setSupplierResults] = useState([]);
   const [searchingSupplier, setSearchingSupplier] = useState(false);
   const [xmlInfo, setXmlInfo] = useState(null);
   const [query, setQuery] = useState('');
@@ -143,6 +146,26 @@ export function PurchasesPage() {
       ?.querySelector(`[data-suggestion-index="${activeSuggestion}"]`)
       ?.scrollIntoView({ block: 'nearest' });
   }, [activeSuggestion]);
+
+  useEffect(() => {
+    if (!supplierDialogOpen) return undefined;
+    let active = true;
+    setSearchingSupplier(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await posService.buscarProveedores(supplierQuery.trim());
+        if (active) setSupplierResults(results || []);
+      } catch (error) {
+        if (active) {
+          setSupplierResults([]);
+          toast.error(error?.message || 'No fue posible consultar los proveedores');
+        }
+      } finally {
+        if (active) setSearchingSupplier(false);
+      }
+    }, supplierQuery.trim() ? 280 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [supplierDialogOpen, supplierQuery]);
 
   const addProduct = useCallback(product => {
     setItems(current => {
@@ -186,20 +209,6 @@ export function PurchasesPage() {
   const updateItem = (id, changes) => setItems(current => current.map(item => item.id === id ? { ...item, ...changes } : item));
   const removeItem = id => setItems(current => current.filter(item => item.id !== id));
 
-  const lookupSupplier = async () => {
-    const rfc = supplierRFC.trim().toUpperCase();
-    if (![12, 13].includes(rfc.length)) { toast.error('Ingresa un RFC válido de 12 o 13 caracteres'); return; }
-    setSearchingSupplier(true);
-    try {
-      const result = await posService.buscarProveedorPorRFC(rfc);
-      if (!result) { setSupplier(null); toast.error('No se encontró una entidad fiscal con ese RFC'); return; }
-      setSupplier(result);
-      toast.success(result.EsProveedor ? 'Proveedor seleccionado' : 'Entidad fiscal encontrada; falta asignar el rol de proveedor');
-    } catch (error) {
-      setSupplier(null); toast.error(error?.message || 'No fue posible consultar el proveedor');
-    } finally { setSearchingSupplier(false); }
-  };
-
   const resolveConcept = async concept => {
     if (!concept.codigo) return { ...concept, id: `xml-${concept.xmlKey}`, sku: '', name: concept.descripcion, unit: concept.unidad, matched: false };
     try {
@@ -225,7 +234,6 @@ export function PurchasesPage() {
       ]);
       setItems(resolvedItems);
       setSupplier(foundSupplier || parsed.supplier);
-      setSupplierRFC(parsed.supplier.RFC);
       setXmlInfo({ fileName: parsed.fileName, uuid: parsed.uuid, invoiceNumber: parsed.invoiceNumber, fecha: parsed.fecha, certificationDate: parsed.certificationDate, currency: parsed.currency, documentType: parsed.documentType, paymentMethod: parsed.paymentMethod, subtotal: parsed.subtotal, descuento: parsed.descuento, total: parsed.total, appliedRule: parsed.appliedRule });
       setShowXMLUploader(false);
       const pending = resolvedItems.filter(item => !item.matched).length;
@@ -251,7 +259,6 @@ export function PurchasesPage() {
   const clearDraft = () => {
     setItems([]);
     setSupplier(null);
-    setSupplierRFC('');
     setManualInvoiceNumber('');
     setXmlInfo(null);
     setQuery('');
@@ -368,7 +375,7 @@ export function PurchasesPage() {
                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Proveedor actual</span>
                           {isSupplierUnlinked && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400">Entidad fiscal no registrada</span>}
                         </div>
-                        {!isXMLMode && <button type="button" onClick={() => { setSupplier(null); setSupplierRFC(''); window.setTimeout(() => document.querySelector('#purchase-supplier-rfc')?.focus(), 20); }} className="h-auto shrink-0 p-0 text-[10px] font-bold uppercase text-primary transition hover:text-primary/80">Cambiar proveedor</button>}
+                        {!isXMLMode && <button type="button" onClick={() => setSupplierDialogOpen(true)} className="h-auto shrink-0 p-0 text-[10px] font-bold uppercase text-primary transition hover:text-primary/80">Cambiar proveedor</button>}
                       </div>
                       <h4 className="mb-1 truncate text-sm font-semibold leading-none text-foreground" title={supplier.RazonSocial}>{supplier.RazonSocial || 'Proveedor sin nombre'}</h4>
                       <div className="mt-1 flex flex-col gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -386,9 +393,9 @@ export function PurchasesPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"><Building2 className="size-5" /></div><div><h2 className="text-sm font-semibold">Seleccionar proveedor</h2><p className="text-[11px] text-muted-foreground">Busca sus datos fiscales mediante RFC</p></div></div>
-                    <div className="mt-4 flex gap-2"><input id="purchase-supplier-rfc" value={supplierRFC} disabled={isXMLMode} maxLength={13} onChange={event => { setSupplierRFC(event.target.value.toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '')); setSupplier(null); }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupSupplier(); } }} placeholder="RFC del proveedor" className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce7f6] bg-white/90 px-3 text-xs font-semibold uppercase outline-none focus:border-blue-300 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-muted-foreground dark:border-white/10 dark:bg-white/[.06] dark:disabled:bg-white/[.025]" /><button type="button" onClick={lookupSupplier} disabled={isXMLMode || searchingSupplier} className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40">{searchingSupplier ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}</button></div>
-                    <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">Busca por RFC o carga el proveedor desde el XML.</p>
+                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"><Building2 className="size-5" /></div><div><h2 className="text-sm font-semibold">Seleccionar proveedor</h2><p className="text-[11px] text-muted-foreground">Encuéntralo por nombre, RFC o datos de contacto</p></div></div>
+                    <button type="button" onClick={() => setSupplierDialogOpen(true)} disabled={isXMLMode} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300"><Search className="size-4" />Buscar y seleccionar proveedor</button>
+                    <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">También puedes cargar automáticamente el proveedor desde el XML.</p>
                   </>
                 )}
               </section>
@@ -445,8 +452,22 @@ export function PurchasesPage() {
           </div>
         </div>
       </main>
+      <SupplierSelectorDialog open={supplierDialogOpen} onOpenChange={setSupplierDialogOpen} query={supplierQuery} onQueryChange={setSupplierQuery} results={supplierResults} loading={searchingSupplier} onSelect={selected => { setSupplier(selected); setSupplierDialogOpen(false); setSupplierQuery(''); toast.success('Proveedor seleccionado'); }} />
     </div>
   );
+}
+
+function SupplierSelectorDialog({ open, onOpenChange, query, onQueryChange, results, loading, onSelect }) {
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="flex max-h-[82vh] w-[min(720px,94vw)] max-w-none flex-col overflow-hidden rounded-2xl p-0">
+      <DialogHeader className="border-b border-border/70 px-6 py-5 text-left"><DialogTitle>Seleccionar proveedor</DialogTitle><DialogDescription>Busca por razón social, RFC, correo, teléfono, WhatsApp, código postal o régimen fiscal.</DialogDescription></DialogHeader>
+      <div className="px-6 pt-4"><div className="group flex h-11 items-center rounded-2xl border border-[#dce7f6] bg-white/90 px-4 shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] transition focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065]"><Search className="mr-3 size-4 text-[#6481ad]" /><input autoFocus value={query} onChange={event => onQueryChange(event.target.value)} placeholder="Nombre, RFC, teléfono, correo…" className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#7790b6]" />{loading && <Loader2 className="size-4 animate-spin text-blue-600" />}</div></div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 px-6">
+        {loading && !results.length ? <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/70" />)}</div> : results.length ? <div className="space-y-2">{results.map(item => <button key={item.Guid || item.ID} type="button" onClick={() => onSelect(item)} className="group flex w-full items-center gap-3 rounded-xl border border-border/65 bg-background/65 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50/55 dark:hover:border-blue-400/20 dark:hover:bg-blue-500/[.07]"><span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-sm font-bold text-orange-600">{String(item.RazonSocial || 'P').trim().charAt(0).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.RazonSocial || 'Proveedor sin nombre'}</span><span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground"><span className="font-semibold text-foreground/75">RFC: {item.RFC || '—'}</span>{item.Correo && <span className="inline-flex items-center gap-1"><Mail className="size-3" />{item.Correo}</span>}{(item.Telefono || item.Whatsapp) && <span className="inline-flex items-center gap-1"><Phone className="size-3" />{item.Telefono || item.Whatsapp}</span>}</span></span><span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-600 opacity-0 transition group-hover:opacity-100 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300">Seleccionar</span></button>)}</div> : <div className="flex flex-col items-center justify-center py-14 text-center"><Building2 className="size-9 text-muted-foreground/35" /><p className="mt-3 text-sm font-semibold">Sin proveedores encontrados</p><p className="mt-1 max-w-sm text-xs text-muted-foreground">Prueba con otro dato o registra primero al proveedor desde su módulo.</p></div>}
+      </div>
+      <div className="border-t border-border/70 bg-muted/20 px-6 py-3 text-[10px] text-muted-foreground">{loading ? 'Consultando proveedores…' : `${results.length} proveedor${results.length === 1 ? '' : 'es'} disponible${results.length === 1 ? '' : 's'}`}</div>
+    </DialogContent>
+  </Dialog>;
 }
 
 function CFDIDataRow({ label, value, action }) {

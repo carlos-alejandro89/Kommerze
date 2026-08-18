@@ -114,6 +114,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/clientes/guardar", l.handleGuardarCliente)
 	mux.HandleFunc("/local/clientes/entidad-fiscal", l.handleBuscarEntidadFiscalCloud)
 	mux.HandleFunc("/local/proveedores/buscar-rfc", l.handleBuscarProveedorRFC)
+	mux.HandleFunc("/local/proveedores", l.handleBuscarProveedores)
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/compras", l.handleCrearCompra)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
@@ -333,6 +334,7 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 		SucursalOrigen    *uint                   `json:"sucursalOrigen"`
 		SucursalDestino   *uint                   `json:"sucursalDestino"`
 		OperacionCajeroID *uint                   `json:"operacionCajeroID"`
+		ClienteGuid       string                  `json:"clienteGuid"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
@@ -345,6 +347,7 @@ func (l *LocalServerService) handleTransacciones(w http.ResponseWriter, r *http.
 		body.SucursalOrigen,
 		body.SucursalDestino,
 		body.OperacionCajeroID,
+		body.ClienteGuid,
 	)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -514,6 +517,19 @@ func (l *LocalServerService) handleBuscarProveedorRFC(w http.ResponseWriter, r *
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": entity})
+}
+
+func (l *LocalServerService) handleBuscarProveedores(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	proveedores, err := l.proveedores.BuscarProveedores(r.URL.Query().Get("query"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": proveedores})
 }
 
 func (l *LocalServerService) handleGuardarProveedor(w http.ResponseWriter, r *http.Request) {

@@ -140,7 +140,8 @@ func (s *ClientesService) BuscarClientes(q string) ([]dto.ClienteDto, error) {
 			WHERE cef.cliente_id = c.id AND cef.deleted_at IS NULL ORDER BY cef.id LIMIT 1
 		) f ON TRUE
 		WHERE c.deleted_at IS NULL
-		  AND (c.razon_social ILIKE @p OR COALESCE(f.rfc, '') ILIKE @p OR c.telefono ILIKE @p)
+		  AND (c.razon_social ILIKE @p OR COALESCE(f.rfc, '') ILIKE @p
+		       OR c.telefono ILIKE @p OR c.whatsapp ILIKE @p OR c.correo ILIKE @p)
 		ORDER BY c.razon_social
 		LIMIT 20`,
 		sql.Named("p", pattern),

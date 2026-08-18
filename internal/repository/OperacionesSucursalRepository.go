@@ -205,7 +205,7 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 		WHERE p.sucursal_origen_id = ?
 		  AND p.fecha BETWEEN ? AND ?
 		  AND p.deleted_at IS NULL
-		GROUP BY p.id, p.tipo_pedido_id, tp.nombre, t.id, sd.nombre_sucursal
+		GROUP BY p.id, p.tipo_pedido_id, tp.guid, tp.nombre, t.id, sd.nombre_sucursal
 		ORDER BY p.fecha DESC
 		LIMIT 5
 	`, models.TipoPedidoVentaGuid, models.TipoPedidoCotizacionGuid,

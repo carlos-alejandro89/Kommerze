@@ -4,15 +4,17 @@ import * as React from 'react';
 import {
     ShoppingCart as IconShoppingCart,
     Info,
+    Loader2,
     Mail,
     Phone,
+    Search,
     Store
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toAbsoluteUrl } from '@/lib/helpers';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Content } from '@/components/layout/content';
 import { ContentHeader } from '@/components/layout/content-header';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,13 @@ const shoppingCart = [
 
 ];
 
+const DEFAULT_CLIENT = {
+    RazonSocial: 'CLIENTE MOSTRADOR',
+    Correo: '',
+    Telefono: '',
+    RFC: '',
+};
+
 
 export function CartStepTwo() {
     const navigate = useNavigate();
@@ -41,6 +50,14 @@ export function CartStepTwo() {
     const [tiposPedido, setTiposPedido] = React.useState([]);
     const [sucursales, setSucursales] = React.useState([]);
     const [sucursalSeleccionada, setSucursalSeleccionada] = React.useState(null);
+    const [selectedClient, setSelectedClient] = React.useState(() => {
+        try { return JSON.parse(localStorage.getItem('selectedClient')) || DEFAULT_CLIENT; }
+        catch { return DEFAULT_CLIENT; }
+    });
+    const [clientDialogOpen, setClientDialogOpen] = React.useState(false);
+    const [clientQuery, setClientQuery] = React.useState('');
+    const [clientResults, setClientResults] = React.useState([]);
+    const [searchingClients, setSearchingClients] = React.useState(false);
 
     const ObtenerTiposPedido = async () => {
         try {
@@ -77,6 +94,31 @@ export function CartStepTwo() {
             }
         }
     }, [])
+
+    React.useEffect(() => {
+        if (!clientDialogOpen) return undefined;
+        let active = true;
+        setSearchingClients(true);
+        const timer = window.setTimeout(async () => {
+            try {
+                const results = await posService.buscarClientes(clientQuery.trim());
+                if (active) setClientResults(results || []);
+            } catch (error) {
+                if (active) setClientResults([]);
+                console.error('No se pudieron consultar los clientes:', error);
+            } finally {
+                if (active) setSearchingClients(false);
+            }
+        }, clientQuery.trim() ? 280 : 0);
+        return () => { active = false; window.clearTimeout(timer); };
+    }, [clientDialogOpen, clientQuery]);
+
+    const handleSelectClient = client => {
+        setSelectedClient(client);
+        localStorage.setItem('selectedClient', JSON.stringify(client));
+        setClientDialogOpen(false);
+        setClientQuery('');
+    };
 
     const handeSetOperationType = (operationType) => {
         setOperationType(operationType)
@@ -210,9 +252,8 @@ export function CartStepTwo() {
                                     ) : (
                                         <div className="w-full rounded-xl border p-4 flex flex-col md:flex-row md:items-start justify-between text-left transition-all bg-primary/5 border-primary shadow-[0_0_0_1px_rgba(var(--primary),0.2)] dark:bg-primary/10 dark:border-primary/20">
                                             <div className="flex items-start gap-4 w-full">
-                                                <Avatar className="size-16 rounded-xl mt-0.5 shrink-0 bg-transparent">
-                                                    <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="avatar" className="object-cover bg-transparent" />
-                                                    <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl font-bold">CM</AvatarFallback>
+                                                <Avatar className="size-16 rounded-full mt-0.5 shrink-0 bg-transparent">
+                                                    <AvatarFallback className="rounded-full bg-primary text-primary-foreground text-xl font-bold">{String(selectedClient.RazonSocial || 'CM').split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</AvatarFallback>
                                                 </Avatar>
 
                                                 <div className="flex flex-col w-full">
@@ -220,27 +261,28 @@ export function CartStepTwo() {
                                                         <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Cliente Actual</span>
                                                         <Button
                                                             variant="link"
+                                                            onClick={() => setClientDialogOpen(true)}
                                                             className="h-auto p-0 text-[10px] font-bold uppercase text-primary hover:text-primary/80 shrink-0"
                                                         >
                                                             Cambiar cliente
                                                         </Button>
                                                     </div>
 
-                                                    <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">CLIENTE MOSTRADOR</h4>
+                                                    <h4 className="font-semibold text-sm mb-1 text-foreground leading-none">{selectedClient.RazonSocial || 'CLIENTE MOSTRADOR'}</h4>
 
                                                     <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1 mb-1.5">
                                                         <div className="flex items-center gap-1.5">
                                                             <Mail className="size-3.5 opacity-70" />
-                                                            <span>no-reply@propos.com</span>
+                                                            <span>{selectedClient.Correo || 'Sin correo'}</span>
                                                         </div>
                                                         <div className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
                                                         <div className="flex items-center gap-1.5">
                                                             <Phone className="size-3.5 opacity-70" />
-                                                            <span>+502 0000-0000</span>
+                                                            <span>{selectedClient.Telefono || 'Sin teléfono'}</span>
                                                         </div>
                                                     </div>
                                                     <div className="text-[11px] text-muted-foreground leading-tight">
-                                                        Venta al público general sin datos fiscales específicos.
+                                                        {selectedClient.RFC ? `RFC: ${selectedClient.RFC}` : 'Venta al público general sin datos fiscales específicos.'}
                                                     </div>
                                                 </div>
                                             </div>
@@ -290,6 +332,8 @@ export function CartStepTwo() {
                 <ResumenCuenta subtotal={subtotal} descuento={descuento} total={total} countItems={cart.length} currentStep={1} />
             </div>
 
+            <ClientSelectorDialog open={clientDialogOpen} onOpenChange={setClientDialogOpen} query={clientQuery} onQueryChange={setClientQuery} results={clientResults} loading={searchingClients} onSelect={handleSelectClient} />
+
             <style jsx>{`
                 @keyframes shimmer {
                     100% {
@@ -299,4 +343,20 @@ export function CartStepTwo() {
             `}</style>
         </div>
     );
+}
+
+function ClientSelectorDialog({ open, onOpenChange, query, onQueryChange, results, loading, onSelect }) {
+    return <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex max-h-[82vh] w-[min(720px,94vw)] max-w-none flex-col overflow-hidden rounded-2xl p-0">
+            <DialogHeader className="border-b border-border/70 px-6 py-5 text-left">
+                <DialogTitle>Seleccionar cliente</DialogTitle>
+                <DialogDescription>Busca por nombre o razón social, RFC, teléfono o correo electrónico.</DialogDescription>
+            </DialogHeader>
+            <div className="px-6 pt-4"><div className="group flex h-11 items-center rounded-2xl border border-[#dce7f6] bg-white/90 px-4 shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] transition focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065]"><Search className="mr-3 size-4 text-[#6481ad]" /><input autoFocus value={query} onChange={event => onQueryChange(event.target.value)} placeholder="Nombre, RFC, teléfono o correo…" className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#7790b6]" />{loading && <Loader2 className="size-4 animate-spin text-blue-600" />}</div></div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 px-6">
+                {loading && !results.length ? <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/70" />)}</div> : results.length ? <div className="space-y-2">{results.map(client => <button key={client.Guid || client.ID} type="button" onClick={() => onSelect(client)} className="group flex w-full items-center gap-3 rounded-xl border border-border/65 bg-background/65 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50/55 dark:hover:border-blue-400/20 dark:hover:bg-blue-500/[.07]"><span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">{String(client.RazonSocial || 'C').split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{client.RazonSocial || 'Cliente sin nombre'}</span><span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground"><span className="font-semibold text-foreground/75">RFC: {client.RFC || '—'}</span>{client.Correo && <span className="inline-flex items-center gap-1"><Mail className="size-3" />{client.Correo}</span>}{client.Telefono && <span className="inline-flex items-center gap-1"><Phone className="size-3" />{client.Telefono}</span>}</span></span><span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-600 opacity-0 transition group-hover:opacity-100 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300">Seleccionar</span></button>)}</div> : <div className="flex flex-col items-center justify-center py-14 text-center"><Search className="size-9 text-muted-foreground/35" /><p className="mt-3 text-sm font-semibold">Sin clientes encontrados</p><p className="mt-1 max-w-sm text-xs text-muted-foreground">Prueba con otro dato o registra primero al cliente desde su módulo.</p></div>}
+            </div>
+            <div className="border-t border-border/70 bg-muted/20 px-6 py-3 text-[10px] text-muted-foreground">{loading ? 'Consultando clientes…' : `${results.length} cliente${results.length === 1 ? '' : 's'} disponible${results.length === 1 ? '' : 's'}`}</div>
+        </DialogContent>
+    </Dialog>;
 }

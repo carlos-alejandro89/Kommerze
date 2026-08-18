@@ -108,7 +108,7 @@ export function SuppliersPage() {
         RegimenID: form.RegimenID ? Number(form.RegimenID) : null,
       });
       toast.success(found ? 'El rol PROVEEDOR fue agregado a la entidad fiscal' : 'Proveedor registrado correctamente');
-      reset();
+      navigate('/suppliers');
     } catch (error) {
       toast.error(error?.message || String(error));
     } finally {
@@ -119,10 +119,10 @@ export function SuppliersPage() {
   return <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden">
     <div className="flex-1 overflow-y-auto p-5 lg:p-6">
       <div className="mx-auto w-full max-w-[1320px]">
-        <nav className="mb-4 flex items-center gap-2 text-xs font-medium text-muted-foreground"><button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button><span>/</span><span className="text-foreground">Proveedores</span></nav>
+        <nav className="mb-4 flex items-center gap-2 text-xs font-medium text-muted-foreground"><button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button><span>/</span><button type="button" onClick={() => navigate('/suppliers')} className="transition hover:text-primary">Proveedores</button><span>/</span><span className="text-foreground">Nuevo proveedor</span></nav>
         <header className="mb-4 flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
           <div className="flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400"><Handshake className="size-6" strokeWidth={1.8} /></div><div><h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Alta de proveedores</h1><p className="mt-0.5 text-xs text-muted-foreground">Busca la entidad por RFC antes de registrar su rol fiscal como proveedor.</p></div></div>
-          <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted"><ArrowLeft className="size-4" />Volver al inicio</button>
+          <button type="button" onClick={() => navigate('/suppliers')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted"><ArrowLeft className="size-4" />Volver a proveedores</button>
         </header>
 
         <form id="supplier-form" onSubmit={submit} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -157,7 +157,7 @@ export function SuppliersPage() {
         </form>
       </div>
     </div>
-    <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-[1320px] justify-end gap-2"><button type="button" onClick={() => navigate('/home')} className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground hover:bg-muted">Cancelar</button><button form="supplier-form" type="submit" disabled={saving || !['new', 'found'].includes(status)} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-45"><Save className="size-4" />{saving ? 'Guardando…' : found ? 'Agregar rol de proveedor' : 'Guardar proveedor'}</button></div></footer>
+    <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-[1320px] justify-end gap-2"><button type="button" onClick={() => navigate('/suppliers')} className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground hover:bg-muted">Cancelar</button><button form="supplier-form" type="submit" disabled={saving || !['new', 'found'].includes(status)} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-45"><Save className="size-4" />{saving ? 'Guardando…' : found ? 'Agregar rol de proveedor' : 'Guardar proveedor'}</button></div></footer>
   </div>;
 }
 

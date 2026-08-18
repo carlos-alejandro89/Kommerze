@@ -42,6 +42,7 @@ import {
     ServiceEmailReceipt,
     ServiceGeneratePurchaseReport,
     ServiceBuscarEntidadFiscalProveedor,
+    ServiceBuscarProveedores,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -72,6 +73,7 @@ export function usePosService() {
      */
     const buscarClientes = (q) => ServiceBuscarClientes(q);
     const buscarProveedorPorRFC = (rfc) => ServiceBuscarEntidadFiscalProveedor(rfc);
+    const buscarProveedores = (termino = '') => ServiceBuscarProveedores(termino);
 
     // ── Catálogos POS ─────────────────────────────────────────────────────────
 
@@ -120,8 +122,8 @@ export function usePosService() {
      * @param {number|null} operacionCajeroID — ID del turno activo del cajero
      * @returns {Promise<ResponseDto>}
      */
-    const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID = null) =>
-        ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID);
+    const confirmarTransaccion = (tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID = null, clienteGuid = '') =>
+        ServiceConfirmarTransaccion(tipoOperacion, pagosAplicados, itemsPedido, sucursalOrigen, sucursalDestino, operacionCajeroID, clienteGuid);
 
     const crearSolicitudProductos = (solicitud) => ServiceCrearSolicitudProductos(solicitud);
     const crearCompra = (datos) => ServiceCrearCompra(datos);
@@ -178,6 +180,7 @@ export function usePosService() {
         // Clientes
         buscarClientes,
         buscarProveedorPorRFC,
+        buscarProveedores,
         // Catálogos
         obtenerTiposPedido,
         obtenerSucursales,

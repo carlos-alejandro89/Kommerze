@@ -115,6 +115,7 @@ func (c *CajaProxyService) ConfirmarTransaccion(
 	sucursalOrigen *uint,
 	sucursalDestino *uint,
 	operacionCajeroID *uint,
+	clienteGuid string,
 ) (*dto.ResponseDto, error) {
 	body := map[string]any{
 		"tipoOperacion":     tipoOperacion,
@@ -123,6 +124,7 @@ func (c *CajaProxyService) ConfirmarTransaccion(
 		"sucursalOrigen":    sucursalOrigen,
 		"sucursalDestino":   sucursalDestino,
 		"operacionCajeroID": operacionCajeroID,
+		"clienteGuid":       clienteGuid,
 	}
 	var result dto.ResponseDto
 	if err := c.post("/local/transacciones", body, &result); err != nil {
@@ -386,6 +388,17 @@ func (c *CajaProxyService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.Proveedor
 		Data    *dto.ProveedorFiscalDto `json:"data"`
 	}
 	if err := c.get(fmt.Sprintf("/local/proveedores/buscar-rfc?rfc=%s", url.QueryEscape(rfc)), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) BuscarProveedores(termino string) ([]dto.ProveedorFiscalDto, error) {
+	var result struct {
+		Success bool                     `json:"success"`
+		Data    []dto.ProveedorFiscalDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/proveedores?query=%s", url.QueryEscape(termino)), &result); err != nil {
 		return nil, err
 	}
 	return result.Data, nil

@@ -28,6 +28,36 @@ func normalizeRFC(value string) string {
 	return strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(strings.TrimSpace(value)))
 }
 
+// BuscarProveedores devuelve únicamente entidades fiscales que ya cuentan con
+// el rol PROVEEDOR. El término se aplica a sus principales datos de contacto y
+// fiscales para que la selección no dependa de conocer el RFC.
+func (s *ProveedoresService) BuscarProveedores(termino string) ([]dto.ProveedorFiscalDto, error) {
+	termino = strings.TrimSpace(termino)
+	pattern := "%" + termino + "%"
+	var proveedores []dto.ProveedorFiscalDto
+	err := s.db.Raw(`
+		SELECT DISTINCT ef.id, ef.guid, ef.regimen_id,
+		       COALESCE(sr.clave, '') AS regimen_clave,
+		       COALESCE(sr.descripcion, '') AS regimen,
+		       ef.razon_social, ef.rfc, ef.codigo_postal,
+		       ef.correo, ef.telefono, ef.whatsapp,
+		       TRUE AS es_proveedor
+		FROM entidades_fiscales ef
+		JOIN entidad_fiscal_roles efr
+		  ON efr.entidad_fiscal_id = ef.id AND efr.deleted_at IS NULL
+		JOIN roles_fiscales rf
+		  ON rf.id = efr.rol_id AND rf.deleted_at IS NULL AND UPPER(rf.nombre) = 'PROVEEDOR'
+		LEFT JOIN sat_regimen_fiscal sr ON sr.id = ef.regimen_id
+		WHERE ef.deleted_at IS NULL
+		  AND (? = '' OR ef.razon_social ILIKE ? OR ef.rfc ILIKE ?
+		       OR ef.correo ILIKE ? OR ef.telefono ILIKE ? OR ef.whatsapp ILIKE ?
+		       OR ef.codigo_postal ILIKE ? OR sr.clave ILIKE ? OR sr.descripcion ILIKE ?)
+		ORDER BY ef.razon_social
+		LIMIT 200`, termino, pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern).
+		Scan(&proveedores).Error
+	return proveedores, err
+}
+
 func (s *ProveedoresService) BuscarEntidadFiscalPorRFC(rfc string) (*dto.ProveedorFiscalDto, error) {
 	rfc = normalizeRFC(rfc)
 	if rfc == "" {

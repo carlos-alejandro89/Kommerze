@@ -34,6 +34,10 @@ export function ServiceBuscarEntidadFiscalProveedor(arg1) {
   return window['go']['main']['App']['ServiceBuscarEntidadFiscalProveedor'](arg1);
 }
 
+export function ServiceBuscarProveedores(arg1) {
+  return window['go']['main']['App']['ServiceBuscarProveedores'](arg1);
+}
+
 export function ServiceCerrarCaja(arg1) {
   return window['go']['main']['App']['ServiceCerrarCaja'](arg1);
 }
@@ -42,8 +46,8 @@ export function ServiceCerrarOperacionSucursal(arg1) {
   return window['go']['main']['App']['ServiceCerrarOperacionSucursal'](arg1);
 }
 
-export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5, arg6);
+export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function ServiceConsultaProductos(arg1, arg2) {

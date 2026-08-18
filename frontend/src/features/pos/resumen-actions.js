@@ -91,6 +91,7 @@ export const confirmarTransaccion = async (confirmarTransaccionService, setAlert
     const operationType = JSON.parse(localStorage.getItem('operationType'))
     const pagosAplicados = JSON.parse(localStorage.getItem('pagosAplicados'))
     const sucursalTraspaso = JSON.parse(localStorage.getItem('sucursal'))
+    const selectedClient = JSON.parse(localStorage.getItem('selectedClient') || 'null')
 
     // B7: validCart puede ser null cuando se salta la verificación de stock (cotizaciones).
     // En ese caso, construimos la estructura desde el cart original.
@@ -108,7 +109,7 @@ export const confirmarTransaccion = async (confirmarTransaccionService, setAlert
     const cajeroID = turnoActivo?.ID ?? turnoActivo?.id ?? null;
 
     try {
-        const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null, cajeroID);
+        const result = await confirmarTransaccionService(operationType, pagosAplicados, cart, store?.ID || null, sucursalTraspaso?.ID || null, cajeroID, selectedClient?.Guid || '');
 
         localStorage.setItem('folio', result.data.Folio)
         localStorage.setItem('pedidoGuid', result.data.Guid)

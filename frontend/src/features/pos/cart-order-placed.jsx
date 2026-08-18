@@ -100,6 +100,7 @@ export function CartOrderPlaced() {
             localStorage.removeItem('cart')
             localStorage.removeItem('validCart')
             localStorage.removeItem('sucursal')
+            localStorage.removeItem('selectedClient')
             return stored ? JSON.parse(stored) : [];
         } catch (e) {
             return [];
