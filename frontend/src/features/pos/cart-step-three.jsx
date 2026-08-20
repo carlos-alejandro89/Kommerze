@@ -105,20 +105,13 @@ export function CartStepThree() {
                 if (data.length > 0) {
                     setFormaPago(data);
                 } else {
-                    // Fallback si el catálogo SAT no está sincronizado
-                    setFormaPago([
-                        { ID: 1, Nombre: 'Efectivo', Descripcion: 'Pago en efectivo' },
-                        { ID: 2, Nombre: 'Tarjeta', Descripcion: 'Pago con tarjeta de crédito/débito' },
-                        { ID: 3, Nombre: 'Transferencia', Descripcion: 'Pago electrónico SPEI' },
-                    ]);
+                    setFormaPago([]);
+                    toast.warning('No hay formas de pago sincronizadas. Ejecuta la sincronización de catálogos.');
                 }
             })
             .catch(() => {
-                setFormaPago([
-                    { ID: 1, Nombre: 'Efectivo', Descripcion: 'Pago en efectivo' },
-                    { ID: 2, Nombre: 'Tarjeta', Descripcion: 'Pago con tarjeta de crédito/débito' },
-                    { ID: 3, Nombre: 'Transferencia', Descripcion: 'Pago electrónico SPEI' },
-                ]);
+                setFormaPago([]);
+                toast.error('No se pudieron cargar las formas de pago sincronizadas.');
             });
     }, []);
 

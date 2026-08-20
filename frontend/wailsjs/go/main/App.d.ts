@@ -24,6 +24,8 @@ export function ServiceBuscarEntidadFiscalProveedor(arg1:string):Promise<dto.Pro
 
 export function ServiceBuscarProveedores(arg1:string):Promise<Array<dto.ProveedorFiscalDto>>;
 
+export function ServiceCancelarVenta(arg1:string):Promise<dto.ResponseDto>;
+
 export function ServiceCerrarCaja(arg1:dto.CerrarCajaDto):Promise<dto.ResponseDto>;
 
 export function ServiceCerrarOperacionSucursal(arg1:dto.CerrarOperacionSucursalDto):Promise<dto.ResponseDto>;
@@ -48,9 +50,13 @@ export function ServiceCrearCompra(arg1:dto.CrearCompraDto):Promise<dto.Response
 
 export function ServiceCrearSolicitudProductos(arg1:dto.SolicitudProductosDto):Promise<dto.ResponseDto>;
 
+export function ServiceDeleteReceiptLogo():Promise<void>;
+
 export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
+
+export function ServiceGenerateSaleDocument(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
@@ -92,6 +98,8 @@ export function ServiceListarClientes():Promise<Array<dto.ClienteDto>>;
 
 export function ServiceLoadCloudCredentials():Promise<services.CloudCredentials>;
 
+export function ServiceLoadReceiptLogo():Promise<string>;
+
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
@@ -127,6 +135,8 @@ export function ServiceSaveCloudCredentials(arg1:string,arg2:string):Promise<voi
 export function ServiceSaveDBConfig(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<void>;
 
 export function ServiceSaveKommerzConfig(arg1:services.KommerzConfig):Promise<void>;
+
+export function ServiceSaveReceiptLogo(arg1:string):Promise<void>;
 
 export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
 

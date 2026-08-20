@@ -27,19 +27,19 @@ func (r *OperacionesCajaRepository) AbrirCaja(datos dto.AbrirCajaDto) *dto.Respo
 	zero := decimal.NewFromFloat(0)
 
 	operacion := models.OperacionCajero{
-		OperacionSucursalID: datos.OperacionSucursalID,
-		ResponsableCajaID:   datos.ResponsableCajaID,
-		CajaNombre:          datos.CajaNombre,
-		EstatusID:           &estatusID,
-		FechaInicio:         time.Now(),
-		FondoCajaApertura:   fondo,
-		FondoCajaCierre:     zero,
-		RetirosEfectivo:     zero,
-		IngresoEfectivo:     &zero,
-		IngresoTarjetas:     &zero,
-		IngresoCheques:      &zero,
+		OperacionSucursalID:  datos.OperacionSucursalID,
+		ResponsableCajaID:    datos.ResponsableCajaID,
+		CajaNombre:           datos.CajaNombre,
+		EstatusID:            &estatusID,
+		FechaInicio:          time.Now(),
+		FondoCajaApertura:    fondo,
+		FondoCajaCierre:      zero,
+		RetirosEfectivo:      zero,
+		IngresoEfectivo:      &zero,
+		IngresoTarjetas:      &zero,
+		IngresoCheques:       &zero,
 		IngresoTransferencia: &zero,
-		IngresoOtros:        &zero,
+		IngresoOtros:         &zero,
 	}
 
 	if err := r.db.Create(&operacion).Error; err != nil {
@@ -54,7 +54,8 @@ func (r *OperacionesCajaRepository) AbrirCaja(datos dto.AbrirCajaDto) *dto.Respo
 
 // CalcularResumenCajero devuelve el desglose dinámico de ingresos del turno
 // agrupado por la forma de pago real registrada en la BD (sat_formas_pago).
-// Filtra únicamente pedidos con estatus_id=2 (completados) y no eliminados.
+// El ID local del estatus no es estable porque el catálogo viene de Cloud, por
+// lo que los pedidos completados se identifican por el nombre sincronizado.
 func (r *OperacionesCajaRepository) CalcularResumenCajero(operacionCajeroID uint) dto.ResumenCajeroDto {
 	type pagoRow struct {
 		FormaID   uint    `gorm:"column:forma_id"`
@@ -74,12 +75,14 @@ func (r *OperacionesCajaRepository) CalcularResumenCajero(operacionCajeroID uint
 		FROM pagos pg
 		INNER JOIN pedidos p          ON p.id = pg.pedido_id
 		INNER JOIN sat_formas_pago s  ON s.id = pg.forma_id
+		INNER JOIN estatus e          ON e.id = p.estatus_id
 		WHERE p.operacion_cajero_id = ?
-		  AND p.estatus_id = 2
+		  AND LOWER(e.nombre) = LOWER(?)
 		  AND p.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
 		GROUP BY s.id, s.descripcion, s.clave
 		ORDER BY s.clave
-	`, operacionCajeroID).Scan(&pagos)
+	`, operacionCajeroID, "Completado").Scan(&pagos)
 
 	var result dto.ResumenCajeroDto
 	for _, p := range pagos {
@@ -161,7 +164,6 @@ func (r *OperacionesCajaRepository) CerrarCaja(datos dto.CerrarCajaDto) *dto.Res
 	return dto.NewResponseDto(true, "Caja cerrada correctamente", operacion, nil)
 }
 
-
 // ObtenerOperacionesCajero devuelve todas las cajas (turnos) de una jornada de sucursal.
 func (r *OperacionesCajaRepository) ObtenerOperacionesCajero(operacionSucursalID uint) *dto.ResponseDto {
 	var operaciones []models.OperacionCajero
@@ -201,7 +203,6 @@ func (r *OperacionesCajaRepository) ObtenerOperacionCajeroActiva(responsableID u
 		}
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
-
 
 	return dto.NewResponseDto(true, "Turno activo encontrado", operacion, nil)
 }

@@ -170,6 +170,14 @@ func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID 
 	return &result, nil
 }
 
+func (c *CajaProxyService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
+	var result dto.ResponseDto
+	if err := c.post("/local/transacciones/cancelar", map[string]string{"pedidoGuid": pedidoGuid}, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *CajaProxyService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	var result struct {
 		Success bool                   `json:"success"`

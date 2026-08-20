@@ -33,6 +33,8 @@ import {
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
     ServiceConsultaTransacciones,
+    ServiceCancelarVenta,
+    ServiceGenerateSaleDocument,
     ServiceConsultarTransferencias,
     ServiceCotizacionSolicitarAutorizacion,
     ServiceCotizacionConvertirAVenta,
@@ -111,6 +113,8 @@ export function usePosService() {
         ServiceConsultaTransacciones(tipoPedidoID, sucursalID);
 
     const consultarTransferencias = () => ServiceConsultarTransferencias();
+    const cancelarVenta = (pedidoGuid) => ServiceCancelarVenta(pedidoGuid);
+    const generarDocumentoVenta = (pedidoGuid) => ServiceGenerateSaleDocument(pedidoGuid);
 
     /**
      * Confirma y registra la transacción en la base de datos.
@@ -191,6 +195,8 @@ export function usePosService() {
         crearCompra,
         consultarTransacciones,
         consultarTransferencias,
+        cancelarVenta,
+        generarDocumentoVenta,
         imprimirRecibo,
         enviarRecibo,
         generarReporteCompra,

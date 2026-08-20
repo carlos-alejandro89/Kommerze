@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
   ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
-  ReceiptText,
+  ReceiptText, Printer, Mail, FileDown, Ban, MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
@@ -16,14 +16,18 @@ import { ModalConvertirVenta } from '../components/ModalConvertirVenta';
 import { ModalVerTransaccion } from '../components/ModalVerTransaccion';
 import { toast } from 'sonner';
 import { TRANSACTION_TYPES, isTransactionType } from '@/features/pos/transaction-types';
+import { DialogAlert } from '@/components/common/dialog-alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
 
 const TIPO_TABS = [
   { id: null,  label: 'Todos',          icon: LayoutList },
-  { id: TRANSACTION_TYPES.VENTA.id,      label: 'Ventas',         icon: ShoppingCart },
-  { id: TRANSACTION_TYPES.COTIZACION.id, label: 'Cotizaciones',   icon: FileText },
+  { id: TRANSACTION_TYPES.VENTA.guid,      label: 'Ventas',         icon: ShoppingCart },
+  { id: TRANSACTION_TYPES.COTIZACION.guid, label: 'Cotizaciones',   icon: FileText },
 ];
 
 /* ── Helpers ── */
@@ -124,29 +128,37 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
   const navigate = useNavigate();
-  const { consultarTransacciones } = usePosService();
+  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo } = usePosService();
 
   const [transacciones, setTransacciones] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
   const [search, setSearch]               = useState('');
   const [page, setPage]                   = useState(1);
-  const [tipoFiltro, setTipoFiltro]       = useState(null); // null | 1 | 2 | 3
+  const [tipoFiltro, setTipoFiltro]       = useState(null); // null | GUID de tipo
 
   // Modales
   const [modalDescuento, setModalDescuento] = useState(null); // row | null
   const [modalVenta, setModalVenta]         = useState(null); // row | null
   const [modalVer, setModalVer]             = useState(null); // row | null
+  const [ventaCancelar, setVentaCancelar]   = useState(null);
+  const [ventaEmail, setVentaEmail]         = useState(null);
+  const [correoDestino, setCorreoDestino]   = useState('');
+  const [procesandoAccion, setProcesandoAccion] = useState(false);
+  const [documentViewer, setDocumentViewer] = useState({ open: false, url: '', fileName: '' });
 
   /* ── Carga de datos ── */
   const cargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await consultarTransacciones(tipoFiltro, null);
+      const res = await consultarTransacciones(null, null);
       if (!res.success) { setError(res.message || 'Error al obtener transacciones'); return; }
       const data = Array.isArray(res.data) ? res.data : [];
-      setTransacciones(data.filter(item => isTransactionType(item, TRANSACTION_TYPES.VENTA) || isTransactionType(item, TRANSACTION_TYPES.COTIZACION)));
+      setTransacciones(data.filter(item =>
+        (isTransactionType(item, TRANSACTION_TYPES.VENTA) || isTransactionType(item, TRANSACTION_TYPES.COTIZACION)) &&
+        (!tipoFiltro || String(item.TipoPedidoGuid || item.tipoPedidoGuid || '').toLowerCase() === tipoFiltro),
+      ));
     } catch (e) {
       setError(e?.message ?? String(e));
     } finally {
@@ -155,6 +167,10 @@ export function HistoryPage() {
   }, [tipoFiltro]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => () => {
+    if (documentViewer.url) URL.revokeObjectURL(documentViewer.url);
+  }, [documentViewer.url]);
 
   useEffect(() => {
     const unsub = EventsOn('cotizacion_resuelta', (data) => {
@@ -222,6 +238,75 @@ export function HistoryPage() {
   const handleModalClose         = ()    => { setModalDescuento(null); setModalVenta(null); cargar(); };
 
   const modalAbierto = !!modalDescuento || !!modalVenta;
+
+  const pedidoGuid = (row) => row?.PedidoGuid || row?.pedidoGuid || row?.pedido_guid || row?.Guid || row?.guid || '';
+
+  const requirePedidoGuid = (row) => {
+    const guid = pedidoGuid(row);
+    if (!guid) throw new Error('La operación no contiene un identificador válido. Actualiza el historial e intenta nuevamente.');
+    return guid;
+  };
+
+  const abrirPDF = (result) => {
+    if (!result?.dataBase64) throw new Error('El documento no contiene información');
+    const bytes = Uint8Array.from(atob(result.dataBase64), char => char.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    setDocumentViewer(current => {
+      if (current.url) URL.revokeObjectURL(current.url);
+      return { open: true, url, fileName: result.fileName || 'documento.pdf' };
+    });
+  };
+
+  const handleVerDocumento = async (row) => {
+    setProcesandoAccion(true);
+    try {
+      abrirPDF(await generarDocumentoVenta(requirePedidoGuid(row)));
+    } catch (err) {
+      toast.error('No se pudo generar el documento: ' + String(err));
+    } finally { setProcesandoAccion(false); }
+  };
+
+  const handleImprimir = async (row) => {
+    setProcesandoAccion(true);
+    try {
+      const result = await imprimirRecibo(requirePedidoGuid(row));
+      if (result?.kind === 'pdf') abrirPDF(result);
+      else toast.success('Documento enviado a impresión');
+    } catch (err) {
+      toast.error('No se pudo imprimir: ' + String(err));
+    } finally { setProcesandoAccion(false); }
+  };
+
+  const confirmarCancelacion = async () => {
+    if (!ventaCancelar) return;
+    setProcesandoAccion(true);
+    try {
+      const result = await cancelarVenta(requirePedidoGuid(ventaCancelar));
+      if (!result?.success) throw new Error(result?.message || 'No fue posible cancelar la venta');
+      toast.success('Venta cancelada y existencias reintegradas');
+      setVentaCancelar(null);
+      await cargar();
+    } catch (err) {
+      toast.error(String(err));
+    } finally { setProcesandoAccion(false); }
+  };
+
+  const abrirEnvio = (row) => {
+    setVentaEmail(row);
+    setCorreoDestino(row?.Correo || row?.correo || '');
+  };
+
+  const confirmarEnvio = async () => {
+    if (!ventaEmail || !correoDestino.trim()) return;
+    setProcesandoAccion(true);
+    try {
+      await enviarRecibo(requirePedidoGuid(ventaEmail), correoDestino.trim());
+      toast.success('Documento enviado por correo');
+      setVentaEmail(null);
+    } catch (err) {
+      toast.error('No se pudo enviar el correo: ' + String(err));
+    } finally { setProcesandoAccion(false); }
+  };
 
   /* ── Render ── */
   return (
@@ -299,7 +384,7 @@ export function HistoryPage() {
             {TIPO_TABS.map(tab => {
               const Icon = tab.icon;
               const active = tipoFiltro === tab.id;
-              const pending = tab.id === 2
+              const pending = tab.id === TRANSACTION_TYPES.COTIZACION.guid
                 ? transacciones.filter(t => isTransactionType(t, TRANSACTION_TYPES.COTIZACION) && t.EstatusAutorizacion === 'solicitada').length
                 : 0;
               return (
@@ -464,6 +549,32 @@ export function HistoryPage() {
                               >
                                 <Eye className="size-3" /> Ver
                               </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button disabled={procesandoAccion} aria-label="Más acciones" className="flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/65 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50">
+                                    <MoreHorizontal className="size-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52">
+                                  <DropdownMenuItem onSelect={() => handleVerDocumento(t)}>
+                                    <FileDown className="size-4" /> Ver documento
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleImprimir(t)}>
+                                    <Printer className="size-4" /> Imprimir
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => abrirEnvio(t)}>
+                                    <Mail className="size-4" /> Enviar por correo
+                                  </DropdownMenuItem>
+                                  {!esCotizacion && !['Cancelado', 'Cancelada'].includes(t.Estatus) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem variant="destructive" onSelect={() => setVentaCancelar(t)}>
+                                        <Ban className="size-4" /> Cancelar venta
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               {/* Acciones contextuales de cotización */}
                               {esCotizacion && (
                                 <CotizacionAcciones
@@ -531,6 +642,43 @@ export function HistoryPage() {
           onClose={() => setModalVer(null)}
         />
       )}
+      <DialogAlert
+        open={Boolean(ventaCancelar)}
+        onOpenChange={(open) => !open && setVentaCancelar(null)}
+        title="Cancelar venta"
+        description={`¿Confirmas cancelar la venta #${String(ventaCancelar?.Folio || '').padStart(4, '0')}? Los productos vendidos regresarán al inventario. Esta acción no puede deshacerse.`}
+        onConfirm={confirmarCancelacion}
+        onCancel={() => setVentaCancelar(null)}
+        type="warning"
+      />
+      <Dialog open={Boolean(ventaEmail)} onOpenChange={(open) => !open && setVentaEmail(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Enviar documento por correo</DialogTitle>
+            <DialogDescription>Se enviará el PDF correspondiente a la operación seleccionada.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label htmlFor="history-email-recipient" className="text-xs font-semibold text-foreground">Correo del destinatario</label>
+            <input id="history-email-recipient" type="email" autoFocus value={correoDestino} onChange={event => setCorreoDestino(event.target.value)} placeholder="cliente@correo.com" className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setVentaEmail(null)}>Cancelar</Button>
+            <Button type="button" disabled={procesandoAccion || !correoDestino.trim()} onClick={confirmarEnvio}>
+              {procesandoAccion ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
+              Enviar correo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={documentViewer.open} onOpenChange={(open) => setDocumentViewer(current => ({ ...current, open }))}>
+        <DialogContent className="flex h-[94vh] w-[min(1180px,97vw)] max-w-none flex-col overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-border px-6 py-4 text-left">
+            <DialogTitle>Documento de la operación</DialogTitle>
+            <DialogDescription>Vista previa del PDF generado con la información registrada.</DialogDescription>
+          </DialogHeader>
+          {documentViewer.url && <iframe title={documentViewer.fileName} src={documentViewer.url} className="min-h-0 w-full flex-1 bg-zinc-100" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import posTerminalCard from '@/assets/pos-terminal-card.jpg';
+import posTerminalCard from '@/assets/retail-home-background.jpg';
 
 function shadeHex(hex, percent) {
   const clean = hex.replace('#', '');

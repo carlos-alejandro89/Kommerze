@@ -48,6 +48,11 @@ type ReceiptLegendGroup struct {
 
 type ReceiptConfig struct {
 	BusinessName        string               `json:"businessName,omitempty"`
+	ShowLogo            bool                 `json:"showLogo,omitempty"`
+	ShowBranchName      *bool                `json:"showBranchName,omitempty"`
+	ShowBranchAddress   bool                 `json:"showBranchAddress,omitempty"`
+	ShowBranchPhone     bool                 `json:"showBranchPhone,omitempty"`
+	ShowBranchEmail     bool                 `json:"showBranchEmail,omitempty"`
 	LegendGroups        []ReceiptLegendGroup `json:"legendGroups,omitempty"`
 	Legends             []string             `json:"legends,omitempty"` // Compatibilidad con configuraciones anteriores.
 	PrinterAddress      string               `json:"printerAddress,omitempty"`
@@ -76,6 +81,10 @@ func (c ReceiptConfig) EffectivePrinterPaperCut() bool {
 
 func (c ReceiptConfig) EffectivePrinterOpenDrawer() bool {
 	return c.PrinterOpenDrawer != nil && *c.PrinterOpenDrawer
+}
+
+func (c ReceiptConfig) EffectiveShowBranchName() bool {
+	return c.ShowBranchName == nil || *c.ShowBranchName
 }
 
 // KommerzConfig es el único archivo de configuración del dispositivo.
@@ -159,6 +168,58 @@ func GetKommerzConfigPath() (string, error) {
 	return filepath.Join(appDir, "kommerze_config.json"), nil
 }
 
+func getReceiptLogoPath() (string, error) {
+	configPath, err := GetKommerzConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(configPath), "ticket_logo.base64"), nil
+}
+
+// SaveReceiptLogo persiste la imagen fuera del JSON principal para mantener
+// pequeño y legible kommerze_config.json.
+func SaveReceiptLogo(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return DeleteReceiptLogo()
+	}
+	if len(value) > 3*1024*1024 {
+		return fmt.Errorf("el logotipo excede el tamaño permitido")
+	}
+	path, err := getReceiptLogoPath()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(value), 0600)
+}
+
+func LoadReceiptLogo() (string, error) {
+	path, err := getReceiptLogoPath()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func DeleteReceiptLogo() error {
+	path, err := getReceiptLogoPath()
+	if err != nil {
+		return err
+	}
+	err = os.Remove(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 // LoadKommerzConfig lee la configuración del dispositivo desde disco.
 // Si el archivo no existe, devuelve una configuración vacía (sin error).
 func LoadKommerzConfig() (*KommerzConfig, error) {
@@ -178,6 +239,25 @@ func LoadKommerzConfig() (*KommerzConfig, error) {
 	var cfg KommerzConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, err
+	}
+	// Migración transparente de la primera versión que guardaba el logotipo
+	// dentro de receipt.logo. Se extrae al archivo dedicado y se limpia el JSON.
+	var legacy struct {
+		Receipt struct {
+			Logo string `json:"logo"`
+		} `json:"receipt"`
+	}
+	if json.Unmarshal(data, &legacy) == nil && strings.TrimSpace(legacy.Receipt.Logo) != "" {
+		if err := SaveReceiptLogo(legacy.Receipt.Logo); err != nil {
+			return nil, err
+		}
+		cleanData, err := json.MarshalIndent(&cfg, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(path, cleanData, 0644); err != nil {
+			return nil, err
+		}
 	}
 	return &cfg, nil
 }

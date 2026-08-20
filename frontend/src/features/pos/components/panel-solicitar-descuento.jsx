@@ -162,7 +162,9 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
 
     // ── Guardar cotización en BD y devuelve el GUID ──────────────────────────
     const guardarCotizacion = async () => {
-        const tipoCotizacion = TRANSACTION_TYPES.COTIZACION.id;
+        const tipoCotizacion = JSON.parse(localStorage.getItem('operationType') || 'null');
+        const selectedClient = JSON.parse(localStorage.getItem('selectedClient') || 'null');
+        if (!tipoCotizacion) throw new Error('No se encontró el tipo de cotización sincronizado');
         const itemsPedido = buildItemsPedido();
 
         const result = await posService.confirmarTransaccion(
@@ -172,6 +174,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             null,         // sin sucursal origen
             null,         // sin sucursal destino
             turnoActivo?.ID ?? turnoActivo?.id ?? null,
+            selectedClient?.Guid || '',
         );
 
         if (!result?.success) {
@@ -248,7 +251,7 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
 
         // Persistir folio y tipo de operación para cart-order-placed
         localStorage.setItem('folio', JSON.stringify(pedidoFolio));
-        localStorage.setItem('operationType', JSON.stringify(TRANSACTION_TYPES.VENTA.id)); // Convertido a Venta
+        localStorage.setItem('operationTypeGuid', TRANSACTION_TYPES.VENTA.guid); // Convertido a Venta
 
         const totalNeto = cart.reduce((sum, item) => {
             const pct = getPct(item.id);

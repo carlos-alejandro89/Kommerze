@@ -55,6 +55,10 @@ func (s *PosService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint)
 	return response, err
 }
 
+func (s *PosService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
+	return s.posRepository.CancelarVenta(pedidoGuid)
+}
+
 func (s *PosService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	return s.posRepository.ConsultarTransferencias()
 }

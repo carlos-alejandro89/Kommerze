@@ -2,11 +2,45 @@ package renders
 
 import (
 	"bytes"
+	"encoding/base64"
+	"image"
+	"image/color"
+	"image/png"
 	"strings"
 	"testing"
 
 	"BitComercio/internal/usecases/reports/models"
 )
+
+func TestRenderReceiptEscPosIncludesConfiguredLogoAndBranchDetails(t *testing.T) {
+	var logo bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 4; x++ {
+			img.Set(x, y, color.Black)
+		}
+	}
+	if err := png.Encode(&logo, img); err != nil {
+		t.Fatal(err)
+	}
+	receipt := models.Receipt{
+		Negocio: "Kommerze", Sucursal: "Centro", MostrarSucursal: true,
+		Logo: base64.StdEncoding.EncodeToString(logo.Bytes()), MostrarLogo: true,
+		Direccion: "Av. Reforma 123", MostrarDireccion: true,
+		Telefono: "9931234567", MostrarTelefono: true,
+		Correo: "centro@kommerze.mx", MostrarCorreo: true,
+	}
+	output := RenderReceiptEscPos(receipt, 80, false, false)
+	if !bytes.Contains(output, []byte{0x1D, 0x76, 0x30, 0x00}) {
+		t.Fatal("receipt must include the ESC/POS raster logo command")
+	}
+	encoded := string(output)
+	for _, expected := range []string{"Centro", "Av. Reforma 123", "9931234567", "centro@kommerze.mx"} {
+		if !strings.Contains(encoded, expected) {
+			t.Fatalf("receipt must include branch detail %q", expected)
+		}
+	}
+}
 
 func TestRenderReceiptEscPosUsesConfiguredPaperWidth(t *testing.T) {
 	receipt := models.Receipt{Negocio: "Kommerze"}
@@ -72,6 +106,23 @@ func TestRenderReceiptEscPosSelectsFontA(t *testing.T) {
 	fontACommand := []byte{0x1B, 0x4D, 0x00}
 	if !bytes.Contains(output, fontACommand) {
 		t.Fatal("expected ESC/POS Font A selection command")
+	}
+}
+
+func TestRenderReceiptEscPosUsesThousandsSeparatorsForMoney(t *testing.T) {
+	receipt := models.Receipt{
+		Negocio:  "Kommerze",
+		Subtotal: 1234567.89,
+		Total:    1234567.89,
+		Pago:     2000000,
+		Cambio:   765432.11,
+	}
+
+	output := string(RenderReceiptEscPos(receipt, 80, false, false))
+	for _, expected := range []string{"$1,234,567.89", "$2,000,000.00", "$765,432.11"} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("expected formatted amount %q in receipt", expected)
+		}
 	}
 }
 

@@ -63,7 +63,7 @@ func EmailReceipt(r reportmodels.Receipt, recipient string, cfg ReceiptConfig) e
 	fmt.Fprintf(&msg, "MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%q\r\n\r\n", mixedBoundary)
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: multipart/alternative; boundary=%q\r\n\r\n", mixedBoundary, alternativeBoundary)
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n", alternativeBoundary)
-	fmt.Fprintf(&msg, "Gracias por su compra en %s.\r\nRecibo: %s\r\nTotal: $%.2f MXN\r\n\r\nEl comprobante PDF se encuentra adjunto.\r\n\r\n", r.Negocio, r.Folio, r.Total)
+	fmt.Fprintf(&msg, "Gracias por su compra en %s.\r\nRecibo: %s\r\nTotal: %s MXN\r\n\r\nEl comprobante PDF se encuentra adjunto.\r\n\r\n", r.Negocio, r.Folio, formatMoney(r.Total))
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n%s\r\n", alternativeBoundary, receiptEmailHTML(r))
 	fmt.Fprintf(&msg, "--%s--\r\n\r\n", alternativeBoundary)
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: application/pdf; name=%q\r\nContent-Disposition: attachment; filename=%q\r\nContent-Transfer-Encoding: base64\r\n\r\n", mixedBoundary, fileName, fileName)
@@ -102,7 +102,7 @@ func EmailQuotation(q reportmodels.Quotation, recipient string, cfg ReceiptConfi
 	}
 	fmt.Fprintf(&msg, "Date: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%q\r\n\r\n", time.Now().Format(time.RFC1123Z), mixedBoundary)
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: multipart/alternative; boundary=%q\r\n\r\n", mixedBoundary, alternativeBoundary)
-	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nAdjuntamos la cotización %s por un total de $%.2f MXN.\r\n", alternativeBoundary, q.Folio, q.Total)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nAdjuntamos la cotización %s por un total de %s MXN.\r\n", alternativeBoundary, q.Folio, formatMoney(q.Total))
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n%s\r\n--%s--\r\n\r\n", alternativeBoundary, quotationEmailHTML(q), alternativeBoundary)
 	fmt.Fprintf(&msg, "--%s\r\nContent-Type: application/pdf; name=%q\r\nContent-Disposition: attachment; filename=%q\r\nContent-Transfer-Encoding: base64\r\n\r\n", mixedBoundary, fileName, fileName)
 	encoded := base64.StdEncoding.EncodeToString(pdf)
@@ -118,7 +118,7 @@ func EmailQuotation(q reportmodels.Quotation, recipient string, cfg ReceiptConfi
 }
 
 func quotationEmailHTML(q reportmodels.Quotation) string {
-	return fmt.Sprintf(`<!doctype html><html lang="es"><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033"><table width="100%%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 32px rgba(15,35,70,.10)"><tr><td style="background:#002366;padding:30px 36px;color:#fff"><div style="font-size:25px;font-weight:800">%s</div><div style="margin-top:7px;color:#b9cdf8;letter-spacing:2px">COTIZACIÓN</div></td></tr><tr><td style="padding:34px 36px"><div style="font-size:22px;font-weight:700">Preparamos tu cotización</div><p style="color:#647087;line-height:1.65">Hola %s, adjuntamos el documento PDF con el detalle de productos y precios solicitados.</p><table width="100%%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border:1px solid #e5eaf2;border-radius:12px;padding:8px 18px"><tr><td style="padding:13px 0;color:#718096">Folio</td><td align="right" style="font-weight:700">%s</td></tr><tr><td style="padding:13px 0;border-top:1px solid #e5eaf2;color:#718096">Vigencia</td><td align="right" style="border-top:1px solid #e5eaf2">%d días</td></tr><tr><td style="padding:15px 0;border-top:1px solid #e5eaf2;font-weight:700">Total</td><td align="right" style="padding:15px 0;border-top:1px solid #e5eaf2;color:#002366;font-size:21px;font-weight:800">$%.2f MXN</td></tr></table><p style="margin-top:24px;color:#647087;font-size:13px">Quedamos atentos para ayudarte con cualquier duda sobre esta propuesta.</p></td></tr><tr><td style="padding:18px;background:#f7f9fc;text-align:center;color:#8a95a8;font-size:11px">Documento generado por Kommerze POS.</td></tr></table></td></tr></table></body></html>`, html.EscapeString(q.Negocio), html.EscapeString(q.Cliente), html.EscapeString(q.Folio), q.VigenciaDias, q.Total)
+	return fmt.Sprintf(`<!doctype html><html lang="es"><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033"><table width="100%%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 32px rgba(15,35,70,.10)"><tr><td style="background:#002366;padding:30px 36px;color:#fff"><div style="font-size:25px;font-weight:800">%s</div><div style="margin-top:7px;color:#b9cdf8;letter-spacing:2px">COTIZACIÓN</div></td></tr><tr><td style="padding:34px 36px"><div style="font-size:22px;font-weight:700">Preparamos tu cotización</div><p style="color:#647087;line-height:1.65">Hola %s, adjuntamos el documento PDF con el detalle de productos y precios solicitados.</p><table width="100%%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border:1px solid #e5eaf2;border-radius:12px;padding:8px 18px"><tr><td style="padding:13px 0;color:#718096">Folio</td><td align="right" style="font-weight:700">%s</td></tr><tr><td style="padding:13px 0;border-top:1px solid #e5eaf2;color:#718096">Vigencia</td><td align="right" style="border-top:1px solid #e5eaf2">%d días</td></tr><tr><td style="padding:15px 0;border-top:1px solid #e5eaf2;font-weight:700">Total</td><td align="right" style="padding:15px 0;border-top:1px solid #e5eaf2;color:#002366;font-size:21px;font-weight:800">%s MXN</td></tr></table><p style="margin-top:24px;color:#647087;font-size:13px">Quedamos atentos para ayudarte con cualquier duda sobre esta propuesta.</p></td></tr><tr><td style="padding:18px;background:#f7f9fc;text-align:center;color:#8a95a8;font-size:11px">Documento generado por Kommerze POS.</td></tr></table></td></tr></table></body></html>`, html.EscapeString(q.Negocio), html.EscapeString(q.Cliente), html.EscapeString(q.Folio), q.VigenciaDias, formatMoney(q.Total))
 }
 
 func formatEmailFrom(name, address string) string {
@@ -200,11 +200,25 @@ func receiptEmailHTML(r reportmodels.Receipt) string {
 <tr><td style="padding:14px 0;color:#718096;font-size:13px">Folio</td><td align="right" style="padding:14px 0;font-size:14px;font-weight:700">%s</td></tr>
 <tr><td style="padding:14px 0;border-top:1px solid #e5eaf2;color:#718096;font-size:13px">Sucursal</td><td align="right" style="padding:14px 0;border-top:1px solid #e5eaf2;font-size:14px">%s</td></tr>
 <tr><td style="padding:14px 0;border-top:1px solid #e5eaf2;color:#718096;font-size:13px">Fecha</td><td align="right" style="padding:14px 0;border-top:1px solid #e5eaf2;font-size:14px">%s</td></tr>
-<tr><td style="padding:16px 0;border-top:1px solid #d9e1ed;color:#172033;font-size:15px;font-weight:700">Total</td><td align="right" style="padding:16px 0;border-top:1px solid #d9e1ed;color:#002366;font-size:22px;font-weight:800">$%.2f MXN</td></tr>
+<tr><td style="padding:16px 0;border-top:1px solid #d9e1ed;color:#172033;font-size:15px;font-weight:700">Total</td><td align="right" style="padding:16px 0;border-top:1px solid #d9e1ed;color:#002366;font-size:22px;font-weight:800">%s MXN</td></tr>
 </table>
 <div style="margin-top:25px;padding:16px 18px;border-left:4px solid #0bc33f;background:#f1fbf4;border-radius:8px;font-size:13px;line-height:1.55;color:#385344">Encontrarás el comprobante completo en el archivo PDF adjunto a este correo.</div>
 </td></tr>
 <tr><td style="padding:20px 36px;background:#f7f9fc;border-top:1px solid #e5eaf2;text-align:center;font-size:11px;line-height:1.6;color:#8a95a8">Este correo fue generado automáticamente por Kommerze POS. Por favor, conserva tu comprobante.</td></tr>
 </table>
-</td></tr></table></body></html>`, business, folio, branch, date, r.Total)
+</td></tr></table></body></html>`, business, folio, branch, date, formatMoney(r.Total))
+}
+
+func formatMoney(value float64) string {
+	parts := strings.Split(fmt.Sprintf("%.2f", value), ".")
+	integer := parts[0]
+	sign := ""
+	if strings.HasPrefix(integer, "-") {
+		sign = "-"
+		integer = strings.TrimPrefix(integer, "-")
+	}
+	for i := len(integer) - 3; i > 0; i -= 3 {
+		integer = integer[:i] + "," + integer[i:]
+	}
+	return sign + "$" + integer + "." + parts[1]
 }

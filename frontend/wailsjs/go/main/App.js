@@ -38,6 +38,10 @@ export function ServiceBuscarProveedores(arg1) {
   return window['go']['main']['App']['ServiceBuscarProveedores'](arg1);
 }
 
+export function ServiceCancelarVenta(arg1) {
+  return window['go']['main']['App']['ServiceCancelarVenta'](arg1);
+}
+
 export function ServiceCerrarCaja(arg1) {
   return window['go']['main']['App']['ServiceCerrarCaja'](arg1);
 }
@@ -86,12 +90,20 @@ export function ServiceCrearSolicitudProductos(arg1) {
   return window['go']['main']['App']['ServiceCrearSolicitudProductos'](arg1);
 }
 
+export function ServiceDeleteReceiptLogo() {
+  return window['go']['main']['App']['ServiceDeleteReceiptLogo']();
+}
+
 export function ServiceEmailReceipt(arg1, arg2) {
   return window['go']['main']['App']['ServiceEmailReceipt'](arg1, arg2);
 }
 
 export function ServiceGeneratePurchaseReport(arg1) {
   return window['go']['main']['App']['ServiceGeneratePurchaseReport'](arg1);
+}
+
+export function ServiceGenerateSaleDocument(arg1) {
+  return window['go']['main']['App']['ServiceGenerateSaleDocument'](arg1);
 }
 
 export function ServiceGetEmpaques() {
@@ -174,6 +186,10 @@ export function ServiceLoadCloudCredentials() {
   return window['go']['main']['App']['ServiceLoadCloudCredentials']();
 }
 
+export function ServiceLoadReceiptLogo() {
+  return window['go']['main']['App']['ServiceLoadReceiptLogo']();
+}
+
 export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
 }
@@ -244,6 +260,10 @@ export function ServiceSaveDBConfig(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
 
 export function ServiceSaveKommerzConfig(arg1) {
   return window['go']['main']['App']['ServiceSaveKommerzConfig'](arg1);
+}
+
+export function ServiceSaveReceiptLogo(arg1) {
+  return window['go']['main']['App']['ServiceSaveReceiptLogo'](arg1);
 }
 
 export function ServiceSucursalInicioOperacion(arg1) {

@@ -30,16 +30,16 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
 
     const stepValidation = {
         0: () => countItems > 0,
-        1: async (operationType) => {
+        1: async (operationTypeGuid) => {
 
-            const inventarioValido = (operationType === TRANSACTION_TYPES.COTIZACION.id) ? true : await ConsultarExistencias(posService.consultarExistencias, setInvalidItems)
+            const inventarioValido = (operationTypeGuid === TRANSACTION_TYPES.COTIZACION.guid) ? true : await ConsultarExistencias(posService.consultarExistencias, setInvalidItems)
             if (!inventarioValido) {
                 setIsModalOpen(true)
                 return false
             }
 
 
-            if (parseInt(operationType) === TRANSACTION_TYPES.COTIZACION.id || parseInt(operationType) === TRANSACTION_TYPES.TRASPASO.id) {
+            if (operationTypeGuid === TRANSACTION_TYPES.COTIZACION.guid || operationTypeGuid === TRANSACTION_TYPES.TRASPASO.guid) {
                 const transaccionValida = await confirmarTransaccion(posService.confirmarTransaccion, setAlertConfig, store, turnoActivo)
                 setNextPage(currentStep + 2)
                 return transaccionValida
@@ -48,8 +48,8 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             return true
 
         },
-        2: async (operationType) => {
-            if (operationType === TRANSACTION_TYPES.VENTA.id) {
+        2: async (operationTypeGuid) => {
+            if (operationTypeGuid === TRANSACTION_TYPES.VENTA.guid) {
                 const pagoValido = await validarPago(total, setAlertConfig)
                 if (!pagoValido) {
                     return false
@@ -108,15 +108,16 @@ export function ResumenCuenta({ subtotal, descuento, total, countItems, currentS
             return;
         }
 
-        const rawOperationType = localStorage.getItem('operationType');
-        const operationType = rawOperationType ? JSON.parse(rawOperationType) : null;
+        const operationTypeGuid = String(localStorage.getItem('operationTypeGuid') || '').replaceAll('"', '').toLowerCase();
 
-        let calcNextPage = (operationType === TRANSACTION_TYPES.VENTA.id) ? currentStep + 1 : currentStep + 2;
+        let calcNextPage = currentStep === 0
+            ? 1
+            : operationTypeGuid === TRANSACTION_TYPES.VENTA.guid ? currentStep + 1 : currentStep + 2;
         setNextPage(calcNextPage);
 
         const validatorForCurrentStep = stepValidation[currentStep];
         if (validatorForCurrentStep) {
-            const canProceed = await validatorForCurrentStep(operationType);
+            const canProceed = await validatorForCurrentStep(operationTypeGuid);
             if (!canProceed) return;
         }
 

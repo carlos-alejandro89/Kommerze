@@ -126,6 +126,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/catalogos/usos-cfdi", l.handleUsosCFDI)
 	mux.HandleFunc("/local/catalogos/sucursales", l.handleSucursales)
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
+	mux.HandleFunc("/local/transacciones/cancelar", l.handleCancelarVenta)
 	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
@@ -412,6 +413,26 @@ func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter,
 	result, err := l.pos.ConsultaTransacciones(tipoPedidoID, sucursalID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleCancelarVenta(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body struct {
+		PedidoGuid string `json:"pedidoGuid"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Solicitud inválida")
+		return
+	}
+	result, err := l.pos.CancelarVenta(body.PedidoGuid)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, result)

@@ -116,6 +116,57 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	return dto.NewResponseDto(true, "Transacciones consultadas correctamente", transacciones, nil), nil
 }
 
+// CancelarVenta cambia el estatus del pedido y reintegra cada cantidad al
+// inventario de la sucursal. El bloqueo evita cancelar dos veces o perder
+// actualizaciones concurrentes de existencia.
+func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
+	guid, err := uuid.Parse(strings.TrimSpace(pedidoGuid))
+	if err != nil {
+		return nil, fmt.Errorf("identificador de venta inválido")
+	}
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		var pedido models.Pedido
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("TipoPedido").Preload("Estatus").
+			Where("guid = ? AND deleted_at IS NULL", guid).First(&pedido).Error; err != nil {
+			return fmt.Errorf("venta no encontrada: %w", err)
+		}
+		if pedido.TipoPedido.Guid.String() != models.TipoPedidoVentaGuid {
+			return fmt.Errorf("únicamente se pueden cancelar ventas")
+		}
+		if strings.EqualFold(pedido.Estatus.Nombre, "Cancelado") || strings.EqualFold(pedido.Estatus.Nombre, "Cancelada") {
+			return fmt.Errorf("la venta ya se encuentra cancelada")
+		}
+		var detalles []models.PedidoDetalle
+		if err := tx.Where("pedido_id = ? AND deleted_at IS NULL", pedido.ID).Find(&detalles).Error; err != nil {
+			return err
+		}
+		for _, detalle := range detalles {
+			var inventario models.SucursalProducto
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("nivel_id = ? AND deleted_at IS NULL", detalle.NivelID).
+				First(&inventario).Error; err != nil {
+				return fmt.Errorf("no se pudo localizar el artículo %d en el inventario: %w", detalle.NivelID, err)
+			}
+			if err := tx.Model(&inventario).Updates(map[string]any{
+				"existencia": inventario.Existencia.Add(detalle.Cantidad),
+				"sync":       false,
+			}).Error; err != nil {
+				return fmt.Errorf("no se pudo devolver el artículo al inventario: %w", err)
+			}
+		}
+		var cancelado models.Estatus
+		if err := tx.Where("LOWER(nombre) IN ? AND deleted_at IS NULL", []string{"cancelado", "cancelada"}).First(&cancelado).Error; err != nil {
+			return fmt.Errorf("estatus Cancelado no encontrado en el catálogo sincronizado: %w", err)
+		}
+		return tx.Model(&pedido).Updates(map[string]any{"estatus_id": cancelado.ID, "sync": false}).Error
+	})
+	if err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Venta cancelada; las existencias fueron reintegradas", nil, nil), nil
+}
+
 func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	var transferencias []dto.TransferenciaDto
 
@@ -270,7 +321,17 @@ func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, p
 	for _, item := range pagosAplicados {
 		formaID := uint(item.ID)
 		if formaID == 0 {
-			formaID = 1 // Fallback: Efectivo
+			return fmt.Errorf("la forma de pago es requerida")
+		}
+
+		var existe int64
+		if err := tx.Model(&models.SATFormaPago{}).
+			Where("id = ? AND deleted_at IS NULL", formaID).
+			Count(&existe).Error; err != nil {
+			return fmt.Errorf("no fue posible validar la forma de pago: %w", err)
+		}
+		if existe == 0 {
+			return fmt.Errorf("la forma de pago seleccionada ya no existe en el catálogo sincronizado")
 		}
 		pago := models.Pago{
 			PedidoID: pedido.ID,

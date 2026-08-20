@@ -15,7 +15,7 @@ export function BtnTipoPedido({ tipoPedido, isActive, onClick }) {
     return (
         <button
             type="button"
-            onClick={() => onClick(tipoPedido.ID)}
+            onClick={() => onClick(tipoPedido)}
             className={cn(
                 'flex min-h-[96px] w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all',
                 isActive

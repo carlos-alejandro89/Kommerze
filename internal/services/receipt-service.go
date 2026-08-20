@@ -110,12 +110,28 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 		Fecha          time.Time
 		Sucursal       string
 		Negocio        string
+		Logo           string
+		Calle          string
+		Exterior       string
+		Interior       string
+		Colonia        string
+		Ciudad         string
+		Estado         string
+		CodigoPostal   string
+		Telefono       string
+		Correo         string
 		Cajero         string
 	}
 	err := s.db.Raw(`
 		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id, COALESCE(tp.guid::text, '') tipo_pedido_guid,
 		       COALESCE(s.nombre_sucursal, 'Sucursal') sucursal,
 		       COALESCE(NULLIF(e.nombre_comercial, ''), NULLIF(e.razon_social, ''), 'KOMMERZE') negocio,
+		       COALESCE(e.logo, '') logo,
+		       COALESCE(s.calle, '') calle, COALESCE(s.exterior, '') exterior,
+		       COALESCE(s.interior, '') interior, COALESCE(s.colonia, '') colonia,
+		       COALESCE(s.ciudad, '') ciudad, COALESCE(s.estado, '') estado,
+		       COALESCE(s.codigo_postal, '') codigo_postal,
+		       COALESCE(s.telefono, '') telefono, COALESCE(s.correo, '') correo,
 		       COALESCE(u.nombre, 'Cajero') cajero
 		  FROM pedidos p
 		  LEFT JOIN sucursales s ON s.id = p.sucursal_origen_id
@@ -153,17 +169,39 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 	}
 
 	cfg, _ := LoadKommerzConfig()
+	address := make([]string, 0, 6)
+	if street := strings.TrimSpace(strings.Join([]string{header.Calle, header.Exterior, header.Interior}, " ")); street != "" {
+		address = append(address, street)
+	}
+	for _, part := range []string{header.Colonia, header.Ciudad, header.Estado} {
+		if part = strings.TrimSpace(part); part != "" {
+			address = append(address, part)
+		}
+	}
+	if cp := strings.TrimSpace(header.CodigoPostal); cp != "" {
+		address = append(address, "C.P. "+cp)
+	}
 	r := reportmodels.Receipt{
 		TipoPedidoID:   header.TipoPedidoID,
 		TipoPedidoGuid: header.TipoPedidoGuid,
 		Folio:          fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
-		Sucursal: header.Sucursal, Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,
+		Sucursal: header.Sucursal, Logo: header.Logo, Direccion: strings.Join(address, ", "),
+		Telefono: header.Telefono, Correo: header.Correo,
+		Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,
 	}
 	if cfg != nil {
 		if cfg.Receipt.BusinessName != "" {
 			r.Negocio = cfg.Receipt.BusinessName
 		}
+		if logo, err := LoadReceiptLogo(); err == nil && logo != "" {
+			r.Logo = logo
+		}
 		r.Leyendas = cfg.Receipt.Legends
+		r.MostrarLogo = cfg.Receipt.ShowLogo
+		r.MostrarSucursal = cfg.Receipt.EffectiveShowBranchName()
+		r.MostrarDireccion = cfg.Receipt.ShowBranchAddress
+		r.MostrarTelefono = cfg.Receipt.ShowBranchPhone
+		r.MostrarCorreo = cfg.Receipt.ShowBranchEmail
 		for _, group := range cfg.Receipt.LegendGroups {
 			r.LeyendaGrupos = append(r.LeyendaGrupos, reportmodels.ReceiptLegendGroup{Text: group.Text, Bold: group.Bold})
 		}

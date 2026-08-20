@@ -20,6 +20,7 @@ import { Steps } from './steps';
 import { moneyFormat } from '@/lib/helpers';
 import { ItemPagos } from './components/item-pagos';
 import { usePosService } from './usePosService';
+import { TRANSACTION_TYPES } from './transaction-types';
 import { toast } from 'sonner';
 import {
     Dialog,
@@ -42,9 +43,9 @@ export function CartOrderPlaced() {
     const pedidoGuid = React.useMemo(() => localStorage.getItem('pedidoGuid') || '', []);
 
     const prefixes = {
-        1: 'POS',
-        2: 'COT',
-        3: 'TRA'
+        [TRANSACTION_TYPES.VENTA.guid]: 'POS',
+        [TRANSACTION_TYPES.COTIZACION.guid]: 'COT',
+        [TRANSACTION_TYPES.TRASPASO.guid]: 'TRA',
     }
 
     const [isPulsing, setIsPulsing] = React.useState(true);
@@ -59,9 +60,10 @@ export function CartOrderPlaced() {
 
     const [operationPrefix, setOperationPrefix] = React.useState(() => {
         try {
-            const stored = localStorage.getItem('operationType');
+            const stored = String(localStorage.getItem('operationTypeGuid') || '').replaceAll('"', '').toLowerCase();
             localStorage.removeItem('operationType')
-            return stored ? prefixes[JSON.parse(stored)] : '';
+            localStorage.removeItem('operationTypeGuid')
+            return prefixes[stored] || '';
         } catch (e) {
             return '';
         }

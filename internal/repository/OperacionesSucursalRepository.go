@@ -112,6 +112,30 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
+	// Los acumulados persistidos se consolidan al cerrar la jornada. Mientras la
+	// operación está activa se calculan en vivo para que el tablero financiero
+	// represente todas las transacciones realizadas hasta este momento.
+	acum := o.CalcularAcumuladosDia(operacion)
+	operacion.ValorVentas = acum.ValorVentas
+	operacion.ValorCompras = acum.ValorCompras
+	operacion.DescuentosAplicados = acum.DescuentosAplicados
+	operacion.IngresoEfectivo = acum.IngresoEfectivo
+	operacion.IngresoTarjetas = acum.IngresoTarjetas
+	operacion.IngresoCheques = acum.IngresoCheques
+	operacion.IngresoTransferencia = acum.IngresoTransferencia
+	operacion.IngresoOtros = acum.IngresoOtros
+	operacion.CFDIEfectivo = decimal.NewFromInt(int64(acum.CFDIEfectivo))
+	operacion.CFDITarjetas = decimal.NewFromInt(int64(acum.CFDITarjetas))
+	operacion.CFDICheques = decimal.NewFromInt(int64(acum.CFDICheques))
+	operacion.CFDITransferencia = decimal.NewFromInt(int64(acum.CFDITransferencia))
+	operacion.CFDIOtros = decimal.NewFromInt(int64(acum.CFDIOtros))
+	operacion.BajasMercancia = acum.BajasMercancia
+	operacion.ValorFinalInventario = operacion.ValorInicialInventario.
+		Add(acum.ValorCompras).
+		Sub(acum.ValorVentas).
+		Sub(acum.BajasMercancia).
+		Add(operacion.AjusteInventario)
+
 	return dto.NewResponseDto(true, "Jornada activa encontrada", operacion, nil)
 }
 
@@ -140,33 +164,51 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 	}
 	var resumen resumenRow
 	if err := o.db.Raw(`
-		SELECT COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total,
+		SELECT COALESCE(SUM(
+			(pd.precio_venta * pd.cantidad) -
+			((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+		), 0) AS total,
 		       COUNT(DISTINCT p.id) AS ventas
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
+		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
+		INNER JOIN estatus e ON e.id = p.estatus_id
 		WHERE p.sucursal_origen_id = ?
 		  AND p.fecha BETWEEN ? AND ?
-		  AND p.estatus_id = 2
-		  AND p.tipo_pedido_id = 1
+		  AND tp.guid::text = ?
+		  AND LOWER(e.nombre) = LOWER(?)
 		  AND p.deleted_at IS NULL
-	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&resumen).Error; err != nil {
+		  AND pd.deleted_at IS NULL
+		  AND tp.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
+	`, sucursalID, operacion.FechaInicio, fechaFin,
+		models.TipoPedidoVentaGuid, "Completado").Scan(&resumen).Error; err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
 	var horas []dto.VentaHoraDto
 	if err := o.db.Raw(`
 		SELECT date_trunc('hour', p.fecha) AS hora,
-		       COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total
+		       COALESCE(SUM(
+			   (pd.precio_venta * pd.cantidad) -
+			   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+		   ), 0) AS total
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
+		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
+		INNER JOIN estatus e ON e.id = p.estatus_id
 		WHERE p.sucursal_origen_id = ?
 		  AND p.fecha BETWEEN ? AND ?
-		  AND p.estatus_id = 2
-		  AND p.tipo_pedido_id = 1
+		  AND tp.guid::text = ?
+		  AND LOWER(e.nombre) = LOWER(?)
 		  AND p.deleted_at IS NULL
+		  AND pd.deleted_at IS NULL
+		  AND tp.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
 		GROUP BY date_trunc('hour', p.fecha)
 		ORDER BY hora
-	`, sucursalID, operacion.FechaInicio, fechaFin).Scan(&horas).Error; err != nil {
+	`, sucursalID, operacion.FechaInicio, fechaFin,
+		models.TipoPedidoVentaGuid, "Completado").Scan(&horas).Error; err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
 	}
 
@@ -229,6 +271,8 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 // acumuladosDia contiene los totales calculados desde pedidos/pagos del período.
 type acumuladosDia struct {
 	ValorVentas          decimal.Decimal
+	ValorCompras         decimal.Decimal
+	BajasMercancia       decimal.Decimal
 	DescuentosAplicados  decimal.Decimal
 	IngresoEfectivo      decimal.Decimal
 	IngresoTarjetas      decimal.Decimal
@@ -252,25 +296,44 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		fechaFin = *operacion.FechaFin
 	}
 
-	// Totales de venta desde detalle de pedidos
+	// Totales por tipo de transacción. Los IDs locales de tipo y estatus no son
+	// estables porque ambos catálogos se sincronizan desde Cloud.
 	type ventaRow struct {
-		Total      decimal.Decimal
+		Ventas     decimal.Decimal
+		Compras    decimal.Decimal
+		Bajas      decimal.Decimal
 		Descuentos decimal.Decimal
 	}
 	var venta ventaRow
 	o.db.Raw(`
-		SELECT 
-			COALESCE(SUM(pd.precio_venta * pd.cantidad), 0) AS total,
-			COALESCE(SUM(pd.descuento * pd.cantidad), 0)    AS descuentos
+		SELECT
+			COALESCE(SUM(CASE WHEN tp.guid::text = ?
+				THEN (pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * pd.descuento / 100)
+				ELSE 0 END), 0) AS ventas,
+			COALESCE(SUM(CASE WHEN tp.guid::text = ?
+				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS compras,
+			COALESCE(SUM(CASE WHEN tp.guid::text = ?
+				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS bajas,
+			COALESCE(SUM(CASE WHEN tp.guid::text = ?
+				THEN (pd.precio_venta * pd.cantidad) * pd.descuento / 100 ELSE 0 END), 0) AS descuentos
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
+		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
+		INNER JOIN estatus e ON e.id = p.estatus_id
 		WHERE p.sucursal_origen_id = ?
 		  AND p.fecha BETWEEN ? AND ?
-		  AND p.estatus_id = 2
+		  AND LOWER(e.nombre) = LOWER(?)
 		  AND p.deleted_at IS NULL
-	`, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&venta)
+		  AND pd.deleted_at IS NULL
+		  AND tp.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
+	`, models.TipoPedidoVentaGuid, models.TipoPedidoCompraGuid,
+		models.TipoPedidoBajaMercanciaGuid, models.TipoPedidoVentaGuid,
+		operacion.SucursalID, operacion.FechaInicio, fechaFin, "Completado").Scan(&venta)
 
-	result.ValorVentas = venta.Total
+	result.ValorVentas = venta.Ventas
+	result.ValorCompras = venta.Compras
+	result.BajasMercancia = venta.Bajas
 	result.DescuentosAplicados = venta.Descuentos
 
 	// Pagos agrupados por clave SAT de forma de pago
@@ -288,21 +351,25 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		FROM pagos pg
 		INNER JOIN pedidos p          ON p.id = pg.pedido_id
 		INNER JOIN sat_formas_pago s  ON s.id = pg.forma_id
+		INNER JOIN tipos_pedido tp    ON tp.id = p.tipo_pedido_id
+		INNER JOIN estatus e          ON e.id = p.estatus_id
 		WHERE p.sucursal_origen_id = ?
 		  AND pg.fecha BETWEEN ? AND ?
-		  AND p.estatus_id = 2
+		  AND tp.guid::text = ?
+		  AND LOWER(e.nombre) = LOWER(?)
 		  AND p.deleted_at IS NULL
 		GROUP BY s.clave
-	`, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&pagos)
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin,
+		models.TipoPedidoVentaGuid, "Completado").Scan(&pagos)
 
 	for _, p := range pagos {
 		switch p.Clave {
 		case "01": // Efectivo
 			result.IngresoEfectivo = p.Total
 			result.CFDIEfectivo = p.Conteo
-		case "04": // Tarjeta de crédito/débito
-			result.IngresoTarjetas = p.Total
-			result.CFDITarjetas = p.Conteo
+		case "04", "28", "29": // Tarjetas de crédito, débito y monedero
+			result.IngresoTarjetas = result.IngresoTarjetas.Add(p.Total)
+			result.CFDITarjetas += p.Conteo
 		case "02": // Cheque nominativo
 			result.IngresoCheques = p.Total
 			result.CFDICheques = p.Conteo
@@ -352,8 +419,9 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 
 	// Valor final = inicial + compras - ventas + ajustes
 	valorFinal := operacion.ValorInicialInventario.
-		Add(operacion.ValorCompras).
+		Add(acum.ValorCompras).
 		Sub(acum.ValorVentas).
+		Sub(acum.BajasMercancia).
 		Add(operacion.AjusteInventario)
 
 	updates := map[string]any{
@@ -361,7 +429,9 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 		"usuario_cierre_id":      &usuarioCierre,
 		"fecha_fin":              ahora,
 		"valor_ventas":           acum.ValorVentas,
+		"valor_compras":          acum.ValorCompras,
 		"descuentos_aplicados":   acum.DescuentosAplicados,
+		"bajas_mercancia":        acum.BajasMercancia,
 		"valor_final_inventario": valorFinal,
 		"ingreso_efectivo":       acum.IngresoEfectivo,
 		"ingreso_tarjetas":       acum.IngresoTarjetas,

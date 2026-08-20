@@ -90,14 +90,14 @@ function relativeTime(value, now = new Date()) {
 
 function Brand() {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <img
         src="/media/app_icon.png"
         alt=""
         aria-hidden="true"
-        className="size-12 shrink-0 rounded-xl object-contain"
+        className="size-9 shrink-0 rounded-[10px] object-contain"
       />
-      <span className="text-[27px] font-extrabold tracking-[-0.04em] text-[#071431] dark:text-white">Kommerze</span>
+      <span className="text-[21px] font-bold tracking-[-0.035em] text-[#071431] dark:text-white">Kommerze</span>
     </div>
   );
 }

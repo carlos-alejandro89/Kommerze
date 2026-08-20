@@ -53,6 +53,7 @@ func (a *App) posService() interface {
 	ConfirmarTransaccion(*uint, []dto.PagosAplicadosDto, []dto.PedidoProductoDto, *uint, *uint, *uint, string) (*dto.ResponseDto, error)
 	CrearSolicitudProductos(dto.SolicitudProductosDto) (*dto.ResponseDto, error)
 	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
+	CancelarVenta(string) (*dto.ResponseDto, error)
 	ConsultarTransferencias() ([]dto.TransferenciaDto, error)
 } {
 	if a.services.CajaProxy != nil {
@@ -418,6 +419,10 @@ func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint)
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
 }
 
+func (a *App) ServiceCancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
+	return a.posService().CancelarVenta(pedidoGuid)
+}
+
 func (a *App) ServiceConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	return a.posService().ConsultarTransferencias()
 }
@@ -442,15 +447,41 @@ func (a *App) ServicePrintReceipt(pedidoGuid string) (*reportmodels.DocumentOutp
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Receipt.BusinessName != "" {
-		receipt.Negocio = cfg.Receipt.BusinessName
-	}
-	receipt.Leyendas = cfg.Receipt.Legends
-	receipt.LeyendaGrupos = receiptLegendGroups(cfg.Receipt.LegendGroups)
+	applyReceiptConfig(&receipt, cfg.Receipt)
 	if err := services.PrintReceipt(receipt, cfg.Receipt); err != nil {
 		return nil, err
 	}
 	return &reportmodels.DocumentOutput{Kind: "printed"}, nil
+}
+
+// ServiceGenerateSaleDocument genera el documento sin enviarlo a impresora.
+// Las ventas producen el ticket PDF y las cotizaciones su formato comercial.
+func (a *App) ServiceGenerateSaleDocument(pedidoGuid string) (*reportmodels.DocumentOutput, error) {
+	receipt, err := a.receiptService().BuildReceipt(pedidoGuid)
+	if err != nil {
+		return nil, err
+	}
+	if receipt.TipoPedidoGuid == models.TipoPedidoCotizacionGuid {
+		quotation, err := a.receiptService().BuildQuotation(pedidoGuid)
+		if err != nil {
+			return nil, err
+		}
+		pdf, err := renders.RenderQuotationPDF(quotation)
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo generar la cotización PDF: %w", err)
+		}
+		return &reportmodels.DocumentOutput{Kind: "pdf", FileName: "cotizacion-" + quotation.Folio + ".pdf", DataBase64: base64.StdEncoding.EncodeToString(pdf)}, nil
+	}
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return nil, err
+	}
+	applyReceiptConfig(&receipt, cfg.Receipt)
+	pdf, err := renders.RenderReceiptPDF(receipt)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el ticket PDF: %w", err)
+	}
+	return &reportmodels.DocumentOutput{Kind: "pdf", FileName: "ticket-" + receipt.Folio + ".pdf", DataBase64: base64.StdEncoding.EncodeToString(pdf)}, nil
 }
 
 func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
@@ -469,22 +500,22 @@ func (a *App) ServiceEmailReceipt(pedidoGuid, recipient string) error {
 		}
 		return services.EmailQuotation(quotation, recipient, cfg.Receipt)
 	}
-	if cfg.Receipt.BusinessName != "" {
-		receipt.Negocio = cfg.Receipt.BusinessName
-	}
-	receipt.Leyendas = cfg.Receipt.Legends
-	receipt.LeyendaGrupos = receiptLegendGroups(cfg.Receipt.LegendGroups)
+	applyReceiptConfig(&receipt, cfg.Receipt)
 	return services.EmailReceipt(receipt, recipient, cfg.Receipt)
 }
 
 func (a *App) ServiceTestPrintReceipt(cfg services.ReceiptConfig) error {
 	now := time.Now()
 	receipt := reportmodels.Receipt{
-		Folio:    "DEMO-000001",
-		Negocio:  cfg.BusinessName,
-		Sucursal: "Sucursal Demo",
-		Cajero:   "Usuario Demo",
-		Fecha:    now,
+		Folio:     "DEMO-000001",
+		Negocio:   cfg.BusinessName,
+		Sucursal:  "Sucursal Demo",
+		Logo:      "",
+		Direccion: "Av. Ejemplo 123, Col. Centro, Ciudad, Estado, C.P. 00000",
+		Telefono:  "(000) 000 0000",
+		Correo:    "sucursal@ejemplo.com",
+		Cajero:    "Usuario Demo",
+		Fecha:     now,
 		Items: []reportmodels.ReceiptItem{
 			{
 				Codigo:      "DEMO/TEST",
@@ -504,7 +535,24 @@ func (a *App) ServiceTestPrintReceipt(cfg services.ReceiptConfig) error {
 		receipt.Negocio = "KOMMERZE"
 	}
 	receipt.LeyendaGrupos = receiptLegendGroups(cfg.LegendGroups)
+	applyReceiptConfig(&receipt, cfg)
 	return services.PrintReceipt(receipt, cfg)
+}
+
+func applyReceiptConfig(receipt *reportmodels.Receipt, cfg services.ReceiptConfig) {
+	if cfg.BusinessName != "" {
+		receipt.Negocio = cfg.BusinessName
+	}
+	if logo, err := services.LoadReceiptLogo(); err == nil && logo != "" {
+		receipt.Logo = logo
+	}
+	receipt.MostrarLogo = cfg.ShowLogo
+	receipt.MostrarSucursal = cfg.EffectiveShowBranchName()
+	receipt.MostrarDireccion = cfg.ShowBranchAddress
+	receipt.MostrarTelefono = cfg.ShowBranchPhone
+	receipt.MostrarCorreo = cfg.ShowBranchEmail
+	receipt.Leyendas = cfg.Legends
+	receipt.LeyendaGrupos = receiptLegendGroups(cfg.LegendGroups)
 }
 
 func receiptLegendGroups(groups []services.ReceiptLegendGroup) []reportmodels.ReceiptLegendGroup {
@@ -849,6 +897,18 @@ func (a *App) ServiceGetKommerzConfig() (*services.KommerzConfig, error) {
 // ServiceSaveKommerzConfig persiste la configuración del dispositivo.
 func (a *App) ServiceSaveKommerzConfig(cfg services.KommerzConfig) error {
 	return services.SaveKommerzConfig(&cfg)
+}
+
+func (a *App) ServiceLoadReceiptLogo() (string, error) {
+	return services.LoadReceiptLogo()
+}
+
+func (a *App) ServiceSaveReceiptLogo(value string) error {
+	return services.SaveReceiptLogo(value)
+}
+
+func (a *App) ServiceDeleteReceiptLogo() error {
+	return services.DeleteReceiptLogo()
 }
 
 // ServiceTestDBConnection prueba una conexión a PostgreSQL con los valores

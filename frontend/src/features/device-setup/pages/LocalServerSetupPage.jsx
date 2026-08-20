@@ -178,7 +178,7 @@ export function LocalServerSetupPage() {
           <div className="rounded-xl border border-border bg-bg-subtle p-4">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground">¿Dónde está el Servidor Local?</span><br />
-              En el equipo configurado como Servidor Local, ve a <strong>Ajustes → Configuración del Dispositivo</strong> para ver su dirección IP.
+              En el equipo configurado como Servidor Local, ve a <strong>Configuración → Dispositivo</strong> para ver su dirección IP.
             </p>
           </div>
 

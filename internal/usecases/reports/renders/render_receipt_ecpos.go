@@ -2,7 +2,12 @@ package renders
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"strings"
 
 	"BitComercio/internal/usecases/reports/models"
@@ -86,13 +91,39 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	// Inicializar, seleccionar Windows-1252 y forzar Font A. Font A es la
 	// tipografía interna ESC/POS de aspecto más cercano a Arial/Helvetica.
 	b.Write([]byte{0x1B, 0x40, 0x1B, 0x74, 0x10, 0x1B, 0x4D, 0x00})
+	if r.MostrarLogo {
+		if raster, logoWidth := receiptLogoRaster(r.Logo, paperWidthMM); len(raster) > 0 {
+			paperDots := 576
+			if paperWidthMM == 58 {
+				paperDots = 384
+			}
+			leftMargin := (paperDots - logoWidth) / 2
+			if leftMargin < 0 {
+				leftMargin = 0
+			}
+			b.Write([]byte{0x1D, 0x4C, byte(leftMargin), byte(leftMargin >> 8)})
+			b.Write(raster)
+			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00})
+		}
+	}
 	b.Write([]byte{0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
 	writeEscPosText(&b, strings.ToUpper(r.Negocio)+"\n")
 	b.Write([]byte{0x1D, 0x21, 0x00})
-	writeEscPosText(&b, "PUNTO DE VENTA\n")
-	b.Write([]byte{0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00})
+	b.Write([]byte{0x1B, 0x45, 0x00})
+	if r.MostrarSucursal && strings.TrimSpace(r.Sucursal) != "" {
+		writeEscPosText(&b, wrapReceiptText(r.Sucursal, width)+"\n")
+	}
+	if r.MostrarDireccion && strings.TrimSpace(r.Direccion) != "" {
+		writeEscPosText(&b, wrapReceiptText(r.Direccion, width)+"\n")
+	}
+	if r.MostrarTelefono && strings.TrimSpace(r.Telefono) != "" {
+		writeEscPosText(&b, wrapReceiptText(r.Telefono, width)+"\n")
+	}
+	if r.MostrarCorreo && strings.TrimSpace(r.Correo) != "" {
+		writeEscPosText(&b, wrapReceiptText(r.Correo, width)+"\n")
+	}
+	b.Write([]byte{0x1B, 0x61, 0x00})
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
-	writeEscPosText(&b, wrapReceiptText("Sucursal: "+r.Sucursal, width)+"\n")
 	writeEscPosText(&b, wrapReceiptText("Folio: "+r.Folio, width)+"\n")
 	writeEscPosText(&b, wrapReceiptText("Fecha: "+r.Fecha.Format("02/01/2006 15:04"), width)+"\n")
 	writeEscPosText(&b, wrapReceiptText("Cajero: "+r.Cajero, width)+"\n")
@@ -100,16 +131,19 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	writeEscPosText(&b, line("Descripción", "Importe", width))
 	for _, item := range r.Items {
 		writeEscPosText(&b, wrapReceiptText(strings.ToUpper(item.Descripcion), width)+"\n")
-		writeEscPosText(&b, line(fmt.Sprintf("%.2f x $%.2f", item.Cantidad, item.Precio), fmt.Sprintf("$%.2f", item.Importe), width))
+		writeEscPosText(&b, line(fmt.Sprintf("%.2f x %s", item.Cantidad, money(item.Precio)), money(item.Importe), width))
 	}
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
-	writeEscPosText(&b, line("Subtotal:", fmt.Sprintf("$%.2f", r.Subtotal), width))
-	writeEscPosText(&b, line("Descuento:", fmt.Sprintf("$%.2f", r.Descuento), width))
-	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
-	writeEscPosText(&b, line("TOTAL:", fmt.Sprintf("$%.2f", r.Total), width/2))
-	b.Write([]byte{0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00})
-	writeEscPosText(&b, line("Pago:", fmt.Sprintf("$%.2f", r.Pago), width))
-	writeEscPosText(&b, line("Cambio:", fmt.Sprintf("$%.2f", r.Cambio), width))
+	writeEscPosText(&b, line("Subtotal:", money(r.Subtotal), width))
+	writeEscPosText(&b, line("Descuento:", money(r.Descuento), width))
+	// ESC/POS no permite reducir el texto por píxeles. Usamos Font A en su
+	// tamaño normal y negrita para conservar jerarquía, ganar separación entre
+	// la etiqueta y el importe y evitar traslapes en papel de 58 mm.
+	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x00})
+	writeEscPosText(&b, line("TOTAL:", money(r.Total), width))
+	b.Write([]byte{0x1B, 0x45, 0x00})
+	writeEscPosText(&b, line("Pago:", money(r.Pago), width))
+	writeEscPosText(&b, line("Cambio:", money(r.Cambio), width))
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	b.Write([]byte{0x1B, 0x61, 0x01})
 	if len(r.LeyendaGrupos) > 0 {
@@ -141,6 +175,64 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 		b.Write([]byte{0x1D, 0x56, 0x01})
 	}
 	return b.Bytes()
+}
+
+func decodeReceiptLogo(value string) ([]byte, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, false
+	}
+	if index := strings.Index(value, ","); strings.HasPrefix(strings.ToLower(value), "data:image/") && index >= 0 {
+		value = value[index+1:]
+	}
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	return decoded, err == nil && len(decoded) > 0
+}
+
+// receiptLogoRaster convierte el logotipo almacenado en base64 a GS v 0,
+// formato raster monocromático soportado por miniprinters ESC/POS.
+func receiptLogoRaster(value string, paperWidthMM int) ([]byte, int) {
+	data, ok := decodeReceiptLogo(value)
+	if !ok {
+		return nil, 0
+	}
+	source, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, 0
+	}
+	maxWidth := 512
+	if paperWidthMM == 58 {
+		maxWidth = 384
+	}
+	bounds := source.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	if width < 1 || height < 1 {
+		return nil, 0
+	}
+	if width > maxWidth {
+		height = height * maxWidth / width
+		width = maxWidth
+	}
+	if height > 180 {
+		width = width * 180 / height
+		height = 180
+	}
+	bytesPerRow := (width + 7) / 8
+	raster := make([]byte, bytesPerRow*height)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			sx := bounds.Min.X + x*bounds.Dx()/width
+			sy := bounds.Min.Y + y*bounds.Dy()/height
+			r, g, b, a := source.At(sx, sy).RGBA()
+			// Componer transparencias sobre blanco antes de convertir a monocromo.
+			gray := ((299*r + 587*g + 114*b) / 1000 * a / 0xffff) + (0xffff - a)
+			if gray < 0xaaaa {
+				raster[y*bytesPerRow+x/8] |= 0x80 >> uint(x%8)
+			}
+		}
+	}
+	result := []byte{0x1D, 0x76, 0x30, 0x00, byte(bytesPerRow), byte(bytesPerRow >> 8), byte(height), byte(height >> 8)}
+	return append(result, raster...), width
 }
 
 func boolByte(value bool) byte {

@@ -127,7 +127,7 @@ const ALL_MODULES = [
   },
   {
     id: 'settings',
-    title: 'Ajustes',
+    title: 'Configuración',
     subtitle: 'Configuración',
     icon: Settings,
     accentColor: '#64748b',   // slate

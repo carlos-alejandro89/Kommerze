@@ -382,7 +382,7 @@
   --accent-cierre:        #e11d48;   /* rose    — Cierre de Caja   */
   --accent-cortes:        #ea580c;   /* orange  — Cortes Sucursal  */
   --accent-sync:          #0284c7;   /* sky     — Sincronización   */
-  --accent-settings:      #64748b;   /* slate   — Ajustes          */
+  --accent-settings:      #64748b;   /* slate   — Configuración    */
 }
 
 /* Animación de ping para alerts de stock */

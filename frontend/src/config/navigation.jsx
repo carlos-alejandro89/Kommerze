@@ -88,7 +88,7 @@ export const MAIN_NAV = [
   },
   {
     id: 'settings',
-    title: 'Ajustes',
+    title: 'Configuración',
     icon: Settings,
     path: '/settings',
   },

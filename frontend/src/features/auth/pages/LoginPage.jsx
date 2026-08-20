@@ -1,19 +1,44 @@
 import { motion } from 'motion/react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart3,
+  ArrowRight,
+  ChartNoAxesCombined,
+  CloudCog,
   Eye,
   EyeOff,
-  Package,
-  RefreshCw,
+  LockKeyhole,
+  PackageSearch,
   ShieldCheck,
-  Users,
+  ShoppingCart,
+  UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
-import logo from '@/assets/Softi.png';
-import backgroundPos from '@/assets/background-pos4.jpg';
+import loginStore from '@/assets/login-tienda-pinturas.png';
+
+const loginBenefits = [
+  {
+    icon: ShoppingCart,
+    title: 'Punto de venta',
+    description: 'Agiliza cada operación y brinda una mejor atención.',
+  },
+  {
+    icon: PackageSearch,
+    title: 'Inventario en tiempo real',
+    description: 'Mantén el control de existencias y movimientos.',
+  },
+  {
+    icon: ChartNoAxesCombined,
+    title: 'Información para decidir',
+    description: 'Consulta resultados reales de tu operación.',
+  },
+  {
+    icon: CloudCog,
+    title: 'Sincronización segura',
+    description: 'Tu información disponible cuando la necesitas.',
+  },
+];
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -28,17 +53,16 @@ export function LoginPage() {
   });
 
   useEffect(() => {
-    // En modo Caja, la licencia la valida el Servidor Local; no verificar aquí.
     if (isCaja) return;
     const checkLicense = async () => {
       const ok = await verifyLicense();
       if (!ok) navigate('/license/activate', { replace: true });
     };
     checkLicense();
-  }, [isCaja]);
+  }, [isCaja, navigate, verifyLicense]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     if (!empresa) storeStatus().catch(() => {});
     await login(formData.username, formData.password);
@@ -47,187 +71,159 @@ export function LoginPage() {
     navigate('/home', { replace: true });
   };
 
-  const featureItems = [
-    {
-      icon: Package,
-      title: 'Inventarios',
-      description: 'Control total de tus productos',
-    },
-    {
-      icon: Users,
-      title: 'Clientes y CRM',
-      description: 'Gestiona relaciones y fideliza clientes',
-    },
-    {
-      icon: BarChart3,
-      title: 'Reportes',
-      description: 'Decisiones basadas en informacion',
-    },
-    {
-      icon: RefreshCw,
-      title: 'Sincronizacion',
-      description: 'Todo actualizado en tiempo real',
-    },
-  ];
-
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-[#eef5ff]">
-      {/* ── Left Panel — Form ──────────────────────────── */}
-      <div className="relative flex w-full shrink-0 flex-col items-center justify-center overflow-hidden bg-[#f5f8fc] px-8 py-12 dark:bg-background lg:w-[480px] xl:w-[520px]">
-        {/* Background decoration */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(219,234,254,0.82),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(224,242,254,0.72),transparent_30%),linear-gradient(135deg,rgba(248,250,252,0.96),rgba(239,246,255,0.9),rgba(248,250,252,0.98))] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(30,64,175,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(17,24,39,0.94),rgba(15,23,42,0.98))]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#001b4c] p-3 sm:p-5 lg:p-7">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(30,120,255,.62),transparent_34%),radial-gradient(circle_at_100%_100%,rgba(1,74,178,.42),transparent_42%),linear-gradient(135deg,#043d95_0%,#001d51_45%,#001238_100%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom_right,transparent,black,transparent)]" />
+
+      <section className="relative mx-auto grid min-h-[calc(100vh-24px)] max-w-[1600px] gap-5 sm:min-h-[calc(100vh-40px)] lg:min-h-[calc(100vh-56px)] lg:grid-cols-[minmax(400px,37%)_1fr] xl:gap-8">
+        <div className="relative z-10 flex items-center justify-center overflow-hidden rounded-[24px] border border-white/80 bg-white px-6 py-8 shadow-[0_24px_64px_-34px_rgba(0,7,31,.68)] sm:px-10 lg:px-12 xl:px-16">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="w-full max-w-[370px]"
+          >
+            <img
+              src="/media/kommerze-logo-horizontal.png"
+              alt="Kommerze"
+              className="mb-7 h-auto w-[166px] max-w-[56%] object-contain object-left"
+            />
+
+            <div className="mb-7">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                Acceso al sistema
+              </p>
+              <h1 className="text-[27px] font-semibold leading-tight tracking-[-0.025em] text-[#071a43] sm:text-[30px]">
+                Bienvenido de nuevo
+              </h1>
+              <p className="mt-2.5 max-w-sm text-[13px] leading-[1.6] text-slate-500">
+                Ingresa tus credenciales para continuar con la operación de tu negocio.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="username" className="text-[12px] font-medium text-[#203457]">
+                  Usuario o correo electrónico
+                </label>
+                <div className="group relative">
+                  <UserRound className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary" strokeWidth={1.7} />
+                  <input
+                    id="username"
+                    type="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="username"
+                    placeholder="Ingresa tu usuario o correo"
+                    disabled={loading}
+                    value={formData.username}
+                    onChange={(event) => setFormData({ ...formData, username: event.target.value })}
+                    className="h-[48px] w-full rounded-[10px] border border-slate-200/90 bg-white pl-10.5 pr-3.5 text-[13px] font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary/80 focus:ring-3 focus:ring-primary/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="text-[12px] font-medium text-[#203457]">
+                  Contraseña
+                </label>
+                <div className="group relative">
+                  <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary" strokeWidth={1.7} />
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="Ingresa tu contraseña"
+                    disabled={loading}
+                    value={formData.password}
+                    onChange={(event) => setFormData({ ...formData, password: event.target.value })}
+                    className="h-[48px] w-full rounded-[10px] border border-slate-200/90 bg-white pl-10.5 pr-11 text-[13px] font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary/80 focus:ring-3 focus:ring-primary/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-[#12244a] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <EyeOff className="size-4" strokeWidth={1.7} /> : <Eye className="size-4" strokeWidth={1.7} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex h-[49px] w-full items-center justify-center gap-2 rounded-[10px] bg-gradient-to-r from-[#075be8] to-[#0b76f0] px-5 text-[13px] font-semibold text-white shadow-[0_12px_24px_-16px_rgba(0,91,232,.85)] transition hover:-translate-y-px hover:shadow-[0_15px_26px_-16px_rgba(0,91,232,.72)] focus:outline-none focus:ring-3 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+                    Autenticando...
+                  </>
+                ) : (
+                  <>
+                    Iniciar sesión
+                    <ArrowRight className="size-4" strokeWidth={1.8} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-7 flex items-center justify-center gap-1.5 text-[10.5px] font-normal text-slate-400">
+              <ShieldCheck className="size-3.5 text-emerald-500" strokeWidth={1.8} />
+              Acceso seguro a Kommerze POS
+            </div>
+          </motion.div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="relative z-[var(--z-layer-raised)] w-full max-w-sm space-y-8"
-        >
-          {/* Logo & Brand */}
-          <div className="space-y-2">
-            <div className="mb-6 flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/30">
-                <ShieldCheck className="size-5" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-foreground">
-                Kommerze POS
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Bienvenido de vuelta
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Ingresa tus credenciales para acceder al sistema.
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username */}
-            <div className="space-y-1.5">
-              <label htmlFor="username" className="text-sm font-medium text-foreground">
-                Colaborador ID
-              </label>
-              <input
-                id="username"
-                type="text"
-                autoCapitalize="none"
-                autoCorrect="off"
-                placeholder="usuario@empresa.com"
-                disabled={loading}
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
-                PIN / Contraseña
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  disabled={loading}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full rounded-lg border border-border bg-bg-subtle px-3.5 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? (
-                <>
-                  <div className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  <span>Autenticando...</span>
-                </>
-              ) : (
-                'Acceder al Sistema'
-              )}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div className="flex flex-col items-center gap-2 border-t border-border pt-4">
-            <img src={logo} alt="Softi" className="h-10 w-auto opacity-70" />
-            <div className="flex gap-4">
-              <a href="#" className="text-[11px] text-muted-foreground transition-colors hover:text-foreground">
-                Estado del sistema
-              </a>
-              <a href="#" className="text-[11px] text-muted-foreground transition-colors hover:text-foreground">
-                Privacidad
-              </a>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ── Right Panel — Visual ───────────────────────── */}
-      <div className="relative hidden flex-1 overflow-hidden lg:flex">
-        <img
-          src={backgroundPos}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-right-bottom"
-        />
-
-        <div className="relative z-[var(--z-layer-raised)] flex w-full flex-col justify-between px-14 py-14 xl:px-[72px]">
+        <div className="relative hidden min-h-0 overflow-hidden rounded-[26px] border border-white/10 lg:block">
+          <img
+            src={loginStore}
+            alt="Atención a cliente en una tienda de pinturas"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#001b4c]/20 via-transparent to-[#001438]/28" />
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="mt-[14vh] max-w-[560px]"
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.65, delay: 0.2 }}
+            className="absolute left-7 top-7 z-10 max-w-[370px] rounded-xl border border-white/25 bg-[#001b4c]/52 px-5 py-3.5 text-white shadow-[0_14px_34px_-26px_rgba(0,14,48,.8)] backdrop-blur-md xl:left-9 xl:top-9"
           >
-            <h2 className="max-w-[440px] text-[38px] font-bold leading-[1.12] tracking-normal text-[#061a4d] xl:text-[44px]">
-              Todo tu negocio,{' '}
-              <span className="text-primary">simplificado.</span>
-            </h2>
-            <p className="mt-5 max-w-[430px] text-[17px] font-medium leading-7 text-[#26375f]">
-              Administra ventas, inventario, clientes y operaciones desde un solo lugar.
+            <p className="max-w-[330px] text-[20px] font-semibold leading-[1.2] tracking-[-0.025em] xl:text-[23px]">
+              Todo lo que necesitas para hacer{' '}
+              <span className="text-[#61b2ff]">crecer tu negocio.</span>
             </p>
+            <span className="mt-3 block h-0.5 w-10 rounded-full bg-[#58aaff]" />
           </motion.div>
 
-          <div className="grid max-w-4xl grid-cols-4 rounded-2xl border border-white/55 bg-white/62 px-4 py-3.5 shadow-[0_18px_46px_-36px_rgba(15,23,42,0.42)] backdrop-blur-xl">
-            {featureItems.map((item, index) => (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.32 }}
+            className="absolute inset-x-4 bottom-4 z-10 grid grid-cols-4 overflow-hidden rounded-2xl border border-[#72a9f5]/24 bg-[#001d50]/88 px-2 py-3.5 shadow-[0_18px_50px_-24px_rgba(0,13,44,.82)] backdrop-blur-xl xl:inset-x-6 xl:bottom-6 xl:px-3 xl:py-4"
+          >
+            {loginBenefits.map(({ icon: Icon, title, description }, index) => (
               <div
-                key={item.title}
-                className="flex min-w-0 items-center gap-2.5 px-3 first:pl-0 last:pr-0"
+                key={title}
+                className={`flex min-w-0 items-center gap-2.5 px-2.5 xl:gap-3.5 xl:px-4 ${index > 0 ? 'border-l border-white/15' : ''}`}
               >
-                <item.icon className="size-6 shrink-0 text-[#586886]" strokeWidth={1.9} />
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 xl:size-12 ${index === 3 ? 'bg-emerald-400/15 text-emerald-300' : 'bg-gradient-to-br from-[#1f68cb]/80 to-[#06439e]/80 text-blue-100'}`}>
+                  <Icon className="size-5 xl:size-6" strokeWidth={1.9} />
+                </span>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-extrabold leading-tight text-[#061a4d]">
-                    {item.title}
+                  <p className="text-[11px] font-extrabold leading-tight text-white xl:text-[13px]">
+                    {title}
                   </p>
-                  <p className="mt-0.5 text-[11px] font-medium leading-snug text-[#5f6f8e]">
-                    {item.description}
+                  <p className="mt-1 line-clamp-2 text-[9px] font-medium leading-[1.35] text-blue-100/72 xl:text-[10.5px]">
+                    {description}
                   </p>
                 </div>
-                {index < featureItems.length - 1 && (
-                  <span className="ml-auto hidden h-9 w-px shrink-0 bg-slate-200 xl:block" />
-                )}
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

@@ -1311,6 +1311,11 @@ export namespace services {
 	}
 	export class ReceiptConfig {
 	    businessName?: string;
+	    showLogo?: boolean;
+	    showBranchName?: boolean;
+	    showBranchAddress?: boolean;
+	    showBranchPhone?: boolean;
+	    showBranchEmail?: boolean;
 	    legendGroups?: ReceiptLegendGroup[];
 	    legends?: string[];
 	    printerAddress?: string;
@@ -1330,6 +1335,11 @@ export namespace services {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.businessName = source["businessName"];
+	        this.showLogo = source["showLogo"];
+	        this.showBranchName = source["showBranchName"];
+	        this.showBranchAddress = source["showBranchAddress"];
+	        this.showBranchPhone = source["showBranchPhone"];
+	        this.showBranchEmail = source["showBranchEmail"];
 	        this.legendGroups = this.convertValues(source["legendGroups"], ReceiptLegendGroup);
 	        this.legends = source["legends"];
 	        this.printerAddress = source["printerAddress"];

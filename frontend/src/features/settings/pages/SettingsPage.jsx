@@ -3,7 +3,7 @@ import {
   Save, Server, Shield, Cloud, HardDrive, RefreshCw,
   Monitor, Globe, RotateCcw, Wifi, Copy, Check,
   ReceiptText, Mail, Plus, Trash2, Bold, Printer,
-  ArrowLeft, Settings, PackagePlus,
+  ArrowLeft, Settings, PackagePlus, ImageIcon, MapPin, Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,13 +21,18 @@ import {
   ServiceTestPrintReceipt,
 } from '../../../../wailsjs/go/main/App';
 
-const normalizeReceiptConfig = (receipt) => ({
-  ...receipt,
-  legends: [],
-  legendGroups: (receipt.legendGroups || [])
-    .map(group => ({ text: group.text.trim(), bold: Boolean(group.bold) }))
-    .filter(group => group.text),
-});
+const normalizeReceiptConfig = (receipt) => {
+  const { logo: _logo, ...config } = receipt;
+  return {
+    ...config,
+    legends: [],
+    legendGroups: (receipt.legendGroups || [])
+      .map(group => ({ text: group.text.trim(), bold: Boolean(group.bold) }))
+      .filter(group => group.text),
+  };
+};
+
+const receiptLogoAPI = () => window?.go?.main?.App;
 
 const settingsInputClass = 'h-11 w-full rounded-2xl border border-[#dce7f6] bg-white/90 px-4 text-sm font-medium text-[#1b3154] shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] outline-none transition-all placeholder:text-[#7790b6] focus:border-blue-300/80 focus:bg-white focus:ring-2 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400/35 dark:focus:bg-white/[.085]';
 const settingsTextareaClass = 'w-full resize-y rounded-2xl border border-[#dce7f6] bg-white/90 px-4 py-3 text-sm font-medium text-[#1b3154] shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] outline-none transition-all placeholder:text-[#7790b6] focus:border-blue-300/80 focus:bg-white focus:ring-2 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400/35 dark:focus:bg-white/[.085]';
@@ -59,6 +64,12 @@ export function SettingsPage() {
   const [copiedIP, setCopiedIP]       = useState(false);
   const [receipt, setReceipt] = useState({
     businessName: 'KOMMERZE',
+    logo: '',
+    showLogo: false,
+    showBranchName: true,
+    showBranchAddress: true,
+    showBranchPhone: true,
+    showBranchEmail: true,
     legendGroups: [
       { text: 'Gracias por su compra', bold: true },
       { text: '¡Vuelva pronto!', bold: false },
@@ -94,6 +105,11 @@ export function SettingsPage() {
             printerOpenDrawer: cfg.receipt.printerOpenDrawer ?? false,
             legendGroups: configuredGroups.length ? configuredGroups : prev.legendGroups,
           }));
+        }
+        const logoService = receiptLogoAPI()?.ServiceLoadReceiptLogo;
+        if (typeof logoService === 'function') {
+          const logo = await logoService();
+          if (logo) setReceipt(value => ({ ...value, logo }));
         }
       } catch { /* ignore */ }
     };
@@ -173,8 +189,11 @@ export function SettingsPage() {
     try {
       const current = await ServiceGetKommerzConfig();
       const normalizedReceipt = normalizeReceiptConfig(receipt);
+      const logoService = receiptLogoAPI()?.ServiceSaveReceiptLogo;
+      if (typeof logoService !== 'function') throw new Error('El servicio de logotipo no está disponible. Reinicia Wails.');
+      await logoService(receipt.logo || '');
       await ServiceSaveKommerzConfig({ ...(current || {}), receipt: normalizedReceipt });
-      setReceipt(normalizedReceipt);
+      setReceipt(value => ({ ...normalizedReceipt, logo: value.logo }));
       const successMessage = activeTab === 'correo'
         ? 'Configuración de correo SMTP guardada'
         : activeTab === 'impresora'
@@ -195,8 +214,11 @@ export function SettingsPage() {
     setTestingPrinter(true);
     try {
       const current = await ServiceGetKommerzConfig();
+      const logoService = receiptLogoAPI()?.ServiceSaveReceiptLogo;
+      if (typeof logoService !== 'function') throw new Error('El servicio de logotipo no está disponible. Reinicia Wails.');
+      await logoService(receipt.logo || '');
       await ServiceSaveKommerzConfig({ ...(current || {}), receipt: normalizedReceipt });
-      setReceipt(normalizedReceipt);
+      setReceipt(value => ({ ...normalizedReceipt, logo: value.logo }));
       await ServiceTestPrintReceipt(normalizedReceipt);
       toast.success('Ticket de prueba enviado a la miniprinter');
     } catch (err) {
@@ -258,7 +280,7 @@ export function SettingsPage() {
           <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
             <span>/</span>
-            <span className="text-foreground">Ajustes</span>
+            <span className="text-foreground">Configuración</span>
           </nav>
 
           <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
@@ -267,7 +289,7 @@ export function SettingsPage() {
                 <Settings className="size-6" strokeWidth={1.8} />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Ajustes</h1>
+                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Configuración</h1>
                 <p className="mt-0.5 text-xs text-muted-foreground">Configura el dispositivo, tickets y servicios de Kommerze.</p>
               </div>
             </div>
@@ -422,6 +444,83 @@ export function SettingsPage() {
                     <label className={settingsLabelClass}>Nombre comercial</label>
                     <input value={receipt.businessName} onChange={e => setReceipt(v => ({ ...v, businessName: e.target.value }))}
                       placeholder="KOMMERZE" className={settingsInputClass} />
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className={settingsLabelClass}>Información visible</label>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Los datos se obtienen automáticamente de la sucursal y empresa registradas.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        { key: 'showLogo', label: 'Logotipo', description: 'Utilizar el logotipo de la empresa', icon: ImageIcon },
+                        { key: 'showBranchName', label: 'Nombre de sucursal', description: 'Nombre registrado de la sucursal', icon: ReceiptText },
+                        { key: 'showBranchAddress', label: 'Dirección', description: 'Domicilio registrado de la sucursal', icon: MapPin },
+                        { key: 'showBranchPhone', label: 'Teléfono', description: 'Teléfono principal de la sucursal', icon: Phone },
+                        { key: 'showBranchEmail', label: 'Correo electrónico', description: 'Correo registrado de la sucursal', icon: Mail },
+                      ].map(({ key, label, description, icon: Icon }) => (
+                        <div key={key} className={cn(settingsInsetClass, 'flex items-center justify-between gap-4')}>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className={settingsLabelClass}>{label}</p>
+                              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{description}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={Boolean(receipt[key])}
+                            onClick={() => setReceipt(value => ({ ...value, [key]: !value[key] }))}
+                            className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', receipt[key] ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600')}
+                          >
+                            <span className={cn('absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform', receipt[key] && 'translate-x-5')} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {receipt.showLogo && (
+                      <div className={cn(settingsInsetClass, 'flex flex-col gap-4 sm:flex-row sm:items-center')}>
+                        <div className="flex h-20 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-blue-200/80 bg-white/80 dark:border-blue-400/20 dark:bg-white/[.05]">
+                          {receipt.logo
+                            ? <img src={receipt.logo} alt="Vista previa del logotipo" className="max-h-16 max-w-[136px] object-contain" />
+                            : <ImageIcon className="size-7 text-blue-300 dark:text-blue-500/60" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={settingsLabelClass}>Logotipo del ticket</p>
+                          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">PNG o JPG. Si no cargas uno, se utilizará el logotipo registrado en la empresa.</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-3 text-xs font-semibold text-primary transition hover:bg-primary/10">
+                              <ImageIcon className="size-3.5" /> Seleccionar imagen
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg"
+                                className="hidden"
+                                onChange={event => {
+                                  const file = event.target.files?.[0];
+                                  event.target.value = '';
+                                  if (!file) return;
+                                  if (file.size > 2 * 1024 * 1024) {
+                                    toast.error('El logotipo no debe exceder 2 MB');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = () => setReceipt(value => ({ ...value, logo: String(reader.result || '') }));
+                                  reader.onerror = () => toast.error('No se pudo leer el logotipo');
+                                  reader.readAsDataURL(file);
+                                }}
+                              />
+                            </label>
+                            {receipt.logo && (
+                              <button type="button" onClick={() => setReceipt(value => ({ ...value, logo: '' }))} className="h-9 rounded-xl border border-border/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                                Usar logotipo de empresa
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3">

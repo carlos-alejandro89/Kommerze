@@ -74,8 +74,8 @@ export default function POSPage() {
 
     // ── Inicialización ────────────────────────────────────────────────────────
     React.useEffect(() => {
-        // Establecer operationType = 1 (Venta) siempre al iniciar el POS
-        localStorage.setItem('operationType', JSON.stringify(TRANSACTION_TYPES.VENTA.id));
+        localStorage.removeItem('operationType');
+        localStorage.setItem('operationTypeGuid', TRANSACTION_TYPES.VENTA.guid);
         // Auto-foco en el campo de búsqueda
         searchInputRef.current?.focus();
     }, []);

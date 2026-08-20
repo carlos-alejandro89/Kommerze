@@ -15,9 +15,9 @@ import {
 } from '../../../../wailsjs/go/main/App';
 
 const TABS = [
+  { id: 'financiero', label: 'Financiero', icon: BarChart3 },
   { id: 'jornada', label: 'Jornada', icon: Building2 },
   { id: 'cajas', label: 'Turnos', icon: Users },
-  { id: 'financiero', label: 'Financiero', icon: BarChart3 },
 ];
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -32,7 +32,7 @@ export function CortesSucursalPage() {
   const sucursalID = store?.ID ?? store?.id ?? 0;
   const userID = user?.ID ?? user?.id ?? 0;
 
-  const [activeTab, setActiveTab] = useState('jornada');
+  const [activeTab, setActiveTab] = useState('financiero');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -392,6 +392,8 @@ export function CortesSucursalPage() {
                   <Section title="Ventas e Inventario" icon={Package} iconColor="text-violet-500">
                     <Row label="Inventario Inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
                     <Row label="Valor Ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
+                    <Row label="Valor de las compras" value={fmt(opSucursal?.ValorCompras || opSucursal?.valorCompras)} />
+                    <Row label="Bajas de mercancía" value={fmt(opSucursal?.BajasMercancia || opSucursal?.bajasMercancia)} />
                     <Row label="Descuentos" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
                     <Row label="Inventario Final" value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} />
                   </Section>
