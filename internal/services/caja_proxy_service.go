@@ -73,6 +73,33 @@ func (c *CajaProxyService) post(path string, body any, out any) error {
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
+func (c *CajaProxyService) PrepararFactura(pedidoGuid string) (*dto.FacturacionPreparacionDto, error) {
+	var result struct {
+		Success bool                          `json:"success"`
+		Data    dto.FacturacionPreparacionDto `json:"data"`
+	}
+	if err := c.get("/local/facturacion/preparar?pedidoGuid="+url.QueryEscape(pedidoGuid), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (c *CajaProxyService) EmitirFactura(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    dto.FacturacionResultadoDto `json:"data"`
+	}
+	if err := c.post("/local/facturacion/emitir", req, &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (c *CajaProxyService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
+	var result map[string]any
+	return c.post("/local/facturacion/enviar-correo", req, &result)
+}
+
 // ── PosService equivalentes ───────────────────────────────────────────────────
 
 func (c *CajaProxyService) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {

@@ -1,8 +1,13 @@
 package services
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,6 +15,8 @@ import (
 )
 
 const DefaultCloudAPIURL = "https://kommerze-cloud-api.developers-lab.com"
+
+const encryptedSecretPrefix = "enc:v1:"
 
 // defaultStr devuelve fallback si s está vacío.
 func defaultStr(s, fallback string) string {
@@ -102,6 +109,13 @@ type KommerzConfig struct {
 	CloudPassword string `json:"cloudPassword,omitempty"`
 	CloudAPIURL   string `json:"cloudApiUrl,omitempty"`
 
+	// Servicio externo de facturación. Client ID y Client Secret se cifran
+	// antes de escribir el archivo de configuración y se descifran al cargarlo.
+	FacturacionAPIHost      string `json:"facturacionApiHost,omitempty"`
+	FacturacionClientID     string `json:"facturacionClientId,omitempty"`
+	FacturacionClientSecret string `json:"facturacionClientSecret,omitempty"`
+	FacturacionXMLPath      string `json:"facturacionXmlPath,omitempty"`
+
 	// Credenciales de NetPay
 	NetPayUser         string `json:"netPayUser,omitempty"`
 	NetPayPassword     string `json:"netPayPassword,omitempty"`
@@ -166,6 +180,108 @@ func GetKommerzConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(appDir, "kommerze_config.json"), nil
+}
+
+func getCredentialsKeyPath() (string, error) {
+	configPath, err := GetKommerzConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(configPath), ".credentials.key"), nil
+}
+
+func loadCredentialsKey() ([]byte, error) {
+	path, err := getCredentialsKeyPath()
+	if err != nil {
+		return nil, err
+	}
+	key, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(key) != 32 {
+		return nil, fmt.Errorf("la clave local de credenciales no es válida")
+	}
+	return key, nil
+}
+
+func loadOrCreateCredentialsKey() ([]byte, error) {
+	path, err := getCredentialsKeyPath()
+	if err != nil {
+		return nil, err
+	}
+	if key, readErr := loadCredentialsKey(); readErr == nil {
+		return key, nil
+	} else if !os.IsNotExist(readErr) {
+		return nil, readErr
+	}
+
+	key := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if os.IsExist(err) {
+		return loadOrCreateCredentialsKey()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if _, err = file.Write(key); err != nil {
+		file.Close()
+		return nil, err
+	}
+	if err = file.Close(); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func encryptConfigSecret(value, field string, key []byte) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.HasPrefix(value, encryptedSecretPrefix) {
+		return value, nil
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	sealed := gcm.Seal(nonce, nonce, []byte(value), []byte(field))
+	return encryptedSecretPrefix + base64.RawStdEncoding.EncodeToString(sealed), nil
+}
+
+func decryptConfigSecret(value, field string, key []byte) (string, error) {
+	if value == "" || !strings.HasPrefix(value, encryptedSecretPrefix) {
+		return value, nil // Compatibilidad con configuraciones previas en texto plano.
+	}
+	payload, err := base64.RawStdEncoding.DecodeString(strings.TrimPrefix(value, encryptedSecretPrefix))
+	if err != nil {
+		return "", fmt.Errorf("credencial de facturación inválida: %w", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(payload) < gcm.NonceSize() {
+		return "", fmt.Errorf("credencial de facturación incompleta")
+	}
+	plain, err := gcm.Open(nil, payload[:gcm.NonceSize()], payload[gcm.NonceSize():], []byte(field))
+	if err != nil {
+		return "", fmt.Errorf("no se pudo descifrar %s: %w", field, err)
+	}
+	return string(plain), nil
 }
 
 func getReceiptLogoPath() (string, error) {
@@ -240,6 +356,26 @@ func LoadKommerzConfig() (*KommerzConfig, error) {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+	// Compatibilidad con la primera versión del tab que utilizó el prefijo
+	// inglés "billing". Se migra al contrato en español al finalizar la carga.
+	var legacyFacturacion struct {
+		APIHost      string `json:"billingApiHost"`
+		ClientID     string `json:"billingClientId"`
+		ClientSecret string `json:"billingClientSecret"`
+	}
+	_ = json.Unmarshal(data, &legacyFacturacion)
+	legacyAPIHost := cfg.FacturacionAPIHost == "" && legacyFacturacion.APIHost != ""
+	legacyClientID := cfg.FacturacionClientID == "" && legacyFacturacion.ClientID != ""
+	legacyClientSecret := cfg.FacturacionClientSecret == "" && legacyFacturacion.ClientSecret != ""
+	if legacyAPIHost {
+		cfg.FacturacionAPIHost = legacyFacturacion.APIHost
+	}
+	if legacyClientID {
+		cfg.FacturacionClientID = legacyFacturacion.ClientID
+	}
+	if legacyClientSecret {
+		cfg.FacturacionClientSecret = legacyFacturacion.ClientSecret
+	}
 	// Migración transparente de la primera versión que guardaba el logotipo
 	// dentro de receipt.logo. Se extrae al archivo dedicado y se limpia el JSON.
 	var legacy struct {
@@ -255,8 +391,38 @@ func LoadKommerzConfig() (*KommerzConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(path, cleanData, 0644); err != nil {
+		if err := os.WriteFile(path, cleanData, 0600); err != nil {
 			return nil, err
+		}
+		if err := os.Chmod(path, 0600); err != nil {
+			return nil, err
+		}
+	}
+	// El descifrado ocurre después de cualquier migración que reescriba el
+	// archivo para garantizar que las credenciales nunca vuelvan a texto plano.
+	if strings.HasPrefix(cfg.FacturacionClientID, encryptedSecretPrefix) || strings.HasPrefix(cfg.FacturacionClientSecret, encryptedSecretPrefix) {
+		key, err := loadCredentialsKey()
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo cargar la clave local de facturación: %w", err)
+		}
+		clientIDField := "facturacionClientId"
+		if legacyClientID {
+			clientIDField = "billingClientId"
+		}
+		clientSecretField := "facturacionClientSecret"
+		if legacyClientSecret {
+			clientSecretField = "billingClientSecret"
+		}
+		if cfg.FacturacionClientID, err = decryptConfigSecret(cfg.FacturacionClientID, clientIDField, key); err != nil {
+			return nil, err
+		}
+		if cfg.FacturacionClientSecret, err = decryptConfigSecret(cfg.FacturacionClientSecret, clientSecretField, key); err != nil {
+			return nil, err
+		}
+	}
+	if legacyAPIHost || legacyClientID || legacyClientSecret {
+		if err := SaveKommerzConfig(&cfg); err != nil {
+			return nil, fmt.Errorf("no se pudo migrar la configuración de facturación: %w", err)
 		}
 	}
 	return &cfg, nil
@@ -270,15 +436,37 @@ func SaveKommerzConfig(cfg *KommerzConfig) error {
 		}
 		cfg.CloudAPIURL = strings.TrimRight(strings.TrimSpace(cfg.CloudAPIURL), "/")
 	}
+	if strings.TrimSpace(cfg.FacturacionAPIHost) != "" {
+		if err := ValidateCloudAPIURL(cfg.FacturacionAPIHost); err != nil {
+			return fmt.Errorf("API Host de facturación inválido: %w", err)
+		}
+		cfg.FacturacionAPIHost = strings.TrimRight(strings.TrimSpace(cfg.FacturacionAPIHost), "/")
+	}
 	path, err := GetKommerzConfigPath()
 	if err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	stored := *cfg
+	if stored.FacturacionClientID != "" || stored.FacturacionClientSecret != "" {
+		key, err := loadOrCreateCredentialsKey()
+		if err != nil {
+			return fmt.Errorf("no se pudo preparar el cifrado de facturación: %w", err)
+		}
+		if stored.FacturacionClientID, err = encryptConfigSecret(stored.FacturacionClientID, "facturacionClientId", key); err != nil {
+			return err
+		}
+		if stored.FacturacionClientSecret, err = encryptConfigSecret(stored.FacturacionClientSecret, "facturacionClientSecret", key); err != nil {
+			return err
+		}
+	}
+	data, err := json.MarshalIndent(&stored, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0600)
 }
 
 // SaveCloudCredentials actualiza las credenciales de nube en el config unificado.

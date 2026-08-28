@@ -831,6 +831,29 @@ func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 	return a.catalogosService().GetSucursales()
 }
 
+func (a *App) facturacionService() interface {
+	PrepararFactura(string) (*dto.FacturacionPreparacionDto, error)
+	EmitirFactura(dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error)
+	EnviarFacturaCorreo(dto.EnviarFacturaEmailRequestDto) error
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Facturacion
+}
+
+func (a *App) ServicePrepararFacturacion(pedidoGuid string) (*dto.FacturacionPreparacionDto, error) {
+	return a.facturacionService().PrepararFactura(pedidoGuid)
+}
+
+func (a *App) ServiceEmitirFacturacion(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
+	return a.facturacionService().EmitirFactura(req)
+}
+
+func (a *App) ServiceEnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
+	return a.facturacionService().EnviarFacturaCorreo(req)
+}
+
 // ── Clientes ──────────────────────────────────────────────────────────────────
 
 // ServiceBuscarClientes busca clientes por razón social, RFC o teléfono.
@@ -897,6 +920,14 @@ func (a *App) ServiceGetKommerzConfig() (*services.KommerzConfig, error) {
 // ServiceSaveKommerzConfig persiste la configuración del dispositivo.
 func (a *App) ServiceSaveKommerzConfig(cfg services.KommerzConfig) error {
 	return services.SaveKommerzConfig(&cfg)
+}
+
+// ServiceSelectInvoiceFolder permite elegir la carpeta donde se conservarán
+// los XML timbrados sin exponer acceso arbitrario al filesystem en React.
+func (a *App) ServiceSelectInvoiceFolder() (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Seleccionar carpeta de facturas",
+	})
 }
 
 func (a *App) ServiceLoadReceiptLogo() (string, error) {

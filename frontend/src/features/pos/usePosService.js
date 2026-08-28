@@ -45,6 +45,9 @@ import {
     ServiceGeneratePurchaseReport,
     ServiceBuscarEntidadFiscalProveedor,
     ServiceBuscarProveedores,
+    ServicePrepararFacturacion,
+    ServiceEmitirFacturacion,
+    ServiceEnviarFacturaCorreo,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -135,6 +138,9 @@ export function usePosService() {
     const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
     const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
     const generarReporteCompra = (pedidoGuid) => ServiceGeneratePurchaseReport(pedidoGuid);
+    const prepararFacturacion = (pedidoGuid) => ServicePrepararFacturacion(pedidoGuid);
+    const emitirFacturacion = (datos) => ServiceEmitirFacturacion(datos);
+    const enviarFacturaCorreo = (datos) => ServiceEnviarFacturaCorreo(datos);
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +206,9 @@ export function usePosService() {
         imprimirRecibo,
         enviarRecibo,
         generarReporteCompra,
+        prepararFacturacion,
+        emitirFacturacion,
+        enviarFacturaCorreo,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

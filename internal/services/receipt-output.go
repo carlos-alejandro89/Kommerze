@@ -1,6 +1,7 @@
 package services
 
 import (
+	"BitComercio/internal/models"
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
@@ -10,12 +11,82 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	reportmodels "BitComercio/internal/usecases/reports/models"
 	"BitComercio/internal/usecases/reports/renders"
 )
+
+func EmailInvoiceFiles(invoice models.Factura, orderFolio int, recipients []string, cfg ReceiptConfig) error {
+	if cfg.SMTPHost == "" || cfg.SMTPPort == "" || cfg.SMTPUser == "" || cfg.SMTPPassword == "" {
+		return fmt.Errorf("configura el servidor SMTP y sus credenciales")
+	}
+	unique := make([]string, 0, len(recipients))
+	seen := map[string]bool{}
+	for _, value := range recipients {
+		address := strings.TrimSpace(value)
+		if address == "" {
+			continue
+		}
+		parsed, err := mail.ParseAddress(address)
+		if err != nil {
+			return fmt.Errorf("correo del destinatario inválido %q: %w", address, err)
+		}
+		normalized := strings.ToLower(parsed.Address)
+		if !seen[normalized] {
+			seen[normalized] = true
+			unique = append(unique, parsed.Address)
+		}
+	}
+	if len(unique) == 0 {
+		return fmt.Errorf("agrega al menos un destinatario")
+	}
+	pdf, err := os.ReadFile(invoice.ArchivoPDF)
+	if err != nil {
+		return fmt.Errorf("no se pudo leer el PDF fiscal: %w", err)
+	}
+	xml, err := os.ReadFile(invoice.ArchivoXML)
+	if err != nil {
+		return fmt.Errorf("no se pudo leer el XML fiscal: %w", err)
+	}
+	envelopeFrom := cfg.SMTPUser
+	mixedBoundary := "kommerze-cfdi-mixed"
+	alternativeBoundary := "kommerze-cfdi-alternative"
+	subject := "Factura CFDI " + invoice.UUID
+	var msg bytes.Buffer
+	fmt.Fprintf(&msg, "From: %s\r\nTo: %s\r\nSubject: %s\r\n", formatEmailFrom("Kommerze", envelopeFrom), strings.Join(unique, ", "), mime.QEncoding.Encode("UTF-8", subject))
+	if replyTo := strings.TrimSpace(cfg.SMTPFrom); replyTo != "" && !strings.EqualFold(replyTo, envelopeFrom) {
+		fmt.Fprintf(&msg, "Reply-To: %s\r\n", replyTo)
+	}
+	fmt.Fprintf(&msg, "Date: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%q\r\n\r\n", time.Now().Format(time.RFC1123Z), mixedBoundary)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: multipart/alternative; boundary=%q\r\n\r\n", mixedBoundary, alternativeBoundary)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nAdjuntamos el PDF y XML de su factura con folio fiscal %s.\r\n", alternativeBoundary, invoice.UUID)
+	fmt.Fprintf(&msg, "--%s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n%s\r\n--%s--\r\n\r\n", alternativeBoundary, invoiceEmailHTML(invoice, orderFolio), alternativeBoundary)
+	writeEmailAttachment(&msg, mixedBoundary, filepath.Base(invoice.ArchivoPDF), "application/pdf", pdf)
+	writeEmailAttachment(&msg, mixedBoundary, filepath.Base(invoice.ArchivoXML), "application/xml", xml)
+	fmt.Fprintf(&msg, "--%s--\r\n", mixedBoundary)
+	if err := sendSMTPMany(cfg, envelopeFrom, unique, msg.Bytes()); err != nil {
+		return fmt.Errorf("el servidor SMTP rechazó el envío: %w", err)
+	}
+	return nil
+}
+
+func writeEmailAttachment(msg *bytes.Buffer, boundary, fileName, contentType string, data []byte) {
+	fmt.Fprintf(msg, "--%s\r\nContent-Type: %s; name=%q\r\nContent-Disposition: attachment; filename=%q\r\nContent-Transfer-Encoding: base64\r\n\r\n", boundary, contentType, fileName, fileName)
+	encoded := base64.StdEncoding.EncodeToString(data)
+	for len(encoded) > 76 {
+		msg.WriteString(encoded[:76] + "\r\n")
+		encoded = encoded[76:]
+	}
+	msg.WriteString(encoded + "\r\n")
+}
+
+func invoiceEmailHTML(invoice models.Factura, orderFolio int) string {
+	return fmt.Sprintf(`<!doctype html><html lang="es"><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033"><table width="100%%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 32px rgba(15,35,70,.10)"><tr><td style="background:#002366;padding:30px 36px;color:#fff"><div style="font-size:25px;font-weight:800">Factura timbrada</div><div style="margin-top:7px;color:#b9cdf8;letter-spacing:2px">KOMMERZE</div></td></tr><tr><td style="padding:34px 36px"><div style="font-size:21px;font-weight:700">Su comprobante fiscal está listo</div><p style="color:#647087;line-height:1.65">Adjuntamos las representaciones PDF y XML correspondientes a su CFDI.</p><table width="100%%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border:1px solid #e5eaf2;border-radius:12px;padding:8px 18px"><tr><td style="padding:13px 0;color:#718096">Pedido</td><td align="right" style="font-weight:700">%06d</td></tr><tr><td style="padding:13px 0;border-top:1px solid #e5eaf2;color:#718096">Folio fiscal</td><td align="right" style="border-top:1px solid #e5eaf2;font-size:12px">%s</td></tr><tr><td style="padding:15px 0;border-top:1px solid #e5eaf2;font-weight:700">Total</td><td align="right" style="padding:15px 0;border-top:1px solid #e5eaf2;color:#002366;font-size:20px;font-weight:800">%s MXN</td></tr></table><p style="margin-top:24px;color:#647087;font-size:13px">Conserve ambos archivos para sus registros fiscales.</p></td></tr><tr><td style="padding:18px;background:#f7f9fc;text-align:center;color:#8a95a8;font-size:11px">Documento enviado por Kommerze POS.</td></tr></table></td></tr></table></body></html>`, orderFolio, html.EscapeString(invoice.UUID), formatMoney(invoice.Total.InexactFloat64()))
+}
 
 func PrintReceipt(r reportmodels.Receipt, cfg ReceiptConfig) error {
 	if strings.TrimSpace(cfg.PrinterAddress) == "" {
@@ -126,6 +197,10 @@ func formatEmailFrom(name, address string) string {
 }
 
 func sendSMTP(cfg ReceiptConfig, from, recipient string, message []byte) error {
+	return sendSMTPMany(cfg, from, []string{recipient}, message)
+}
+
+func sendSMTPMany(cfg ReceiptConfig, from string, recipients []string, message []byte) error {
 	addr := net.JoinHostPort(cfg.SMTPHost, cfg.SMTPPort)
 	tlsConfig := &tls.Config{ServerName: cfg.SMTPHost, MinVersion: tls.VersionTLS12}
 	var client *smtp.Client
@@ -163,8 +238,10 @@ func sendSMTP(cfg ReceiptConfig, from, recipient string, message []byte) error {
 	if err := client.Mail(from); err != nil {
 		return fmt.Errorf("remitente %s: %w", from, err)
 	}
-	if err := client.Rcpt(recipient); err != nil {
-		return fmt.Errorf("destinatario %s: %w", recipient, err)
+	for _, recipient := range recipients {
+		if err := client.Rcpt(recipient); err != nil {
+			return fmt.Errorf("destinatario %s: %w", recipient, err)
+		}
 	}
 	writer, err := client.Data()
 	if err != nil {

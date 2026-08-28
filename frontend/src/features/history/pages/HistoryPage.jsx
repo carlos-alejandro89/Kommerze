@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
   ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
-  ReceiptText, Printer, Mail, FileDown, Ban, MoreHorizontal,
+  ReceiptText, Printer, Mail, FileDown, Ban, MoreHorizontal, FileCheck2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
@@ -49,6 +49,17 @@ function esHoy(fechaStr) {
     d.getMonth()    === hoy.getMonth()    &&
     d.getDate()     === hoy.getDate()
   );
+}
+
+function getInitials(value) {
+  const words = String(value || 'Público General').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'PG';
+}
+
+function getDisplayFolio(row) {
+  const folio = String(row?.Folio || '').padStart(6, '0');
+  if (isTransactionType(row, TRANSACTION_TYPES.COTIZACION)) return `CTZ-${folio}`;
+  return `${row?.SerieCFDI || 'A'}-${folio}`;
 }
 
 /* ── Badges de estatus de pedido ── */
@@ -204,7 +215,10 @@ export function HistoryPage() {
     if (!q) return transacciones;
     return transacciones.filter(t =>
       String(t.Folio ?? '').toLowerCase().includes(q) ||
+      (t.SerieCFDI ?? '').toLowerCase().includes(q) ||
       (t.RazonSocial ?? '').toLowerCase().includes(q) ||
+      (t.ReceptorRFC ?? '').toLowerCase().includes(q) ||
+      (t.FacturaUUID ?? '').toLowerCase().includes(q) ||
       (t.TipoOperacion ?? '').toLowerCase().includes(q),
     );
   }, [transacciones, search]);
@@ -358,57 +372,57 @@ export function HistoryPage() {
           ))}
         </div>
 
-        {/* ── Navegación, búsqueda y actualización ── */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar por folio, cliente o tipo…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/75 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-              />
-            </div>
-            <button
-              onClick={cargar}
-              disabled={loading}
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              title="Actualizar historial"
-            >
-              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/35 p-1">
-            {TIPO_TABS.map(tab => {
-              const Icon = tab.icon;
-              const active = tipoFiltro === tab.id;
-              const pending = tab.id === TRANSACTION_TYPES.COTIZACION.guid
-                ? transacciones.filter(t => isTransactionType(t, TRANSACTION_TYPES.COTIZACION) && t.EstatusAutorizacion === 'solicitada').length
-                : 0;
-              return (
-                <button
-                  key={String(tab.id)}
-                  onClick={() => setTipoFiltro(tab.id)}
-                  className={cn(
-                    'relative flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
-                    active
-                      ? 'border border-border/60 bg-background text-primary shadow-sm'
-                      : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
-                  )}
-                >
-                  <Icon className="size-3.5" />
-                  {tab.label}
-                  {pending > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white">{pending}</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Table card */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+
+          {/* Navegación y búsqueda integradas */}
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
+            <div className="flex items-center gap-5 self-stretch">
+              {TIPO_TABS.map(tab => {
+                const Icon = tab.icon;
+                const active = tipoFiltro === tab.id;
+                const pending = tab.id === TRANSACTION_TYPES.COTIZACION.guid
+                  ? transacciones.filter(t => isTransactionType(t, TRANSACTION_TYPES.COTIZACION) && t.EstatusAutorizacion === 'solicitada').length
+                  : 0;
+                return (
+                  <button
+                    key={String(tab.id)}
+                    onClick={() => setTipoFiltro(tab.id)}
+                    className={cn(
+                      'relative flex h-10 items-center gap-1.5 px-1 text-xs font-semibold transition-colors after:absolute after:inset-x-0 after:-bottom-3 after:h-0.5 after:rounded-full after:transition-colors',
+                      active
+                        ? 'text-primary after:bg-primary'
+                        : 'text-muted-foreground after:bg-transparent hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                    {tab.label}
+                    {pending > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white">{pending}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar por folio, cliente, RFC o UUID…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 w-full rounded-full border border-border/70 bg-background/75 pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/45 focus:ring-2 focus:ring-primary/10"
+                />
+              </div>
+              <button
+                onClick={cargar}
+                disabled={loading}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/75 text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                title="Actualizar historial"
+              >
+                <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+              </button>
+            </div>
+          </div>
 
           {/* Error */}
           {error && (
@@ -447,7 +461,7 @@ export function HistoryPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="sticky top-0 border-b border-border/70 bg-slate-50/95 backdrop-blur dark:bg-white/[.055]">
-                      {['Folio', 'Fecha', 'Cliente', 'Tipo', 'Total', 'Estado', 'Acciones'].map(h => (
+                      {['Folio / serie', 'Emisión', 'Receptor', 'Tipo', 'Total', 'Estado', 'Facturación', 'Acciones'].map(h => (
                         <th key={h} className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap">
                           {h}
                         </th>
@@ -457,7 +471,7 @@ export function HistoryPage() {
                   <tbody className="divide-y divide-border/65">
                     {pageItems.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
+                        <td colSpan={8} className="py-16 text-center text-sm text-muted-foreground">
                           {search ? 'Sin resultados para la búsqueda.' : 'No hay transacciones registradas.'}
                         </td>
                       </tr>
@@ -487,9 +501,10 @@ export function HistoryPage() {
 
                           {/* Folio */}
                           <td className="px-5 py-3.5 whitespace-nowrap">
-                            <button onClick={() => setModalVer(t)} className="font-mono text-xs font-bold text-primary underline-offset-4 hover:underline">
-                              #{String(t.Folio).padStart(4, '0')}
+                            <button onClick={() => setModalVer(t)} className="text-xs font-bold tracking-[0.01em] text-primary underline-offset-4 hover:underline">
+                              {getDisplayFolio(t)}
                             </button>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">{t.PedidoGuid ? 'Operación registrada' : 'Sin identificador'}</p>
                           </td>
 
                           {/* Fecha */}
@@ -499,8 +514,18 @@ export function HistoryPage() {
                           </td>
 
                           {/* Cliente */}
-                          <td className="max-w-[200px] truncate px-5 py-3.5 text-sm font-medium text-foreground">
-                            {t.RazonSocial || 'Público General'}
+                          <td className="px-5 py-3.5">
+                            <div className="flex min-w-[220px] items-center gap-3">
+                              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary ring-1 ring-primary/15">
+                                {getInitials(t.RazonSocial)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="max-w-[250px] truncate text-xs font-semibold text-foreground">{t.RazonSocial || 'Público General'}</p>
+                                <p className="mt-0.5 max-w-[250px] truncate text-[10px] text-muted-foreground">
+                                  {t.ReceptorRFC ? `RFC: ${t.ReceptorRFC}` : (t.Correo || 'Sin datos fiscales asociados')}
+                                </p>
+                              </div>
+                            </div>
                           </td>
 
                           {/* Tipo */}
@@ -512,7 +537,8 @@ export function HistoryPage() {
 
                           {/* Total */}
                           <td className="px-5 py-3.5 font-bold text-foreground tabular-nums whitespace-nowrap">
-                            ${(t.MontoTransaccion ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                            ${(t.MontoTransaccion ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <span className="ml-1 text-[9px] font-medium text-muted-foreground">MXN</span>
                           </td>
 
                           {/* Estado */}
@@ -539,23 +565,74 @@ export function HistoryPage() {
                             </div>
                           </td>
 
+                          {/* Facturación */}
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            {esCotizacion ? (
+                              <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">No aplica</span>
+                            ) : t.Facturada ? (
+                              <span title={t.FacturaUUID || 'CFDI timbrado'} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                <FileCheck2 className="size-3" /> Facturada
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                                <ReceiptText className="size-3" /> Sin facturar
+                              </span>
+                            )}
+                          </td>
+
                           {/* Acciones */}
                           <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-1.5">
-                              {/* Acciones genéricas */}
-                              <button
-                                onClick={() => setModalVer(t)}
-                                className="flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/65 px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-                              >
-                                <Eye className="size-3" /> Ver
-                              </button>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center rounded-full border border-border/70 bg-background/80 p-1 shadow-[0_10px_24px_-19px_rgba(20,54,110,.75)]">
+                                <button
+                                  type="button"
+                                  onClick={() => setModalVer(t)}
+                                  title="Ver detalle"
+                                  aria-label="Ver detalle de la operación"
+                                  className="flex size-8 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                                >
+                                  <Eye className="size-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleVerDocumento(t)}
+                                  disabled={procesandoAccion}
+                                  title="Ver documento"
+                                  aria-label="Ver documento"
+                                  className="flex size-8 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-40 dark:text-blue-400"
+                                >
+                                  <FileDown className="size-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleImprimir(t)}
+                                  disabled={procesandoAccion}
+                                  title="Imprimir"
+                                  aria-label="Imprimir documento"
+                                  className="flex size-8 items-center justify-center rounded-full text-violet-600 transition hover:bg-violet-500/10 disabled:opacity-40 dark:text-violet-400"
+                                >
+                                  <Printer className="size-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => abrirEnvio(t)}
+                                  title="Enviar por correo"
+                                  aria-label="Enviar por correo"
+                                  className="flex size-8 items-center justify-center rounded-full text-emerald-600 transition hover:bg-emerald-500/10 dark:text-emerald-400"
+                                >
+                                  <Mail className="size-3.5" />
+                                </button>
+                              </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button disabled={procesandoAccion} aria-label="Más acciones" className="flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/65 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50">
+                                  <button disabled={procesandoAccion} aria-label="Más acciones" className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50">
                                     <MoreHorizontal className="size-4" />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-52">
+                                  <DropdownMenuItem onSelect={() => setModalVer(t)}>
+                                    <Eye className="size-4" /> Ver detalle
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onSelect={() => handleVerDocumento(t)}>
                                     <FileDown className="size-4" /> Ver documento
                                   </DropdownMenuItem>

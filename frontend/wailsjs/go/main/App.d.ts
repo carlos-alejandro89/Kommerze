@@ -54,6 +54,10 @@ export function ServiceDeleteReceiptLogo():Promise<void>;
 
 export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 
+export function ServiceEmitirFacturacion(arg1:dto.EmitirFacturacionRequestDto):Promise<dto.FacturacionResultadoDto>;
+
+export function ServiceEnviarFacturaCorreo(arg1:dto.EnviarFacturaEmailRequestDto):Promise<void>;
+
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGenerateSaleDocument(arg1:string):Promise<models.DocumentOutput>;
@@ -124,6 +128,8 @@ export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
 export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
 
+export function ServicePrepararFacturacion(arg1:string):Promise<dto.FacturacionPreparacionDto>;
+
 export function ServicePrintReceipt(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
@@ -137,6 +143,8 @@ export function ServiceSaveDBConfig(arg1:string,arg2:string,arg3:string,arg4:str
 export function ServiceSaveKommerzConfig(arg1:services.KommerzConfig):Promise<void>;
 
 export function ServiceSaveReceiptLogo(arg1:string):Promise<void>;
+
+export function ServiceSelectInvoiceFolder():Promise<string>;
 
 export function ServiceSucursalInicioOperacion(arg1:dto.SucursalInicioOperacionesDto):Promise<dto.ResponseDto>;
 

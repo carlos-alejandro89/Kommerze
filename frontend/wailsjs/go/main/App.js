@@ -98,6 +98,14 @@ export function ServiceEmailReceipt(arg1, arg2) {
   return window['go']['main']['App']['ServiceEmailReceipt'](arg1, arg2);
 }
 
+export function ServiceEmitirFacturacion(arg1) {
+  return window['go']['main']['App']['ServiceEmitirFacturacion'](arg1);
+}
+
+export function ServiceEnviarFacturaCorreo(arg1) {
+  return window['go']['main']['App']['ServiceEnviarFacturaCorreo'](arg1);
+}
+
 export function ServiceGeneratePurchaseReport(arg1) {
   return window['go']['main']['App']['ServiceGeneratePurchaseReport'](arg1);
 }
@@ -238,6 +246,10 @@ export function ServiceObtenerValorInventario() {
   return window['go']['main']['App']['ServiceObtenerValorInventario']();
 }
 
+export function ServicePrepararFacturacion(arg1) {
+  return window['go']['main']['App']['ServicePrepararFacturacion'](arg1);
+}
+
 export function ServicePrintReceipt(arg1) {
   return window['go']['main']['App']['ServicePrintReceipt'](arg1);
 }
@@ -264,6 +276,10 @@ export function ServiceSaveKommerzConfig(arg1) {
 
 export function ServiceSaveReceiptLogo(arg1) {
   return window['go']['main']['App']['ServiceSaveReceiptLogo'](arg1);
+}
+
+export function ServiceSelectInvoiceFolder() {
+  return window['go']['main']['App']['ServiceSelectInvoiceFolder']();
 }
 
 export function ServiceSucursalInicioOperacion(arg1) {

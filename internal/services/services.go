@@ -28,6 +28,7 @@ type Services struct {
 	NetPayService       *NetPayService
 	Cotizacion          *CotizacionService
 	Receipt             *ReceiptService
+	Facturacion         *FacturacionService
 	// En modo Caja, los servicios directos quedan nil; se usa CajaProxy.
 	CajaProxy *CajaProxyService
 }
@@ -82,12 +83,13 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	compras := NewComprasService(db)
 	cotizacion := NewCotizacionService(db, apiURL, cloudClient)
 	receipt := NewReceiptService(db)
+	facturacion := NewFacturacionService(db)
 	operacionesCaja := NewOperacionesCajaService(db)
 	operacionesSucursal := NewOperacionesSucursalService(db)
 	netPayService := NewNetPayService(netPayBaseURL, apiURL, cloudClient)
 
 	// Levantar servidor HTTP interno para que las Cajas se conecten
-	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, proveedores, compras, cotizacion, receipt, operacionesSucursal, operacionesCaja)
+	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, proveedores, compras, cotizacion, receipt, facturacion, operacionesSucursal, operacionesCaja)
 	cotizacion.SetBroadcast(localServer.BroadcastToClients)
 	go localServer.Start(":8989")
 	log.Printf("[Services] Modo SERVIDOR LOCAL — API interna activa en :8989")
@@ -120,5 +122,6 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 		NetPayService:       netPayService,
 		Cotizacion:          cotizacion,
 		Receipt:             receipt,
+		Facturacion:         facturacion,
 	}
 }

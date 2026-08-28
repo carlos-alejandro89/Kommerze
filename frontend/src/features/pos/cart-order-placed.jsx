@@ -298,6 +298,8 @@ export function CartOrderPlaced() {
                                 </Button>
 
                                 <Button
+                                    onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid } })}
+                                    disabled={!pedidoGuid || isQuotation}
                                     variant="outline"
                                     className="w-full sm:w-auto flex-none h-10 px-4 rounded-xl text-[11px] font-black uppercase gap-2 shadow-sm border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all active:scale-[0.98] text-primary hover:text-primary-foreground dark:hover:text-primary dark:border-primary/30"
                                 >

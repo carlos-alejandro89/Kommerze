@@ -414,7 +414,190 @@ export namespace dto {
 		    return a;
 		}
 	}
+	export class EmitirFacturacionRequestDto {
+	    pedidoGuid: string;
+	    entidadFiscalID: number;
+	    usoCFDIID: number;
+	    formaPagoID: number;
+	    metodoPagoID: number;
 	
+	    static createFrom(source: any = {}) {
+	        return new EmitirFacturacionRequestDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.entidadFiscalID = source["entidadFiscalID"];
+	        this.usoCFDIID = source["usoCFDIID"];
+	        this.formaPagoID = source["formaPagoID"];
+	        this.metodoPagoID = source["metodoPagoID"];
+	    }
+	}
+	
+	export class EnviarFacturaEmailRequestDto {
+	    pedidoGuid: string;
+	    destinatarios: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EnviarFacturaEmailRequestDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.destinatarios = source["destinatarios"];
+	    }
+	}
+	export class FacturacionCatalogoDto {
+	    ID: number;
+	    Guid: string;
+	    Clave: string;
+	    Descripcion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FacturacionCatalogoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.Clave = source["Clave"];
+	        this.Descripcion = source["Descripcion"];
+	    }
+	}
+	export class FacturacionConceptoDto {
+	    Codigo: string;
+	    Descripcion: string;
+	    Unidad: string;
+	    Cantidad: number;
+	    PrecioConIVA: number;
+	    Descuento: number;
+	    Total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FacturacionConceptoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Codigo = source["Codigo"];
+	        this.Descripcion = source["Descripcion"];
+	        this.Unidad = source["Unidad"];
+	        this.Cantidad = source["Cantidad"];
+	        this.PrecioConIVA = source["PrecioConIVA"];
+	        this.Descuento = source["Descuento"];
+	        this.Total = source["Total"];
+	    }
+	}
+	export class FacturacionEntidadDto {
+	    ID: number;
+	    Guid: string;
+	    RFC: string;
+	    RazonSocial: string;
+	    CodigoPostal: string;
+	    RegimenClave: string;
+	    Regimen: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FacturacionEntidadDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.RFC = source["RFC"];
+	        this.RazonSocial = source["RazonSocial"];
+	        this.CodigoPostal = source["CodigoPostal"];
+	        this.RegimenClave = source["RegimenClave"];
+	        this.Regimen = source["Regimen"];
+	    }
+	}
+	export class FacturacionPreparacionDto {
+	    PedidoGuid: string;
+	    Folio: number;
+	    Serie: string;
+	    // Go type: time
+	    Fecha: any;
+	    Cliente: string;
+	    Entidades: FacturacionEntidadDto[];
+	    UsosCFDI: FacturacionCatalogoDto[];
+	    FormasPago: FacturacionCatalogoDto[];
+	    MetodosPago: FacturacionCatalogoDto[];
+	    FormaPagoPredominanteID: number;
+	    MetodoPagoSugeridoID: number;
+	    Conceptos: FacturacionConceptoDto[];
+	    Subtotal: number;
+	    Descuentos: number;
+	    Impuestos: number;
+	    Total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FacturacionPreparacionDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.PedidoGuid = source["PedidoGuid"];
+	        this.Folio = source["Folio"];
+	        this.Serie = source["Serie"];
+	        this.Fecha = this.convertValues(source["Fecha"], null);
+	        this.Cliente = source["Cliente"];
+	        this.Entidades = this.convertValues(source["Entidades"], FacturacionEntidadDto);
+	        this.UsosCFDI = this.convertValues(source["UsosCFDI"], FacturacionCatalogoDto);
+	        this.FormasPago = this.convertValues(source["FormasPago"], FacturacionCatalogoDto);
+	        this.MetodosPago = this.convertValues(source["MetodosPago"], FacturacionCatalogoDto);
+	        this.FormaPagoPredominanteID = source["FormaPagoPredominanteID"];
+	        this.MetodoPagoSugeridoID = source["MetodoPagoSugeridoID"];
+	        this.Conceptos = this.convertValues(source["Conceptos"], FacturacionConceptoDto);
+	        this.Subtotal = source["Subtotal"];
+	        this.Descuentos = source["Descuentos"];
+	        this.Impuestos = source["Impuestos"];
+	        this.Total = source["Total"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FacturacionResultadoDto {
+	    success: boolean;
+	    mensaje: string;
+	    uuid?: string;
+	    pdfBase64?: string;
+	    pdfFileName?: string;
+	    data?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new FacturacionResultadoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.mensaje = source["mensaje"];
+	        this.uuid = source["uuid"];
+	        this.pdfBase64 = source["pdfBase64"];
+	        this.pdfFileName = source["pdfFileName"];
+	        this.data = source["data"];
+	    }
+	}
 	export class GuardarEntidadFiscalClienteDto {
 	    RolFiscalGuid: string;
 	    Guid: string;
@@ -1461,6 +1644,10 @@ export namespace services {
 	    cloudEmail?: string;
 	    cloudPassword?: string;
 	    cloudApiUrl?: string;
+	    facturacionApiHost?: string;
+	    facturacionClientId?: string;
+	    facturacionClientSecret?: string;
+	    facturacionXmlPath?: string;
 	    netPayUser?: string;
 	    netPayPassword?: string;
 	    netPayStoreId?: string;
@@ -1486,6 +1673,10 @@ export namespace services {
 	        this.cloudEmail = source["cloudEmail"];
 	        this.cloudPassword = source["cloudPassword"];
 	        this.cloudApiUrl = source["cloudApiUrl"];
+	        this.facturacionApiHost = source["facturacionApiHost"];
+	        this.facturacionClientId = source["facturacionClientId"];
+	        this.facturacionClientSecret = source["facturacionClientSecret"];
+	        this.facturacionXmlPath = source["facturacionXmlPath"];
 	        this.netPayUser = source["netPayUser"];
 	        this.netPayPassword = source["netPayPassword"];
 	        this.netPayStoreId = source["netPayStoreId"];

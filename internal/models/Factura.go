@@ -27,8 +27,9 @@ type Factura struct {
 	NumeroCertificadoEmisor string `gorm:"size:30"`
 	NumeroCertificadoSAT    string `gorm:"size:30"`
 
-	SelloEmisor string `gorm:"type:text"`
-	SelloSAT    string `gorm:"type:text"`
+	SelloEmisor       string `gorm:"type:text"`
+	SelloSAT          string `gorm:"type:text"`
+	CadenaOriginalSAT string `gorm:"type:text"`
 
 	PAC        string `gorm:"size:150"`
 	VersionTFD string `gorm:"size:20"`
@@ -47,5 +48,6 @@ type Factura struct {
 	Estatus string `gorm:"size:30;default:'vigente';index"`
 
 	ArchivoXML            string `gorm:"type:text"`
+	ArchivoPDF            string `gorm:"type:text"`
 	ArchivoXMLCancelacion string `gorm:"type:text"`
 }

@@ -83,12 +83,19 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 				tp.nombre as tipo_operacion, tp.id as tipo_pedido_id, tp.guid::text as tipo_pedido_guid,
 				e.nombre as estatus,
 				p.estatus_autorizacion,
-				sum(pd.cantidad * pd.precio_venta) - sum(pd.descuento) as monto_transaccion
+				coalesce(s.serie_cfdi, 'A') as serie_cfdi,
+				(p.factura_id is not null and coalesce(f.uuid, '') <> '') as facturada,
+				coalesce(f.uuid, '') as factura_uuid,
+				coalesce(ef.rfc, '') as receptor_rfc,
+				sum((pd.cantidad * pd.precio_venta) - ((pd.cantidad * pd.precio_venta) * coalesce(pd.descuento, 0) / 100)) as monto_transaccion
 				from pedidos p
 				join tipos_pedido tp on p.tipo_pedido_id = tp.id
 				left join clientes c on p.cliente_id = c.id
 				join estatus e on p.estatus_id = e.id
 				join pedido_detalle pd on pd.pedido_id = p.id
+				left join sucursales s on s.id = p.sucursal_origen_id
+				left join facturas f on f.id = p.factura_id and f.deleted_at is null
+				left join entidades_fiscales ef on ef.id = f.receptor_id and ef.deleted_at is null
 				where p.deleted_at is null and pd.deleted_at is null`
 
 	var args []interface{}
@@ -104,7 +111,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	}
 
 	query += ` group by p.id, p.guid, p.folio, p.fecha, p.es_credito, c.razon_social, c.correo, c.telefono,
-				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion
+				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion, s.serie_cfdi, f.uuid, ef.rfc
 				order by p.fecha desc, p.folio desc`
 
 	err := r.db.Raw(query, args...).Scan(&transacciones).Error

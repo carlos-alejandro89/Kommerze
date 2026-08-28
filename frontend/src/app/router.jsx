@@ -29,6 +29,7 @@ const POSPage = lazy(() => import('@/features/pos/pages/POSPage'));
 const TransactionPage = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
 const PaymentPage = lazy(() => import('@/features/pos/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
 const OrderPlacedPage = lazy(() => import('@/features/pos/pages/OrderPlacedPage').then(m => ({ default: m.OrderPlacedPage })));
+const FacturacionPage = lazy(() => import('@/features/invoicing/pages/FacturacionPage').then(m => ({ default: m.FacturacionPage })));
 const ProductsPage = lazy(() => import('@/features/products/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
 const ProductRequestSummaryPage = lazy(() => import('@/features/products/pages/ProductRequestSummaryPage').then(m => ({ default: m.ProductRequestSummaryPage })));
 const ProductRequestConfirmationPage = lazy(() => import('@/features/products/pages/ProductRequestConfirmationPage').then(m => ({ default: m.ProductRequestConfirmationPage })));
@@ -151,6 +152,10 @@ export const router = createBrowserRouter(
         {
           path: '/pos/order-placed',
           element: <PosGuard><OrderPlacedPage /></PosGuard>,
+        },
+        {
+          path: '/pos/facturacion',
+          element: <SuspensePage><FacturacionPage /></SuspensePage>,
         },
         {
           path: '/products',

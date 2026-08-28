@@ -4,6 +4,7 @@ import {
   Monitor, Globe, RotateCcw, Wifi, Copy, Check,
   ReceiptText, Mail, Plus, Trash2, Bold, Printer,
   ArrowLeft, Settings, PackagePlus, ImageIcon, MapPin, Phone,
+  FileKey2, KeyRound, FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -19,6 +20,7 @@ import {
   ServiceTestLocalServerConnection,
   ServiceGetLocalIP,
   ServiceTestPrintReceipt,
+  ServiceSelectInvoiceFolder,
 } from '../../../../wailsjs/go/main/App';
 
 const normalizeReceiptConfig = (receipt) => {
@@ -51,7 +53,10 @@ export function SettingsPage() {
   const [password, setPassword]   = useState('');
   const [cloudAPIURL, setCloudAPIURL] = useState(DEFAULT_CLOUD_API_URL);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dispositivo');
+  const [activeTab, setActiveTab] = useState(() => {
+    const requestedTab = searchParams.get('tab');
+    return requestedTab === 'security' || requestedTab === 'billing' ? 'facturacion' : requestedTab || 'dispositivo';
+  });
   const [inventoryImportState, setInventoryImportState] = useState({ canSubmit: false, isSaving: false });
 
   // Caja: config de conexión al Servidor Local
@@ -79,6 +84,8 @@ export function SettingsPage() {
   });
   const [savingReceipt, setSavingReceipt] = useState(false);
   const [testingPrinter, setTestingPrinter] = useState(false);
+  const [facturacion, setFacturacion] = useState({ apiHost: '', clientId: '', clientSecret: '', xmlPath: '' });
+  const [savingFacturacion, setSavingFacturacion] = useState(false);
 
   useEffect(() => {
     ServiceGetLocalIP().then(setLocalIP).catch(() => {});
@@ -93,6 +100,12 @@ export function SettingsPage() {
         const cfg = await ServiceGetKommerzConfig();
         if (cfg?.localServerUrl) setServerURL(cfg.localServerUrl);
         setCloudAPIURL(cfg?.cloudApiUrl || DEFAULT_CLOUD_API_URL);
+        setFacturacion({
+          apiHost: cfg?.facturacionApiHost || '',
+          clientId: cfg?.facturacionClientId || '',
+          clientSecret: cfg?.facturacionClientSecret || '',
+          xmlPath: cfg?.facturacionXmlPath || '',
+        });
         if (cfg?.receipt) {
           const configuredGroups = cfg.receipt.legendGroups?.length
             ? cfg.receipt.legendGroups
@@ -170,6 +183,49 @@ export function SettingsPage() {
       toast.success('URL del Servidor Local actualizada');
     } catch (err) { toast.error(String(err)); }
     finally { setSavingConn(false); }
+  };
+
+  const handleSaveFacturacion = async (event) => {
+    event.preventDefault();
+    const apiHost = facturacion.apiHost.trim().replace(/\/+$/, '');
+    if (!apiHost || !facturacion.clientId.trim() || !facturacion.clientSecret.trim() || !facturacion.xmlPath.trim()) {
+      toast.error('Completa las credenciales y selecciona la Carpeta de facturas');
+      return;
+    }
+    try {
+      const parsed = new URL(apiHost);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+    } catch {
+      toast.error('Api Host debe ser una dirección HTTP o HTTPS válida');
+      return;
+    }
+
+    setSavingFacturacion(true);
+    try {
+      const current = await ServiceGetKommerzConfig();
+      await ServiceSaveKommerzConfig({
+        ...(current || {}),
+        facturacionApiHost: apiHost,
+        facturacionClientId: facturacion.clientId.trim(),
+        facturacionClientSecret: facturacion.clientSecret.trim(),
+        facturacionXmlPath: facturacion.xmlPath.trim(),
+      });
+      setFacturacion(value => ({ ...value, apiHost }));
+      toast.success('Configuración de facturación guardada de forma segura');
+    } catch (err) {
+      toast.error('No se pudo guardar la configuración de facturación: ' + String(err));
+    } finally {
+      setSavingFacturacion(false);
+    }
+  };
+
+  const handleSelectInvoiceFolder = async () => {
+    try {
+      const folder = await ServiceSelectInvoiceFolder();
+      if (folder) setFacturacion(value => ({ ...value, xmlPath: folder }));
+    } catch (err) {
+      toast.error('No se pudo seleccionar la carpeta: ' + String(err));
+    }
   };
 
   const handleReconfigure = () => setAlertOpen(true);
@@ -260,7 +316,7 @@ export function SettingsPage() {
     { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud,     serverOnly: true },
     { id: 'inventario',  label: 'Importar inventario',   icon: PackagePlus, serverOnly: true },
     { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
-    { id: 'security',    label: 'Seguridad',              icon: Shield,    serverOnly: true },
+    { id: 'facturacion', label: 'Facturación',            icon: FileKey2,  serverOnly: true },
   ];
   const tabs = deviceRole === 'caja' ? allTabs.filter(t => !t.serverOnly) : allTabs;
 
@@ -821,27 +877,103 @@ export function SettingsPage() {
             </>
           )}
 
-          {/* ── SEGURIDAD ──────────────────────────────────────────────────── */}
-          {activeTab === 'security' && (
+          {/* ── FACTURACIÓN ────────────────────────────────────────────────── */}
+          {activeTab === 'facturacion' && (
             <>
               <p className="text-sm text-muted-foreground">
-                Opciones de seguridad y acceso para el sistema.
+                Credenciales utilizadas para conectar Kommerze con el servicio de facturación.
               </p>
               <div className={settingsPanelClass}>
                 <div className={settingsPanelHeaderClass}>
-                  <div className="flex size-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
-                    <Shield className="size-5" />
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <FileKey2 className="size-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Seguridad del Sistema</h3>
-                    <p className="text-xs text-muted-foreground">Gestión de acceso y permisos</p>
+                    <h3 className="font-semibold text-foreground">Servicio de Facturación</h3>
+                    <p className="text-xs text-muted-foreground">Conexión y autenticación del API</p>
                   </div>
                 </div>
-                <div className="p-6">
-                  <p className="text-sm text-muted-foreground">
-                    Las opciones de seguridad avanzadas estarán disponibles en próximas versiones.
-                  </p>
-                </div>
+                <form id="settings-facturacion-form" onSubmit={handleSaveFacturacion} className="space-y-5 p-6">
+                  <div className="space-y-1.5">
+                    <label htmlFor="facturacion-api-host" className={settingsLabelClass}>Api Host</label>
+                    <div className="relative">
+                      <Globe className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7790b6]" />
+                      <input
+                        id="facturacion-api-host"
+                        type="url"
+                        value={facturacion.apiHost}
+                        onChange={event => setFacturacion(value => ({ ...value, apiHost: event.target.value }))}
+                        placeholder="https://facturacion.ejemplo.com"
+                        disabled={savingFacturacion}
+                        className={`${settingsInputClass} pl-11`}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Dirección base del servicio de facturación, sin incluir la ruta del endpoint.</p>
+                  </div>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor="facturacion-client-id" className={settingsLabelClass}>Client ID</label>
+                      <div className="relative">
+                        <KeyRound className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7790b6]" />
+                        <input
+                          id="facturacion-client-id"
+                          type="password"
+                          autoComplete="off"
+                          value={facturacion.clientId}
+                          onChange={event => setFacturacion(value => ({ ...value, clientId: event.target.value }))}
+                          placeholder="Client ID"
+                          disabled={savingFacturacion}
+                          className={`${settingsInputClass} pl-11`}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="facturacion-client-secret" className={settingsLabelClass}>Client Secret</label>
+                      <div className="relative">
+                        <Shield className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7790b6]" />
+                        <input
+                          id="facturacion-client-secret"
+                          type="password"
+                          autoComplete="new-password"
+                          value={facturacion.clientSecret}
+                          onChange={event => setFacturacion(value => ({ ...value, clientSecret: event.target.value }))}
+                          placeholder="Client Secret"
+                          disabled={savingFacturacion}
+                          className={`${settingsInputClass} pl-11`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="facturacion-xml-path" className={settingsLabelClass}>Carpeta de facturas</label>
+                    <div className="flex gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <FolderOpen className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7790b6]" />
+                        <input
+                          id="facturacion-xml-path"
+                          type="text"
+                          readOnly
+                          value={facturacion.xmlPath}
+                          placeholder="Selecciona dónde guardar los XML timbrados"
+                          className={`${settingsInputClass} cursor-default pl-11`}
+                        />
+                      </div>
+                      <button type="button" onClick={handleSelectInvoiceFolder} disabled={savingFacturacion} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50 dark:border-blue-400/20 dark:bg-blue-400/10 dark:text-blue-300">
+                        <FolderOpen className="size-4" />Seleccionar
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Los XML timbrados se decodifican y almacenan en esta carpeta; el archivo de configuración conserva únicamente la ruta.</p>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[.055] p-4">
+                    <Shield className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Client ID y Client Secret se guardan cifrados mediante AES-256-GCM. La clave local se almacena por separado con acceso restringido al usuario del sistema.
+                    </p>
+                  </div>
+                </form>
               </div>
             </>
           )}
@@ -849,7 +981,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || activeTab === 'inventario' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
+      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || activeTab === 'inventario' || activeTab === 'facturacion' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
         <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl lg:px-6">
           <div className="mx-auto flex max-w-[1320px] justify-end">
             {activeTab === 'dispositivo' && deviceRole === 'caja' && (
@@ -885,6 +1017,12 @@ export function SettingsPage() {
               <button form="settings-cloud-form" type="submit" disabled={isLoading} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
                 {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Guardar credenciales
+              </button>
+            )}
+            {activeTab === 'facturacion' && (
+              <button form="settings-facturacion-form" type="submit" disabled={savingFacturacion} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {savingFacturacion ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar configuración de facturación
               </button>
             )}
             {activeTab === 'inventario' && (

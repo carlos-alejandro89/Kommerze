@@ -15,4 +15,8 @@ type TransaccionDto struct {
 	TipoPedidoID        uint
 	TipoPedidoGuid      string
 	PedidoGuid          string
+	SerieCFDI           string
+	Facturada           bool
+	FacturaUUID         string
+	ReceptorRFC         string
 }

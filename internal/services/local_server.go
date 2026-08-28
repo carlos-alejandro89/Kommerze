@@ -63,13 +63,14 @@ type LocalServerService struct {
 	compras             *ComprasService
 	cotizacion          *CotizacionService
 	receipt             *ReceiptService
+	facturacion         *FacturacionService
 	operacionesSucursal *OperacionesSucursalService
 	operacionesCaja     *OperacionesCajaService
 	hub                 *wsHub
 	server              *http.Server
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
@@ -80,6 +81,7 @@ func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat 
 		compras:             compras,
 		cotizacion:          cotizacion,
 		receipt:             receipt,
+		facturacion:         facturacion,
 		operacionesSucursal: opSucursal,
 		operacionesCaja:     opCaja,
 		hub:                 newWsHub(),
@@ -117,6 +119,9 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/proveedores", l.handleBuscarProveedores)
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/compras", l.handleCrearCompra)
+	mux.HandleFunc("/local/facturacion/preparar", l.handlePrepararFacturacion)
+	mux.HandleFunc("/local/facturacion/emitir", l.handleEmitirFacturacion)
+	mux.HandleFunc("/local/facturacion/enviar-correo", l.handleEnviarFacturaCorreo)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -907,4 +912,52 @@ func (l *LocalServerService) handleResumenCajero(w http.ResponseWriter, r *http.
 	}
 	result := l.operacionesCaja.ObtenerResumenCajero(operacionCajeroID)
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handlePrepararFacturacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.facturacion.PrepararFactura(r.URL.Query().Get("pedidoGuid"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleEmitirFacturacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var req dto.EmitirFacturacionRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Solicitud inválida")
+		return
+	}
+	result, err := l.facturacion.EmitirFactura(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleEnviarFacturaCorreo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var req dto.EnviarFacturaEmailRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Solicitud inválida")
+		return
+	}
+	if err := l.facturacion.EnviarFacturaCorreo(req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Factura enviada correctamente"})
 }
