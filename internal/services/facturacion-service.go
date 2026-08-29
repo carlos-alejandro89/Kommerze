@@ -411,3 +411,124 @@ func (s *FacturacionService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailReque
 	}
 	return EmailInvoiceFiles(pedido.Factura, pedido.Folio, req.Destinatarios, cfg.Receipt)
 }
+
+// ObtenerFacturaPDF devuelve la representación impresa del CFDI. Si el archivo
+// fue movido o eliminado, lo reconstruye con los datos fiscales almacenados y
+// vuelve a guardarlo junto al XML timbrado.
+func (s *FacturacionService) ObtenerFacturaPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	var pedido models.Pedido
+	err := s.db.
+		Preload("SucursalOrigen.Empresa.RegimenFiscal").
+		Preload("Factura.Receptor.Regimen").
+		Preload("Factura.UsoCFDI").
+		Preload("Factura.MetodoPago").
+		Preload("Factura.FormaPago").
+		Where("pedidos.guid = ? AND pedidos.deleted_at IS NULL", strings.TrimSpace(pedidoGuid)).
+		First(&pedido).Error
+	if err != nil {
+		return nil, fmt.Errorf("venta facturada no encontrada: %w", err)
+	}
+	if pedido.FacturaID == nil || strings.TrimSpace(pedido.Factura.UUID) == "" {
+		return nil, fmt.Errorf("la venta aún no tiene un CFDI timbrado")
+	}
+
+	factura := &pedido.Factura
+	if path := strings.TrimSpace(factura.ArchivoPDF); path != "" {
+		if pdfBytes, readErr := os.ReadFile(path); readErr == nil && len(pdfBytes) > 0 {
+			return &dto.FacturacionResultadoDto{
+				Success: true, UUID: factura.UUID,
+				PDFBase64: base64.StdEncoding.EncodeToString(pdfBytes), PDFFileName: filepath.Base(path),
+				Data: map[string]any{
+					"archivoPDF": path, "archivoXML": factura.ArchivoXML,
+					"correoReceptor": factura.Receptor.Correo, "estatus": factura.Estatus,
+					"regenerado": false,
+				},
+			}, nil
+		}
+	}
+
+	var detalles []models.PedidoDetalle
+	if err = s.db.Preload("Nivel.Producto.SatProducto").Preload("Nivel.Empaque").
+		Where("pedido_id = ? AND deleted_at IS NULL", pedido.ID).Find(&detalles).Error; err != nil {
+		return nil, fmt.Errorf("no se pudieron recuperar los conceptos de la factura: %w", err)
+	}
+	inputs := make([]satSaleLineInput, len(detalles))
+	for index, detalle := range detalles {
+		inputs[index] = satSaleLineInput{Quantity: detalle.Cantidad, GrossUnit: detalle.PrecioVenta, DiscountPercent: detalle.Descuento, TaxRate: detalle.TasaIVA}
+	}
+	calculo, err := calculateSATInvoice(inputs)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]reportmodels.InvoiceItem, 0, len(detalles))
+	for index, detalle := range detalles {
+		linea := calculo.Lines[index]
+		claveSAT := detalle.Nivel.Producto.SatProducto.Clave
+		if claveSAT == "" {
+			claveSAT = "01010101"
+		}
+		items = append(items, reportmodels.InvoiceItem{
+			Codigo: detalle.Nivel.Codigo, ClaveSAT: claveSAT,
+			Descripcion: detalle.Nivel.Producto.Descripcion, Unidad: detalle.Nivel.Empaque.NombreEmpaque,
+			Cantidad: satNumber(linea.Quantity), PrecioUnitario: satNumber(linea.UnitValue),
+			Descuento: satNumber(linea.Discount), Impuestos: satNumber(linea.TaxAmount), Importe: satNumber(linea.Amount),
+		})
+	}
+
+	fechaEmisionText, err := fechaFacturacion(pedido.Fecha)
+	if err != nil {
+		return nil, err
+	}
+	fechaEmision, err := time.Parse(time.RFC3339, fechaEmisionText)
+	if err != nil {
+		return nil, fmt.Errorf("fecha de emisión inválida para regenerar el PDF: %w", err)
+	}
+	empresa := pedido.SucursalOrigen.Empresa
+	receptor := factura.Receptor
+	serie := pedido.SucursalOrigen.SerieCFDI
+	if strings.TrimSpace(serie) == "" {
+		serie = "A"
+	}
+	reporte := reportmodels.Invoice{
+		Serie: serie, Folio: fmt.Sprint(pedido.Folio), UUID: factura.UUID,
+		FechaEmision: fechaEmision, FechaTimbrado: factura.FechaFactura,
+		NombreComercial: empresa.NombreComercial, Emisor: empresa.RazonSocial, RFCEmisor: empresa.RFC,
+		RegimenEmisor:   empresa.RegimenFiscal.Clave + " - " + empresa.RegimenFiscal.Descripcion,
+		LugarExpedicion: pedido.SucursalOrigen.CodigoPostal, Sucursal: pedido.SucursalOrigen.NombreSucursal,
+		Direccion: joinAddress(pedido.SucursalOrigen.Calle, pedido.SucursalOrigen.Exterior, pedido.SucursalOrigen.Interior, pedido.SucursalOrigen.Colonia, pedido.SucursalOrigen.Ciudad, pedido.SucursalOrigen.Estado, "C.P. "+pedido.SucursalOrigen.CodigoPostal),
+		Telefono:  pedido.SucursalOrigen.Telefono, Correo: pedido.SucursalOrigen.Correo,
+		Receptor: receptor.RazonSocial, RFCReceptor: receptor.RFC,
+		RegimenReceptor:   receptor.Regimen.Clave + " - " + receptor.Regimen.Descripcion,
+		DomicilioReceptor: receptor.CodigoPostal,
+		UsoCFDI:           factura.UsoCFDI.Clave + " - " + factura.UsoCFDI.Descripcion,
+		MetodoPago:        factura.MetodoPago.Clave + " - " + factura.MetodoPago.Descripcion,
+		FormaPago:         factura.FormaPago.Clave + " - " + factura.FormaPago.Descripcion,
+		CertificadoEmisor: factura.NumeroCertificadoEmisor, CertificadoSAT: factura.NumeroCertificadoSAT,
+		SelloEmisor: factura.SelloEmisor, SelloSAT: factura.SelloSAT, CadenaOriginalSAT: factura.CadenaOriginalSAT,
+		Items: items, Subtotal: factura.Subtotal.InexactFloat64(), Descuento: factura.Descuento.InexactFloat64(),
+		Impuestos: factura.Impuestos.InexactFloat64(), Total: factura.Total.InexactFloat64(),
+	}
+	pdfBytes, err := renders.RenderInvoicePDF(reporte)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo regenerar el PDF fiscal: %w", err)
+	}
+	if strings.TrimSpace(factura.ArchivoXML) == "" {
+		return nil, fmt.Errorf("no se puede regenerar el PDF porque la factura no tiene una ruta XML registrada")
+	}
+	pdfPath, err := saveInvoicePDF(factura.ArchivoXML, pdfBytes)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.db.Model(&models.Factura{}).Where("id = ?", factura.ID).Update("archivo_pdf", pdfPath).Error; err != nil {
+		return nil, fmt.Errorf("el PDF fue regenerado, pero no se pudo actualizar su ruta: %w", err)
+	}
+	return &dto.FacturacionResultadoDto{
+		Success: true, UUID: factura.UUID,
+		PDFBase64: base64.StdEncoding.EncodeToString(pdfBytes), PDFFileName: filepath.Base(pdfPath),
+		Data: map[string]any{
+			"archivoPDF": pdfPath, "archivoXML": factura.ArchivoXML,
+			"correoReceptor": factura.Receptor.Correo, "estatus": factura.Estatus,
+			"regenerado": true,
+		},
+	}, nil
+}

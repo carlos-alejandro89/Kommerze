@@ -834,6 +834,7 @@ func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 func (a *App) facturacionService() interface {
 	PrepararFactura(string) (*dto.FacturacionPreparacionDto, error)
 	EmitirFactura(dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error)
+	ObtenerFacturaPDF(string) (*dto.FacturacionResultadoDto, error)
 	EnviarFacturaCorreo(dto.EnviarFacturaEmailRequestDto) error
 } {
 	if a.services.CajaProxy != nil {
@@ -848,6 +849,10 @@ func (a *App) ServicePrepararFacturacion(pedidoGuid string) (*dto.FacturacionPre
 
 func (a *App) ServiceEmitirFacturacion(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
 	return a.facturacionService().EmitirFactura(req)
+}
+
+func (a *App) ServiceObtenerFacturaPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	return a.facturacionService().ObtenerFacturaPDF(pedidoGuid)
 }
 
 func (a *App) ServiceEnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {

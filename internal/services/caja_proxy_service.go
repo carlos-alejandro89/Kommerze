@@ -95,6 +95,17 @@ func (c *CajaProxyService) EmitirFactura(req dto.EmitirFacturacionRequestDto) (*
 	return &result.Data, nil
 }
 
+func (c *CajaProxyService) ObtenerFacturaPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    dto.FacturacionResultadoDto `json:"data"`
+	}
+	if err := c.get("/local/facturacion/pdf?pedidoGuid="+url.QueryEscape(pedidoGuid), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
 func (c *CajaProxyService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	var result map[string]any
 	return c.post("/local/facturacion/enviar-correo", req, &result)

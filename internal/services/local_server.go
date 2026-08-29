@@ -121,6 +121,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/compras", l.handleCrearCompra)
 	mux.HandleFunc("/local/facturacion/preparar", l.handlePrepararFacturacion)
 	mux.HandleFunc("/local/facturacion/emitir", l.handleEmitirFacturacion)
+	mux.HandleFunc("/local/facturacion/pdf", l.handleObtenerFacturaPDF)
 	mux.HandleFunc("/local/facturacion/enviar-correo", l.handleEnviarFacturaCorreo)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
@@ -938,6 +939,19 @@ func (l *LocalServerService) handleEmitirFacturacion(w http.ResponseWriter, r *h
 		return
 	}
 	result, err := l.facturacion.EmitirFactura(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleObtenerFacturaPDF(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.facturacion.ObtenerFacturaPDF(r.URL.Query().Get("pedidoGuid"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

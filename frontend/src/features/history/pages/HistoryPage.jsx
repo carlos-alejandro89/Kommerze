@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
   ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
-  ReceiptText, Printer, Mail, FileDown, Ban, MoreHorizontal, FileCheck2,
+  ReceiptText, Printer, Mail, FileDown, Ban, MoreVertical, FileCheck2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
@@ -19,7 +19,6 @@ import { TRANSACTION_TYPES, isTransactionType } from '@/features/pos/transaction
 import { DialogAlert } from '@/components/common/dialog-alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
@@ -60,6 +59,23 @@ function getDisplayFolio(row) {
   const folio = String(row?.Folio || '').padStart(6, '0');
   if (isTransactionType(row, TRANSACTION_TYPES.COTIZACION)) return `CTZ-${folio}`;
   return `${row?.SerieCFDI || 'A'}-${folio}`;
+}
+
+function RowActionButton({ label, icon: Icon, onClick, disabled, tone = 'text-primary hover:bg-primary/10' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn('group/action relative flex size-8 items-center justify-center rounded-full transition disabled:opacity-40', tone)}
+    >
+      <Icon className="size-3.5" />
+      <span className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-950 px-2.5 py-1.5 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover/action:opacity-100">
+        {label}
+      </span>
+    </button>
+  );
 }
 
 /* ── Badges de estatus de pedido ── */
@@ -139,7 +155,7 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
   const navigate = useNavigate();
-  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo } = usePosService();
+  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo, obtenerFacturaPDF } = usePosService();
 
   const [transacciones, setTransacciones] = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -156,6 +172,7 @@ export function HistoryPage() {
   const [ventaEmail, setVentaEmail]         = useState(null);
   const [correoDestino, setCorreoDestino]   = useState('');
   const [procesandoAccion, setProcesandoAccion] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const [documentViewer, setDocumentViewer] = useState({ open: false, url: '', fileName: '' });
 
   /* ── Carga de datos ── */
@@ -278,6 +295,14 @@ export function HistoryPage() {
     } catch (err) {
       toast.error('No se pudo generar el documento: ' + String(err));
     } finally { setProcesandoAccion(false); }
+  };
+
+  const handleVerFactura = async (row) => {
+    try {
+      navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(row), mode: 'view' } });
+    } catch (err) {
+      toast.error('No se pudo abrir la factura: ' + String(err));
+    }
   };
 
   const handleImprimir = async (row) => {
@@ -462,7 +487,10 @@ export function HistoryPage() {
                   <thead>
                     <tr className="sticky top-0 border-b border-border/70 bg-slate-50/95 backdrop-blur dark:bg-white/[.055]">
                       {['Folio / serie', 'Emisión', 'Receptor', 'Tipo', 'Total', 'Estado', 'Facturación', 'Acciones'].map(h => (
-                        <th key={h} className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap">
+                        <th key={h} className={cn(
+                          'py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap',
+                          h === 'Acciones' ? 'w-[58px] px-2 text-center' : 'px-5',
+                        )}>
                           {h}
                         </th>
                       ))}
@@ -481,6 +509,8 @@ export function HistoryPage() {
                       let sc                = getStatusConfig(t.Estatus);
                       let displayEstatus    = t.Estatus;
                       const esCotizacion    = isTransactionType(t, TRANSACTION_TYPES.COTIZACION);
+                      const actionKey       = t.PedidoGuid || t.ID;
+                      const actionsOpen     = actionMenuOpen === actionKey;
 
                       if (esCotizacion) {
                         if (t.EstatusAutorizacion === 'solicitada') {
@@ -581,85 +611,52 @@ export function HistoryPage() {
                           </td>
 
                           {/* Acciones */}
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center rounded-full border border-border/70 bg-background/80 p-1 shadow-[0_10px_24px_-19px_rgba(20,54,110,.75)]">
-                                <button
-                                  type="button"
-                                  onClick={() => setModalVer(t)}
-                                  title="Ver detalle"
-                                  aria-label="Ver detalle de la operación"
-                                  className="flex size-8 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-                                >
-                                  <Eye className="size-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleVerDocumento(t)}
-                                  disabled={procesandoAccion}
-                                  title="Ver documento"
-                                  aria-label="Ver documento"
-                                  className="flex size-8 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-500/10 disabled:opacity-40 dark:text-blue-400"
-                                >
-                                  <FileDown className="size-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleImprimir(t)}
-                                  disabled={procesandoAccion}
-                                  title="Imprimir"
-                                  aria-label="Imprimir documento"
-                                  className="flex size-8 items-center justify-center rounded-full text-violet-600 transition hover:bg-violet-500/10 disabled:opacity-40 dark:text-violet-400"
-                                >
-                                  <Printer className="size-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => abrirEnvio(t)}
-                                  title="Enviar por correo"
-                                  aria-label="Enviar por correo"
-                                  className="flex size-8 items-center justify-center rounded-full text-emerald-600 transition hover:bg-emerald-500/10 dark:text-emerald-400"
-                                >
-                                  <Mail className="size-3.5" />
-                                </button>
-                              </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button disabled={procesandoAccion} aria-label="Más acciones" className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50">
-                                    <MoreHorizontal className="size-4" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-52">
-                                  <DropdownMenuItem onSelect={() => setModalVer(t)}>
-                                    <Eye className="size-4" /> Ver detalle
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleVerDocumento(t)}>
-                                    <FileDown className="size-4" /> Ver documento
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleImprimir(t)}>
-                                    <Printer className="size-4" /> Imprimir
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => abrirEnvio(t)}>
-                                    <Mail className="size-4" /> Enviar por correo
-                                  </DropdownMenuItem>
-                                  {!esCotizacion && !['Cancelado', 'Cancelada'].includes(t.Estatus) && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem variant="destructive" onSelect={() => setVentaCancelar(t)}>
-                                        <Ban className="size-4" /> Cancelar venta
-                                      </DropdownMenuItem>
-                                    </>
+                          <td className="relative w-[58px] px-2 py-3.5">
+                            <div className="relative ml-auto flex w-9 items-center justify-end">
+                              <div className={cn(
+                                'absolute right-11 top-1/2 z-40 flex -translate-y-1/2 items-center gap-2 origin-right transition-all duration-200 ease-out',
+                                actionsOpen
+                                  ? 'pointer-events-auto translate-x-0 scale-100 opacity-100'
+                                  : 'pointer-events-none translate-x-3 scale-95 opacity-0',
+                              )}>
+                                <div className="flex items-center rounded-full border border-border/70 bg-background/95 p-1 shadow-[0_16px_36px_-16px_rgba(20,54,110,.75)] backdrop-blur-xl">
+                                  <RowActionButton label="Ver detalle" icon={Eye} onClick={() => { setActionMenuOpen(null); setModalVer(t); }} />
+                                  <RowActionButton label="Ver documento" icon={FileDown} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerDocumento(t); }} tone="text-blue-600 hover:bg-blue-500/10 dark:text-blue-400" />
+                                  <RowActionButton label="Imprimir" icon={Printer} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleImprimir(t); }} tone="text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" />
+                                  <RowActionButton label="Enviar por correo" icon={Mail} onClick={() => { setActionMenuOpen(null); abrirEnvio(t); }} tone="text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400" />
+                                  {!esCotizacion && t.Facturada && (
+                                    <RowActionButton label="Ver factura" icon={FileCheck2} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerFactura(t); }} tone="text-teal-600 hover:bg-teal-500/10 dark:text-teal-400" />
                                   )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              {/* Acciones contextuales de cotización */}
-                              {esCotizacion && (
-                                <CotizacionAcciones
-                                  row={t}
-                                  onSolicitarDescuento={handleSolicitarDescuento}
-                                  onConvertirVenta={handleConvertirVenta}
-                                />
-                              )}
+                                  {!esCotizacion && !t.Facturada && (
+                                    <RowActionButton label="Facturar venta" icon={ReceiptText} onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })} tone="text-sky-600 hover:bg-sky-500/10 dark:text-sky-400" />
+                                  )}
+                                  {!esCotizacion && !['Cancelado', 'Cancelada'].includes(t.Estatus) && (
+                                    <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => { setActionMenuOpen(null); setVentaCancelar(t); }} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
+                                  )}
+                                </div>
+                                {esCotizacion && (
+                                  <CotizacionAcciones
+                                    row={t}
+                                    onSolicitarDescuento={handleSolicitarDescuento}
+                                    onConvertirVenta={handleConvertirVenta}
+                                  />
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                disabled={procesandoAccion}
+                                aria-label={actionsOpen ? 'Cerrar acciones' : 'Mostrar acciones'}
+                                aria-expanded={actionsOpen}
+                                onClick={() => setActionMenuOpen(current => current === actionKey ? null : actionKey)}
+                                className={cn(
+                                  'flex size-9 shrink-0 items-center justify-center rounded-full transition disabled:opacity-50',
+                                  actionsOpen
+                                    ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-primary',
+                                )}
+                              >
+                                <MoreVertical className="size-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>

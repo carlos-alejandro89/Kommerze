@@ -206,6 +206,10 @@ export function ServiceObtenerCliente(arg1) {
   return window['go']['main']['App']['ServiceObtenerCliente'](arg1);
 }
 
+export function ServiceObtenerFacturaPDF(arg1) {
+  return window['go']['main']['App']['ServiceObtenerFacturaPDF'](arg1);
+}
+
 export function ServiceObtenerOperacionCajeroActiva(arg1) {
   return window['go']['main']['App']['ServiceObtenerOperacionCajeroActiva'](arg1);
 }

@@ -108,6 +108,8 @@ export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
 
+export function ServiceObtenerFacturaPDF(arg1:string):Promise<dto.FacturacionResultadoDto>;
+
 export function ServiceObtenerOperacionCajeroActiva(arg1:number):Promise<dto.ResponseDto>;
 
 export function ServiceObtenerOperacionSucursal(arg1:string):Promise<dto.ResponseDto>;

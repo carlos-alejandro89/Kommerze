@@ -76,10 +76,14 @@ func drawInvoiceHeader(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
 	pdf.CellFormat(62, 4, tr("RFC: "+r.RFCEmisor), "", 1, "L", false, 0, "")
 	pdf.SetXY(58, 27)
 	pdf.MultiCell(62, 3.4, tr(r.RegimenEmisor), "", "L", false)
-	pdf.SetXY(58, 35)
-	pdf.MultiCell(62, 3.6, tr(r.Sucursal+" - "+r.Direccion), "", "L", false)
-	pdf.SetXY(58, 46)
-	pdf.CellFormat(62, 4, tr(r.Telefono+"  "+r.Correo), "", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "B", 6)
+	pdf.SetXY(58, 34)
+	pdf.CellFormat(62, 3, "SUCURSAL", "", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "", 6.5)
+	pdf.SetXY(58, 38)
+	pdf.MultiCell(62, 3.4, tr(r.Sucursal+" - "+r.Direccion), "", "L", false)
+	pdf.SetXY(58, 50)
+	pdf.CellFormat(62, 3, tr(strings.TrimSpace(r.Telefono)+"  ·  "+strings.TrimSpace(r.Correo)), "", 1, "L", false, 0, "")
 	setRGBFill(pdf, quotationBlue)
 	pdf.RoundedRect(126, 9, 82, 8, 2, "1234", "F")
 	pdf.SetTextColor(255, 255, 255)
@@ -141,7 +145,7 @@ func drawInvoiceReceiver(pdf *gofpdf.Fpdf, r reportmodels.Invoice, y float64) {
 
 func drawInvoiceItems(pdf *gofpdf.Fpdf, items []reportmodels.InvoiceItem, start float64) float64 {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	const rowHeight = 11.2
+	const rowHeight = 8.2
 	cols := []float64{25, 52, 22, 14, 24, 18, 24, 23}
 	headers := []string{"CLAVE", "DESCRIPCION", "UNIDAD", "CANT.", "PRECIO UNIT.", "DESCUENTO", "IMPUESTOS", "IMPORTE"}
 	x := 7.0
@@ -157,7 +161,7 @@ func drawInvoiceItems(pdf *gofpdf.Fpdf, items []reportmodels.InvoiceItem, start 
 	pdf.SetFont("Arial", "B", 5.7)
 	for i, h := range headers {
 		pdf.SetXY(x, start)
-		pdf.CellFormat(cols[i], 8, tr(h), "", 0, "C", true, 0, "")
+		pdf.CellFormat(cols[i], 8, tr(h), "", 0, "C", false, 0, "")
 		x += cols[i]
 	}
 	y := start + 8
@@ -175,15 +179,15 @@ func drawInvoiceItems(pdf *gofpdf.Fpdf, items []reportmodels.InvoiceItem, start 
 		x = 7
 		pdf.SetTextColor(15, 35, 75)
 		pdf.SetFont("Arial", "B", 6)
-		pdf.SetXY(x, y+2)
-		pdf.CellFormat(cols[0], 4, tr(it.Codigo), "", 0, "C", false, 0, "")
+		pdf.SetXY(x, y+.7)
+		pdf.CellFormat(cols[0], 3.2, tr(it.Codigo), "", 0, "C", false, 0, "")
 		pdf.SetFont("Arial", "", 5.2)
-		pdf.SetXY(x, y+6)
-		pdf.CellFormat(cols[0], 4, tr("SAT: "+it.ClaveSAT), "", 0, "C", false, 0, "")
+		pdf.SetXY(x, y+4.1)
+		pdf.CellFormat(cols[0], 3, tr("SAT: "+it.ClaveSAT), "", 0, "C", false, 0, "")
 		x += cols[0]
 		pdf.SetFont("Arial", "", 6)
-		pdf.SetXY(x+1, y+2)
-		pdf.MultiCell(cols[1]-2, 4, tr(it.Descripcion), "", "L", false)
+		pdf.SetXY(x+1, y+1.1)
+		pdf.MultiCell(cols[1]-2, 3, tr(it.Descripcion), "", "L", false)
 		x += cols[1]
 		values := []string{it.Unidad, fmt.Sprintf("%.2f", it.Cantidad), formatInvoiceMoney(it.PrecioUnitario), formatInvoiceMoney(it.Descuento), "IVA " + formatInvoiceMoney(it.Impuestos), formatInvoiceMoney(it.Importe)}
 		for i, v := range values {
@@ -237,7 +241,7 @@ func drawInvoiceTotals(pdf *gofpdf.Fpdf, r reportmodels.Invoice, y float64) floa
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Arial", "B", 9)
 	pdf.SetXY(x, y)
-	pdf.CellFormat(42, 8, "TOTAL", "", 0, "L", true, 0, "")
+	pdf.CellFormat(42, 8, "TOTAL", "", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 10)
 	pdf.CellFormat(44, 8, formatInvoiceMoney(r.Total)+" MXN", "", 1, "R", false, 0, "")
 	return y + 8
@@ -246,8 +250,8 @@ func drawInvoiceTotals(pdf *gofpdf.Fpdf, r reportmodels.Invoice, y float64) floa
 func drawInvoiceFiscalSection(pdf *gofpdf.Fpdf, r reportmodels.Invoice, start float64) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	fields := [][2]string{{"SELLO DIGITAL DEL CFDI", cleanFiscalText(r.SelloEmisor)}, {"SELLO DIGITAL DEL SAT", cleanFiscalText(r.SelloSAT)}, {"CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACION DIGITAL DEL SAT", cleanFiscalText(r.CadenaOriginalSAT)}}
-	contentWidth, lineHeight := 154.0, 2.15
-	pdf.SetFont("Arial", "", 3.5)
+	contentWidth, lineHeight := 154.0, 2.8
+	pdf.SetFont("Arial", "", 5.5)
 	height := 6.0
 	for _, field := range fields {
 		lines := pdf.SplitLines([]byte(tr(field[1])), contentWidth)
@@ -270,11 +274,19 @@ func drawInvoiceFiscalSection(pdf *gofpdf.Fpdf, r reportmodels.Invoice, start fl
 		verification += "&fe=" + url.QueryEscape(r.SelloEmisor[len(r.SelloEmisor)-8:])
 	}
 	key := barcode.RegisterQR(pdf, verification, qr.M, qr.Unicode)
-	qrSize := height
-	if qrSize > 38 {
-		qrSize = 38
+	const (
+		qrAreaX     = 8.0
+		qrAreaWidth = 34.0
+		qrPadding   = 2.0
+	)
+	qrSize := height - 2*qrPadding
+	maxQRSize := qrAreaWidth - 2*qrPadding
+	if qrSize > maxQRSize {
+		qrSize = maxQRSize
 	}
-	barcode.Barcode(pdf, key, 8, y, qrSize, qrSize, false)
+	qrX := qrAreaX + (qrAreaWidth-qrSize)/2
+	qrY := y + (height-qrSize)/2
+	barcode.Barcode(pdf, key, qrX, qrY, qrSize, qrSize, false)
 	setRGBDraw(pdf, quotationLine)
 	pdf.RoundedRect(46, y, 162, height, 2, "1234", "D")
 	fy := y + 2
@@ -284,7 +296,7 @@ func drawInvoiceFiscalSection(pdf *gofpdf.Fpdf, r reportmodels.Invoice, start fl
 		pdf.SetXY(50, fy)
 		pdf.CellFormat(contentWidth, 3, tr(f[0]), "", 1, "L", false, 0, "")
 		pdf.SetTextColor(45, 61, 91)
-		pdf.SetFont("Arial", "", 3.5)
+		pdf.SetFont("Arial", "", 5.5)
 		pdf.SetXY(50, fy+3.2)
 		lines := pdf.SplitLines([]byte(tr(f[1])), contentWidth)
 		if len(lines) == 0 {
