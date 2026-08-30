@@ -82,8 +82,18 @@ func drawInvoiceHeader(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
 	pdf.SetFont("Arial", "", 6.5)
 	pdf.SetXY(58, 38)
 	pdf.MultiCell(62, 3.4, tr(r.Sucursal+" - "+r.Direccion), "", "L", false)
+	phone := strings.TrimSpace(r.Telefono)
+	email := strings.TrimSpace(r.Correo)
 	pdf.SetXY(58, 50)
-	pdf.CellFormat(62, 3, tr(strings.TrimSpace(r.Telefono)+"  ·  "+strings.TrimSpace(r.Correo)), "", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "", 6.5)
+	phoneWidth := pdf.GetStringWidth(tr(phone))
+	pdf.CellFormat(phoneWidth, 3, tr(phone), "", 0, "L", false, 0, "")
+	dotWidth := 5.0
+	setRGBFill(pdf, "65,82,115")
+	pdf.Circle(58+phoneWidth+2.2, 51.35, .7, "F")
+	pdf.SetFont("Arial", "", 6.5)
+	pdf.SetXY(58+phoneWidth+dotWidth, 50)
+	pdf.CellFormat(62-phoneWidth-dotWidth, 3, tr(email), "", 1, "L", false, 0, "")
 	setRGBFill(pdf, quotationBlue)
 	pdf.RoundedRect(126, 9, 82, 8, 2, "1234", "F")
 	pdf.SetTextColor(255, 255, 255)
@@ -117,13 +127,54 @@ func drawInvoiceReceiver(pdf *gofpdf.Fpdf, r reportmodels.Invoice, y float64) {
 	pdf.SetFont("Arial", "B", 8)
 	pdf.SetXY(14, y+5)
 	pdf.CellFormat(90, 5, tr("DATOS DEL RECEPTOR"), "", 1, "L", false, 0, "")
-	fields := [][2]string{{"Nombre / Razon social", r.Receptor}, {"RFC", r.RFCReceptor}, {"Regimen fiscal", r.RegimenReceptor}, {"Domicilio fiscal", r.DomicilioReceptor}, {"Uso del CFDI", r.UsoCFDI}}
+	fields := [][2]string{{"RFC", r.RFCReceptor}, {"Regimen fiscal", r.RegimenReceptor}, {"Domicilio fiscal", r.DomicilioReceptor}, {"Uso del CFDI", r.UsoCFDI}}
 	fy := y + 12
+	pdf.SetFont("Arial", "B", 6.2)
+	setRGB(pdf, quotationNavy)
+	pdf.SetXY(14, fy)
+	pdf.CellFormat(34, 4, tr("Nombre / Razon social"), "", 0, "L", false, 0, "")
+	receptorFontSize := 6.2
+	var receptorLines [][]byte
+	for {
+		pdf.SetFont("Arial", "", receptorFontSize)
+		receptorLines = pdf.SplitLines([]byte(tr(r.Receptor)), 55)
+		if len(receptorLines) <= 2 || receptorFontSize <= 5.2 {
+			break
+		}
+		receptorFontSize -= .2
+	}
+	pdf.SetXY(48, fy)
+	pdf.MultiCell(55, 3.4, tr(r.Receptor), "", "L", false)
+	if len(receptorLines) > 1 {
+		fy += 7.5
+	} else {
+		fy += 5
+	}
 	for _, f := range fields {
 		pdf.SetFont("Arial", "B", 6.2)
 		setRGB(pdf, quotationNavy)
 		pdf.SetXY(14, fy)
 		pdf.CellFormat(34, 4, tr(f[0]), "", 0, "L", false, 0, "")
+		if f[0] == "Regimen fiscal" {
+			regimenFontSize := 6.2
+			var regimenLines [][]byte
+			for {
+				pdf.SetFont("Arial", "", regimenFontSize)
+				regimenLines = pdf.SplitLines([]byte(tr(f[1])), 55)
+				if len(regimenLines) <= 2 || regimenFontSize <= 5.2 {
+					break
+				}
+				regimenFontSize -= .2
+			}
+			pdf.SetXY(48, fy)
+			pdf.MultiCell(55, 3.4, tr(f[1]), "", "L", false)
+			if len(regimenLines) > 1 {
+				fy += 7.5
+			} else {
+				fy += 5
+			}
+			continue
+		}
 		pdf.SetFont("Arial", "", 6.2)
 		pdf.CellFormat(55, 4, tr(f[1]), "", 1, "L", false, 0, "")
 		fy += 5

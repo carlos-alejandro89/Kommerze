@@ -22,6 +22,8 @@ export function ServiceBuscarEntidadFiscalPorRFC(arg1:string):Promise<dto.Provee
 
 export function ServiceBuscarEntidadFiscalProveedor(arg1:string):Promise<dto.ProveedorFiscalDto>;
 
+export function ServiceBuscarEntidadesFacturacion(arg1:string):Promise<Array<dto.FacturacionEntidadDto>>;
+
 export function ServiceBuscarProveedores(arg1:string):Promise<Array<dto.ProveedorFiscalDto>>;
 
 export function ServiceCancelarVenta(arg1:string):Promise<dto.ResponseDto>;
@@ -37,6 +39,8 @@ export function ServiceConsultaProductos(arg1:string,arg2:boolean):Promise<Array
 export function ServiceConsultaTransacciones(arg1:any,arg2:any):Promise<dto.ResponseDto>;
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
+
+export function ServiceConsultarHistorialCompras():Promise<Array<dto.CompraHistorialDto>>;
 
 export function ServiceConsultarTransferencias():Promise<Array<dto.TransferenciaDto>>;
 
@@ -129,6 +133,8 @@ export function ServiceObtenerSucursalLocal():Promise<dto.ResponseDto>;
 export function ServiceObtenerTiposPedido():Promise<Array<models.TipoPedido>>;
 
 export function ServiceObtenerValorInventario():Promise<dto.ResponseDto>;
+
+export function ServiceOpenInvoiceLocation(arg1:string):Promise<void>;
 
 export function ServicePrepararFacturacion(arg1:string):Promise<dto.FacturacionPreparacionDto>;
 

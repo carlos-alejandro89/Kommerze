@@ -11,6 +11,7 @@ func MigrateSequences(db *gorm.DB) error {
 		`CREATE SEQUENCE IF NOT EXISTS consecutivo_folio_transferencia START 1`,
 		`CREATE SEQUENCE IF NOT EXISTS consecutivo_folio_baja_mercancia START 1`,
 		`CREATE SEQUENCE IF NOT EXISTS consecutivo_folio_compra START 1`,
+		`CREATE SEQUENCE IF NOT EXISTS consecutivo_folio_factura START 1`,
 		`ALTER TABLE pedidos ALTER COLUMN operacion_cajero_id DROP NOT NULL`,
 	}
 	for _, sql := range sqls {

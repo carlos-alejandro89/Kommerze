@@ -9,6 +9,9 @@ import (
 type Factura struct {
 	BaseModel
 
+	Serie string `gorm:"size:20;index"`
+	Folio int    `gorm:"index"`
+
 	ReceptorID *uint
 	Receptor   EntidadFiscal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 

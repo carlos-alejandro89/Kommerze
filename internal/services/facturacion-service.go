@@ -220,6 +220,31 @@ func (s *FacturacionService) PrepararFactura(pedidoGuid string) (*dto.Facturacio
 	return result, nil
 }
 
+// BuscarEntidadesReceptoras devuelve entidades fiscales registradas con rol
+// RECEPTOR, independientemente del cliente al que estén vinculadas.
+func (s *FacturacionService) BuscarEntidadesReceptoras(termino string) ([]dto.FacturacionEntidadDto, error) {
+	termino = strings.TrimSpace(termino)
+	pattern := "%" + termino + "%"
+	var entidades []dto.FacturacionEntidadDto
+	err := s.db.Raw(`
+		SELECT DISTINCT ef.id, ef.guid, ef.rfc, ef.razon_social, ef.codigo_postal,
+		       COALESCE(sr.clave, '') AS regimen_clave,
+		       COALESCE(sr.descripcion, '') AS regimen
+		FROM entidades_fiscales ef
+		JOIN entidad_fiscal_roles efr
+		  ON efr.entidad_fiscal_id = ef.id AND efr.deleted_at IS NULL
+		JOIN roles_fiscales rf
+		  ON rf.id = efr.rol_id AND rf.deleted_at IS NULL AND UPPER(rf.nombre) = 'RECEPTOR'
+		LEFT JOIN sat_regimen_fiscal sr ON sr.id = ef.regimen_id
+		WHERE ef.deleted_at IS NULL
+		  AND (? = '' OR ef.razon_social ILIKE ? OR ef.rfc ILIKE ?
+		       OR ef.codigo_postal ILIKE ? OR sr.clave ILIKE ? OR sr.descripcion ILIKE ?)
+		ORDER BY ef.razon_social
+		LIMIT 200`, termino, pattern, pattern, pattern, pattern, pattern).
+		Scan(&entidades).Error
+	return entidades, err
+}
+
 func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
 	prep, err := s.PrepararFactura(req.PedidoGuid)
 	if err != nil {
@@ -234,7 +259,8 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		Joins("JOIN cliente_entidad_fiscal cef ON cef.entidad_fiscal_id = entidades_fiscales.id AND cef.deleted_at IS NULL").
 		Joins("JOIN entidad_fiscal_roles efr ON efr.entidad_fiscal_id = entidades_fiscales.id AND efr.deleted_at IS NULL").
 		Joins("JOIN roles_fiscales rf ON rf.id = efr.rol_id AND UPPER(rf.nombre) = 'RECEPTOR'").
-		Where("entidades_fiscales.id = ? AND cef.cliente_id = ?", req.EntidadFiscalID, pedido.ClienteID)
+		Where("entidades_fiscales.id = ?", req.EntidadFiscalID).
+		Distinct()
 	if err = entityQuery.First(&receptor).Error; err != nil {
 		return nil, fmt.Errorf("entidad fiscal inválida")
 	}
@@ -286,7 +312,25 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	if err != nil {
 		return nil, err
 	}
-	payload := map[string]any{"serie": prep.Serie, "folioInterno": fmt.Sprint(pedido.Folio), "fecha": fechaCFDI, "cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion, "cveFormaPago": forma.Clave, "formaPago": forma.Descripcion, "subTotal": satNumber(subtotalCFDI), "descuentos": satNumber(descuentosCFDI), "impuestos": satNumber(impuestosCFDI), "total": satNumber(totalCFDI), "rfcEmisor": emp.RFC, "emisor": emp.RazonSocial, "cveRegimenEmisor": emp.RegimenFiscal.Clave, "regimenEmisor": emp.RegimenFiscal.Descripcion, "lugarExpedicion": pedido.SucursalOrigen.CodigoPostal, "rfcReceptor": receptor.RFC, "receptor": receptor.RazonSocial, "cveRegimenReceptor": receptor.Regimen.Clave, "regimenReceptor": receptor.Regimen.Descripcion, "domicilioFiscalReceptor": receptor.CodigoPostal, "cveUsoCFDI": uso.Clave, "usoCFDI": uso.Descripcion, "conceptos": conceptos}
+	facturaSerie := strings.TrimSpace(prep.Serie)
+	if facturaSerie == "" {
+		facturaSerie = "A"
+	}
+	var facturaFolio int
+	if pedido.FacturaID != nil {
+		var existente models.Factura
+		if err = s.db.Select("serie", "folio").First(&existente, *pedido.FacturaID).Error; err != nil {
+			return nil, fmt.Errorf("no se pudo recuperar el folio interno de la factura: %w", err)
+		}
+		facturaSerie = existente.Serie
+		facturaFolio = existente.Folio
+	}
+	if facturaFolio <= 0 {
+		if err = s.db.Raw("SELECT nextval('consecutivo_folio_factura')").Scan(&facturaFolio).Error; err != nil {
+			return nil, fmt.Errorf("no se pudo generar el folio interno de la factura: %w", err)
+		}
+	}
+	payload := map[string]any{"serie": facturaSerie, "folioInterno": fmt.Sprintf("%06d", facturaFolio), "fecha": fechaCFDI, "cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion, "cveFormaPago": forma.Clave, "formaPago": forma.Descripcion, "subTotal": satNumber(subtotalCFDI), "descuentos": satNumber(descuentosCFDI), "impuestos": satNumber(impuestosCFDI), "total": satNumber(totalCFDI), "rfcEmisor": emp.RFC, "emisor": emp.RazonSocial, "cveRegimenEmisor": emp.RegimenFiscal.Clave, "regimenEmisor": emp.RegimenFiscal.Descripcion, "lugarExpedicion": pedido.SucursalOrigen.CodigoPostal, "rfcReceptor": receptor.RFC, "receptor": receptor.RazonSocial, "cveRegimenReceptor": receptor.Regimen.Clave, "regimenReceptor": receptor.Regimen.Descripcion, "domicilioFiscalReceptor": receptor.CodigoPostal, "cveUsoCFDI": uso.Clave, "usoCFDI": uso.Descripcion, "conceptos": conceptos}
 	cfg, err := LoadKommerzConfig()
 	if err != nil {
 		return nil, err
@@ -343,7 +387,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	if err != nil {
 		return nil, err
 	}
-	xmlPath, err := saveStampedXML(cfg.FacturacionXMLPath, prep.Serie, pedido.Folio, stamped.Data.UUID, stamped.Data.CFDIXMLBase64)
+	xmlPath, err := saveStampedXML(cfg.FacturacionXMLPath, facturaSerie, facturaFolio, stamped.Data.UUID, stamped.Data.CFDIXMLBase64)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +396,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		return nil, fmt.Errorf("fecha de emisión inválida para PDF: %w", err)
 	}
 	invoiceReport := reportmodels.Invoice{
-		Serie: prep.Serie, Folio: fmt.Sprint(pedido.Folio), UUID: stamped.Data.UUID,
+		Serie: facturaSerie, Folio: fmt.Sprintf("%06d", facturaFolio), UUID: stamped.Data.UUID,
 		FechaEmision: emissionDate, FechaTimbrado: stampDate,
 		NombreComercial: emp.NombreComercial, Emisor: emp.RazonSocial, RFCEmisor: emp.RFC, RegimenEmisor: emp.RegimenFiscal.Clave + " - " + emp.RegimenFiscal.Descripcion,
 		LugarExpedicion: pedido.SucursalOrigen.CodigoPostal, Sucursal: pedido.SucursalOrigen.NombreSucursal,
@@ -375,6 +419,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	}
 
 	factura := models.Factura{
+		Serie: facturaSerie, Folio: facturaFolio,
 		ReceptorID: &receptor.ID, UsoCFDIID: &uso.ID, MetodoPagoID: &metodo.ID, FormaPagoID: &forma.ID,
 		UUID: stamped.Data.UUID, NumeroCertificadoEmisor: stamped.Data.NoCertificadoEmisor,
 		NumeroCertificadoSAT: stamped.Data.NoCertificadoSAT, SelloEmisor: stamped.Data.SelloEmisor,
@@ -485,12 +530,19 @@ func (s *FacturacionService) ObtenerFacturaPDF(pedidoGuid string) (*dto.Facturac
 	}
 	empresa := pedido.SucursalOrigen.Empresa
 	receptor := factura.Receptor
-	serie := pedido.SucursalOrigen.SerieCFDI
+	serie := factura.Serie
+	if strings.TrimSpace(serie) == "" {
+		serie = pedido.SucursalOrigen.SerieCFDI
+	}
 	if strings.TrimSpace(serie) == "" {
 		serie = "A"
 	}
+	folioFactura := factura.Folio
+	if folioFactura <= 0 {
+		folioFactura = pedido.Folio
+	}
 	reporte := reportmodels.Invoice{
-		Serie: serie, Folio: fmt.Sprint(pedido.Folio), UUID: factura.UUID,
+		Serie: serie, Folio: fmt.Sprintf("%06d", folioFactura), UUID: factura.UUID,
 		FechaEmision: fechaEmision, FechaTimbrado: factura.FechaFactura,
 		NombreComercial: empresa.NombreComercial, Emisor: empresa.RazonSocial, RFCEmisor: empresa.RFC,
 		RegimenEmisor:   empresa.RegimenFiscal.Clave + " - " + empresa.RegimenFiscal.Descripcion,

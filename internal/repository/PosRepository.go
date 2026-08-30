@@ -86,6 +86,8 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 				coalesce(s.serie_cfdi, 'A') as serie_cfdi,
 				(p.factura_id is not null and coalesce(f.uuid, '') <> '') as facturada,
 				coalesce(f.uuid, '') as factura_uuid,
+				coalesce(f.serie, '') as factura_serie,
+				coalesce(f.folio, 0) as factura_folio,
 				coalesce(ef.rfc, '') as receptor_rfc,
 				sum((pd.cantidad * pd.precio_venta) - ((pd.cantidad * pd.precio_venta) * coalesce(pd.descuento, 0) / 100)) as monto_transaccion
 				from pedidos p
@@ -111,7 +113,8 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 	}
 
 	query += ` group by p.id, p.guid, p.folio, p.fecha, p.es_credito, c.razon_social, c.correo, c.telefono,
-				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion, s.serie_cfdi, f.uuid, ef.rfc
+				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion, s.serie_cfdi,
+				f.uuid, f.serie, f.folio, ef.rfc
 				order by p.fecha desc, p.folio desc`
 
 	err := r.db.Raw(query, args...).Scan(&transacciones).Error
@@ -127,6 +130,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 // inventario de la sucursal. El bloqueo evita cancelar dos veces o perder
 // actualizaciones concurrentes de existencia.
 func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
+	const estatusVentaCanceladaGuid = "86968037-975a-43ce-880c-043003010103"
 	guid, err := uuid.Parse(strings.TrimSpace(pedidoGuid))
 	if err != nil {
 		return nil, fmt.Errorf("identificador de venta inválido")
@@ -163,7 +167,7 @@ func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, erro
 			}
 		}
 		var cancelado models.Estatus
-		if err := tx.Where("LOWER(nombre) IN ? AND deleted_at IS NULL", []string{"cancelado", "cancelada"}).First(&cancelado).Error; err != nil {
+		if err := tx.Where("guid = ? AND deleted_at IS NULL", estatusVentaCanceladaGuid).First(&cancelado).Error; err != nil {
 			return fmt.Errorf("estatus Cancelado no encontrado en el catálogo sincronizado: %w", err)
 		}
 		return tx.Model(&pedido).Updates(map[string]any{"estatus_id": cancelado.ID, "sync": false}).Error

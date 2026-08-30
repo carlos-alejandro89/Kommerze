@@ -34,6 +34,10 @@ export function ServiceBuscarEntidadFiscalProveedor(arg1) {
   return window['go']['main']['App']['ServiceBuscarEntidadFiscalProveedor'](arg1);
 }
 
+export function ServiceBuscarEntidadesFacturacion(arg1) {
+  return window['go']['main']['App']['ServiceBuscarEntidadesFacturacion'](arg1);
+}
+
 export function ServiceBuscarProveedores(arg1) {
   return window['go']['main']['App']['ServiceBuscarProveedores'](arg1);
 }
@@ -64,6 +68,10 @@ export function ServiceConsultaTransacciones(arg1, arg2) {
 
 export function ServiceConsultarExistenciaProductos(arg1) {
   return window['go']['main']['App']['ServiceConsultarExistenciaProductos'](arg1);
+}
+
+export function ServiceConsultarHistorialCompras() {
+  return window['go']['main']['App']['ServiceConsultarHistorialCompras']();
 }
 
 export function ServiceConsultarTransferencias() {
@@ -248,6 +256,10 @@ export function ServiceObtenerTiposPedido() {
 
 export function ServiceObtenerValorInventario() {
   return window['go']['main']['App']['ServiceObtenerValorInventario']();
+}
+
+export function ServiceOpenInvoiceLocation(arg1) {
+  return window['go']['main']['App']['ServiceOpenInvoiceLocation'](arg1);
 }
 
 export function ServicePrepararFacturacion(arg1) {

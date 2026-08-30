@@ -106,6 +106,17 @@ func (c *CajaProxyService) ObtenerFacturaPDF(pedidoGuid string) (*dto.Facturacio
 	return &result.Data, nil
 }
 
+func (c *CajaProxyService) BuscarEntidadesReceptoras(termino string) ([]dto.FacturacionEntidadDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    []dto.FacturacionEntidadDto `json:"data"`
+	}
+	if err := c.get("/local/facturacion/entidades?query="+url.QueryEscape(termino), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
 func (c *CajaProxyService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	var result map[string]any
 	return c.post("/local/facturacion/enviar-correo", req, &result)
@@ -206,6 +217,17 @@ func (c *CajaProxyService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID 
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (c *CajaProxyService) ConsultarHistorial() ([]dto.CompraHistorialDto, error) {
+	var result struct {
+		Success bool                     `json:"success"`
+		Data    []dto.CompraHistorialDto `json:"data"`
+	}
+	if err := c.get("/local/compras/historial", &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
 }
 
 func (c *CajaProxyService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {

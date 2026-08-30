@@ -15,6 +15,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
 	"time"
 
 	"github.com/google/uuid"
@@ -118,6 +120,7 @@ func (a *App) proveedoresService() interface {
 
 func (a *App) comprasService() interface {
 	CrearCompra(dto.CrearCompraDto) (*dto.ResponseDto, error)
+	ConsultarHistorial() ([]dto.CompraHistorialDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -413,6 +416,10 @@ func (a *App) ServiceCrearSolicitudProductos(solicitud dto.SolicitudProductosDto
 
 func (a *App) ServiceCrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto, error) {
 	return a.comprasService().CrearCompra(datos)
+}
+
+func (a *App) ServiceConsultarHistorialCompras() ([]dto.CompraHistorialDto, error) {
+	return a.comprasService().ConsultarHistorial()
 }
 
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
@@ -833,6 +840,7 @@ func (a *App) ServiceGetSucursales() (*dto.ResponseDto, error) {
 
 func (a *App) facturacionService() interface {
 	PrepararFactura(string) (*dto.FacturacionPreparacionDto, error)
+	BuscarEntidadesReceptoras(string) ([]dto.FacturacionEntidadDto, error)
 	EmitirFactura(dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error)
 	ObtenerFacturaPDF(string) (*dto.FacturacionResultadoDto, error)
 	EnviarFacturaCorreo(dto.EnviarFacturaEmailRequestDto) error
@@ -847,6 +855,10 @@ func (a *App) ServicePrepararFacturacion(pedidoGuid string) (*dto.FacturacionPre
 	return a.facturacionService().PrepararFactura(pedidoGuid)
 }
 
+func (a *App) ServiceBuscarEntidadesFacturacion(termino string) ([]dto.FacturacionEntidadDto, error) {
+	return a.facturacionService().BuscarEntidadesReceptoras(termino)
+}
+
 func (a *App) ServiceEmitirFacturacion(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
 	return a.facturacionService().EmitirFactura(req)
 }
@@ -857,6 +869,40 @@ func (a *App) ServiceObtenerFacturaPDF(pedidoGuid string) (*dto.FacturacionResul
 
 func (a *App) ServiceEnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	return a.facturacionService().EnviarFacturaCorreo(req)
+}
+
+// ServiceOpenInvoiceLocation abre en el administrador de archivos nativo la
+// carpeta que contiene el PDF y XML de una factura.
+func (a *App) ServiceOpenInvoiceLocation(filePath string) error {
+	filePath = filepath.Clean(filePath)
+	if filePath == "." || filePath == "" {
+		return fmt.Errorf("la factura no tiene una ubicación de archivos registrada")
+	}
+	absolutePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("ubicación de factura inválida: %w", err)
+	}
+	info, err := os.Stat(absolutePath)
+	if err != nil {
+		return fmt.Errorf("no se encontró la ubicación de la factura: %w", err)
+	}
+	directory := absolutePath
+	if !info.IsDir() {
+		directory = filepath.Dir(absolutePath)
+	}
+	var command *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		command = exec.Command("open", directory)
+	case "windows":
+		command = exec.Command("explorer", directory)
+	default:
+		command = exec.Command("xdg-open", directory)
+	}
+	if err = command.Start(); err != nil {
+		return fmt.Errorf("no se pudo abrir la ubicación de los archivos: %w", err)
+	}
+	return nil
 }
 
 // ── Clientes ──────────────────────────────────────────────────────────────────

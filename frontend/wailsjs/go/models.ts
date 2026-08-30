@@ -237,6 +237,42 @@ export namespace dto {
 	        this.DiasCredito = source["DiasCredito"];
 	    }
 	}
+	export class CompraHistorialDto {
+	    ID: number;
+	    PedidoGuid: string;
+	    CompraGuid: string;
+	    Folio: number;
+	    Fecha: string;
+	    Proveedor: string;
+	    ProveedorRFC: string;
+	    OrigenCaptura: string;
+	    FolioFactura: string;
+	    UUIDFiscal: string;
+	    Moneda: string;
+	    Total: number;
+	    Estatus: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CompraHistorialDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.PedidoGuid = source["PedidoGuid"];
+	        this.CompraGuid = source["CompraGuid"];
+	        this.Folio = source["Folio"];
+	        this.Fecha = source["Fecha"];
+	        this.Proveedor = source["Proveedor"];
+	        this.ProveedorRFC = source["ProveedorRFC"];
+	        this.OrigenCaptura = source["OrigenCaptura"];
+	        this.FolioFactura = source["FolioFactura"];
+	        this.UUIDFiscal = source["UUIDFiscal"];
+	        this.Moneda = source["Moneda"];
+	        this.Total = source["Total"];
+	        this.Estatus = source["Estatus"];
+	    }
+	}
 	export class CompraProductoDto {
 	    nivelGuid: string;
 	    cantidad: number;

@@ -5,22 +5,22 @@ import {
   AlertTriangle,
   BadgeCheck,
   Ban,
-  Building2,
   CalendarDays,
   CheckCircle2,
   ClipboardCopy,
-  Download,
   Eye,
   FileCode2,
   FileText,
-  FolderCheck,
+  FolderOpen,
   Hash,
   History,
+  Loader2,
   Mail,
   PackageOpen,
   Paperclip,
   Plus,
   ReceiptText,
+  Search,
   Send,
   ShieldCheck,
   WalletCards,
@@ -63,9 +63,33 @@ const SelectField = ({ label, value, onChange, children, icon: Icon }) => (
   </label>
 );
 
+const FiscalEntityOption = ({ item, selected, onSelect }) => (
+  <button
+    type="button"
+    onClick={() => onSelect(item)}
+    className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${selected ? "border-primary/35 bg-primary/[.06]" : "border-border/65 bg-background/65 hover:border-blue-300 hover:bg-blue-50/55 dark:hover:border-blue-400/20 dark:hover:bg-blue-500/[.07]"}`}
+  >
+    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">
+      {String(item.RazonSocial || "EF").split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-sm font-semibold">{item.RazonSocial || "Entidad fiscal sin nombre"}</span>
+      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+        <span className="font-semibold text-foreground/75">RFC: {item.RFC || "—"}</span>
+        <span>C.P. {item.CodigoPostal || "—"}</span>
+        {item.RegimenClave && <span>{item.RegimenClave} · {item.Regimen}</span>}
+      </span>
+    </span>
+    <span className={`rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-600 transition dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300 ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+      {selected ? "Seleccionada" : "Seleccionar"}
+    </span>
+  </button>
+);
+
 function FacturacionSuccess({ result, sale, entity, navigate, service, historicalView = false }) {
   const uuid = result?.uuid || result?.data?.uuid || "";
   const xmlPath = result?.data?.archivoXML || "";
+  const invoicePath = result?.data?.archivoPDF || xmlPath;
   const pdfFileName = result?.pdfFileName || "Factura.pdf";
   const xmlFileName = xmlPath.split(/[\\/]/).pop() || "Factura.xml";
   const pdfURL = useMemo(() => {
@@ -96,12 +120,13 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
     await navigator.clipboard.writeText(value);
     toast.success(message);
   };
-  const downloadPDF = () => {
-    if (!pdfURL) return;
-    const link = document.createElement("a");
-    link.href = pdfURL;
-    link.download = result?.pdfFileName || `CFDI-${uuid}.pdf`;
-    link.click();
+  const openInvoiceLocation = async () => {
+    if (!invoicePath) return;
+    try {
+      await service.abrirUbicacionFactura(invoicePath);
+    } catch (error) {
+      toast.error(String(error));
+    }
   };
   const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const addEmail = () => {
@@ -177,15 +202,6 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
             <div className="space-y-2.5">
               <Button
                 className="h-11 w-full justify-start rounded-xl bg-primary text-white"
-                onClick={downloadPDF}
-                disabled={!pdfURL}
-              >
-                <Download className="size-4" />
-                Descargar PDF
-              </Button>
-              <Button
-                variant="outline"
-                className="h-11 w-full justify-start rounded-xl border-primary/25 text-primary"
                 onClick={() => setEmailOpen(true)}
               >
                 <Mail className="size-4" />
@@ -194,19 +210,19 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
               <Button
                 variant="outline"
                 className="h-11 w-full justify-start rounded-xl"
-                onClick={() => copy(uuid, "Folio fiscal copiado")}
+                onClick={openInvoiceLocation}
+                disabled={!invoicePath}
               >
-                <ClipboardCopy className="size-4" />
-                Copiar folio fiscal
+                <FolderOpen className="size-4" />
+                Abrir ubicación de archivos
               </Button>
               <Button
                 variant="outline"
                 className="h-11 w-full justify-start rounded-xl"
-                onClick={() => copy(xmlPath, "Ruta del XML copiada")}
-                disabled={!xmlPath}
+                onClick={() => copy(uuid, "Folio fiscal copiado")}
               >
-                <FolderCheck className="size-4" />
-                Copiar ruta del XML
+                <ClipboardCopy className="size-4" />
+                Copiar folio fiscal
               </Button>
               <Button
                 variant="outline"
@@ -459,6 +475,11 @@ export function FacturacionPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(null);
+  const [entityDialogOpen, setEntityDialogOpen] = useState(false);
+  const [entityQuery, setEntityQuery] = useState("");
+  const [entityResults, setEntityResults] = useState([]);
+  const [searchingEntities, setSearchingEntities] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
   const [form, setForm] = useState({
     entidadFiscalID: "",
     usoCFDIID: "",
@@ -474,6 +495,7 @@ export function FacturacionPage() {
       try {
         const result = await service.prepararFacturacion(pedidoGuid);
         setData(result);
+        setSelectedEntity(result.Entidades?.[0] || null);
         setForm({
           entidadFiscalID: String(result.Entidades?.[0]?.ID || ""),
           usoCFDIID: String(
@@ -501,10 +523,37 @@ export function FacturacionPage() {
     };
     load();
   }, [pedidoGuid, historicalView]);
-  const entity = useMemo(
-    () => data?.Entidades?.find((x) => String(x.ID) === form.entidadFiscalID),
-    [data, form.entidadFiscalID],
-  );
+  useEffect(() => {
+    if (!entityDialogOpen) return undefined;
+    let active = true;
+    setSearchingEntities(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await service.buscarEntidadesFacturacion(entityQuery.trim());
+        if (active) setEntityResults(results || []);
+      } catch (error) {
+        if (active) setEntityResults([]);
+        console.error("No se pudieron consultar las entidades fiscales:", error);
+      } finally {
+        if (active) setSearchingEntities(false);
+      }
+    }, entityQuery.trim() ? 280 : 0);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [entityDialogOpen, entityQuery]);
+  const selectBillingEntity = (selectedEntity) => {
+    setSelectedEntity(selectedEntity);
+    setForm((current) => ({ ...current, entidadFiscalID: String(selectedEntity.ID) }));
+    setEntityDialogOpen(false);
+    setEntityQuery("");
+  };
+  const entity = selectedEntity;
+  const additionalEntities = useMemo(() => {
+    const linkedIDs = new Set((data?.Entidades || []).map((item) => String(item.ID)));
+    return entityResults.filter((item) => !linkedIDs.has(String(item.ID)));
+  }, [data?.Entidades, entityResults]);
   const submit = async () => {
     if (Object.values(form).some((x) => !x)) {
       toast.error("Completa todos los datos fiscales");
@@ -735,56 +784,36 @@ export function FacturacionPage() {
               </div>
             </div>
             <div className="space-y-5 p-6">
-              {data.Entidades?.length ? (
-                <>
-                  <SelectField
-                    icon={Building2}
-                    label="Razón social para facturación"
-                    value={form.entidadFiscalID}
-                    onChange={(e) =>
-                      setForm({ ...form, entidadFiscalID: e.target.value })
-                    }
-                  >
-                    {data.Entidades.map((x) => (
-                      <option key={x.ID} value={x.ID}>
-                        {x.RazonSocial} · {x.RFC}
-                      </option>
-                    ))}
-                  </SelectField>
-                  {entity && (
-                    <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-primary/[.035] p-4">
-                      <div className="absolute -right-8 -top-8 size-24 rounded-full bg-primary/[.06]" />
-                      <div className="relative flex gap-3">
-                        <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                          {String(entity.RazonSocial || "EF")
-                            .split(/\s+/)
-                            .slice(0, 2)
-                            .map((word) => word[0])
-                            .join("")
-                            .toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-bold">
-                            {entity.RazonSocial}
-                          </p>
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            RFC: {entity.RFC}
-                          </p>
-                          <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
-                            {entity.RegimenClave} · {entity.Regimen}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Domicilio fiscal: C.P. {entity.CodigoPostal}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground">Entidad fiscal receptora</p>
+                <button
+                  type="button"
+                  onClick={() => setEntityDialogOpen(true)}
+                  className="flex w-full items-center gap-3 rounded-2xl border border-primary/15 bg-primary/[.035] p-4 text-left transition hover:border-primary/35 hover:bg-primary/[.06]"
+                >
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {String(entity?.RazonSocial || "EF")
+                      .split(/\s+/)
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((word) => word[0])
+                      .join("")
+                      .toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-bold">
+                      {entity?.RazonSocial || "Seleccionar entidad fiscal"}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground">
+                      {entity ? `RFC: ${entity.RFC} · C.P. ${entity.CodigoPostal}` : "Busca por razón social, RFC o código postal"}
+                    </span>
+                  </span>
+                  <Search className="size-4 shrink-0 text-primary" />
+                </button>
+              </div>
+              {!entity && (
                 <div className="rounded-xl border border-amber-400/40 bg-amber-500/[.07] p-4 text-xs leading-5 text-amber-800 dark:text-amber-300">
-                  El cliente no tiene una razón social receptora vinculada.
-                  Agrégala desde Clientes antes de facturar.
+                  Selecciona una entidad fiscal receptora para continuar con la factura.
                 </div>
               )}
               <div className="h-px bg-border/65" />
@@ -844,6 +873,66 @@ export function FacturacionPage() {
           </aside>
         </div>
       </div>
+      <Dialog open={entityDialogOpen} onOpenChange={setEntityDialogOpen}>
+        <DialogContent className="flex max-h-[82vh] w-[min(720px,94vw)] max-w-none flex-col overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-border/70 px-6 py-5 text-left">
+            <DialogTitle>Seleccionar entidad fiscal</DialogTitle>
+            <DialogDescription>
+              Elige una entidad vinculada al cliente de la venta o busca cualquier otra entidad receptora registrada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pt-4">
+            <div className="flex h-11 items-center rounded-2xl border border-[#dce7f6] bg-white/90 px-4 shadow-[0_12px_32px_-25px_rgba(32,74,138,.46)] transition focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065]">
+              <Search className="mr-3 size-4 text-[#6481ad]" />
+              <input
+                autoFocus
+                value={entityQuery}
+                onChange={(event) => setEntityQuery(event.target.value)}
+                placeholder="Razón social, RFC, régimen o código postal…"
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#7790b6]"
+              />
+              {searchingEntities && <Loader2 className="size-4 animate-spin text-blue-600" />}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            {searchingEntities && !entityResults.length ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/70" />
+                ))}
+              </div>
+            ) : (data.Entidades?.length || additionalEntities.length) ? (
+              <div className="space-y-5">
+                {data.Entidades?.length > 0 && (
+                  <section>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Ligadas al cliente de la venta</p>
+                    <div className="space-y-2">
+                      {data.Entidades.map((item) => <FiscalEntityOption key={item.Guid || item.ID} item={item} selected={String(item.ID) === form.entidadFiscalID} onSelect={selectBillingEntity} />)}
+                    </div>
+                  </section>
+                )}
+                {additionalEntities.length > 0 && (
+                  <section>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Otras entidades fiscales receptoras</p>
+                    <div className="space-y-2">
+                      {additionalEntities.map((item) => <FiscalEntityOption key={item.Guid || item.ID} item={item} selected={String(item.ID) === form.entidadFiscalID} onSelect={selectBillingEntity} />)}
+                    </div>
+                  </section>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <Search className="size-9 text-muted-foreground/35" />
+                <p className="mt-3 text-sm font-semibold">Sin entidades fiscales encontradas</p>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">Prueba con otro dato o registra primero la entidad fiscal desde Clientes.</p>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-border/70 bg-muted/20 px-6 py-3 text-[10px] text-muted-foreground">
+            {searchingEntities ? "Consultando entidades fiscales…" : `${(data.Entidades?.length || 0) + additionalEntities.length} entidad${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "es"} disponible${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "s"}`}
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/70 bg-background/90 px-6 py-3.5 shadow-[0_-14px_35px_-30px_rgba(20,54,110,.65)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between">
           <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
@@ -860,7 +949,7 @@ export function FacturacionPage() {
             </Button>
             <Button
               className="h-10 rounded-xl px-7 text-xs shadow-[0_10px_24px_-14px_rgba(0,87,214,.75)]"
-              disabled={sending || !data.Entidades?.length}
+              disabled={sending || !entity}
               onClick={submit}
             >
               <FileText className="size-4" />

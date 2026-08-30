@@ -25,10 +25,12 @@
 import {
     ServiceConsultaProductos,
     ServiceBuscarClientes,
+    ServiceBuscarEntidadesFacturacion,
     ServiceConsultarExistenciaProductos,
     ServiceConfirmarTransaccion,
     ServiceCrearSolicitudProductos,
     ServiceCrearCompra,
+    ServiceConsultarHistorialCompras,
     ServiceObtenerTiposPedido,
     ServiceGetSucursales,
     ServiceGetSatFormasPago,
@@ -49,6 +51,7 @@ import {
     ServiceEmitirFacturacion,
     ServiceObtenerFacturaPDF,
     ServiceEnviarFacturaCorreo,
+    ServiceOpenInvoiceLocation,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -78,6 +81,7 @@ export function usePosService() {
      * @returns {Promise<ClienteDto[]>}
      */
     const buscarClientes = (q) => ServiceBuscarClientes(q);
+    const buscarEntidadesFacturacion = (termino = '') => ServiceBuscarEntidadesFacturacion(termino);
     const buscarProveedorPorRFC = (rfc) => ServiceBuscarEntidadFiscalProveedor(rfc);
     const buscarProveedores = (termino = '') => ServiceBuscarProveedores(termino);
 
@@ -135,6 +139,7 @@ export function usePosService() {
 
     const crearSolicitudProductos = (solicitud) => ServiceCrearSolicitudProductos(solicitud);
     const crearCompra = (datos) => ServiceCrearCompra(datos);
+    const consultarHistorialCompras = () => ServiceConsultarHistorialCompras();
 
     const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
     const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
@@ -143,6 +148,7 @@ export function usePosService() {
     const emitirFacturacion = (datos) => ServiceEmitirFacturacion(datos);
     const obtenerFacturaPDF = (pedidoGuid) => ServiceObtenerFacturaPDF(pedidoGuid);
     const enviarFacturaCorreo = (datos) => ServiceEnviarFacturaCorreo(datos);
+    const abrirUbicacionFactura = (ruta) => ServiceOpenInvoiceLocation(ruta);
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
@@ -191,6 +197,7 @@ export function usePosService() {
         consultarExistencias,
         // Clientes
         buscarClientes,
+        buscarEntidadesFacturacion,
         buscarProveedorPorRFC,
         buscarProveedores,
         // Catálogos
@@ -201,6 +208,7 @@ export function usePosService() {
         confirmarTransaccion,
         crearSolicitudProductos,
         crearCompra,
+        consultarHistorialCompras,
         consultarTransacciones,
         consultarTransferencias,
         cancelarVenta,
@@ -212,6 +220,7 @@ export function usePosService() {
         emitirFacturacion,
         obtenerFacturaPDF,
         enviarFacturaCorreo,
+        abrirUbicacionFactura,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

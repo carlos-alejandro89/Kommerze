@@ -119,7 +119,9 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/proveedores", l.handleBuscarProveedores)
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/compras", l.handleCrearCompra)
+	mux.HandleFunc("/local/compras/historial", l.handleHistorialCompras)
 	mux.HandleFunc("/local/facturacion/preparar", l.handlePrepararFacturacion)
+	mux.HandleFunc("/local/facturacion/entidades", l.handleBuscarEntidadesFacturacion)
 	mux.HandleFunc("/local/facturacion/emitir", l.handleEmitirFacturacion)
 	mux.HandleFunc("/local/facturacion/pdf", l.handleObtenerFacturaPDF)
 	mux.HandleFunc("/local/facturacion/enviar-correo", l.handleEnviarFacturaCorreo)
@@ -422,6 +424,19 @@ func (l *LocalServerService) handleHistorialTransacciones(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleHistorialCompras(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.compras.ConsultarHistorial()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
 }
 
 func (l *LocalServerService) handleCancelarVenta(w http.ResponseWriter, r *http.Request) {
@@ -923,6 +938,19 @@ func (l *LocalServerService) handlePrepararFacturacion(w http.ResponseWriter, r 
 	result, err := l.facturacion.PrepararFactura(r.URL.Query().Get("pedidoGuid"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleBuscarEntidadesFacturacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.facturacion.BuscarEntidadesReceptoras(r.URL.Query().Get("query"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})

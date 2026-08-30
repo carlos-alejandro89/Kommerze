@@ -42,6 +42,7 @@ const SuppliersPage = lazy(() => import('@/features/suppliers/pages/SuppliersPag
 const SuppliersDashboardPage = lazy(() => import('@/features/suppliers/pages/SuppliersDashboardPage').then(m => ({ default: m.SuppliersDashboardPage })));
 const PurchasesPage = lazy(() => import('@/features/purchases/pages/PurchasesPage').then(m => ({ default: m.PurchasesPage })));
 const PurchaseCompletedPage = lazy(() => import('@/features/purchases/pages/PurchaseCompletedPage').then(m => ({ default: m.PurchaseCompletedPage })));
+const PurchaseHistoryPage = lazy(() => import('@/features/purchases/pages/PurchaseHistoryPage').then(m => ({ default: m.PurchaseHistoryPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const SyncPage = lazy(() => import('@/features/sync/pages/SyncPage').then(m => ({ default: m.SyncPage })));
 const InventoryImportPage = lazy(() => import('@/features/inventory-import/pages/InventoryImportPage').then(m => ({ default: m.InventoryImportPage })));
@@ -204,6 +205,10 @@ export const router = createBrowserRouter(
         {
           path: '/purchases',
           element: <SuspensePage><PurchasesPage /></SuspensePage>,
+        },
+        {
+          path: '/purchases/history',
+          element: <SuspensePage><PurchaseHistoryPage /></SuspensePage>,
         },
         {
           path: '/purchases/completed',

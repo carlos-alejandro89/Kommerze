@@ -17,6 +17,27 @@ type ComprasService struct{ db *gorm.DB }
 
 func NewComprasService(db *gorm.DB) *ComprasService { return &ComprasService{db: db} }
 
+func (s *ComprasService) ConsultarHistorial() ([]dto.CompraHistorialDto, error) {
+	var compras []dto.CompraHistorialDto
+	err := s.db.Raw(`
+		SELECT c.id, p.guid::text AS pedido_guid, c.guid::text AS compra_guid,
+		       p.folio, p.fecha, ef.razon_social AS proveedor,
+		       COALESCE(ef.rfc, '') AS proveedor_rfc,
+		       UPPER(COALESCE(c.origen_captura, 'MANUAL')) AS origen_captura,
+		       COALESCE(c.folio_factura, '') AS folio_factura,
+		       COALESCE(c.uuid_fiscal, '') AS uuid_fiscal,
+		       COALESCE(c.moneda, 'MXN') AS moneda,
+		       c.total::double precision AS total,
+		       COALESCE(e.nombre, '') AS estatus
+		FROM compras c
+		JOIN pedidos p ON p.id = c.pedido_id AND p.deleted_at IS NULL
+		JOIN entidades_fiscales ef ON ef.id = c.proveedor_id AND ef.deleted_at IS NULL
+		LEFT JOIN estatus e ON e.id = p.estatus_id AND e.deleted_at IS NULL
+		WHERE c.deleted_at IS NULL
+		ORDER BY p.fecha DESC, p.folio DESC`).Scan(&compras).Error
+	return compras, err
+}
+
 func parseOptionalPurchaseTime(value string) (*time.Time, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

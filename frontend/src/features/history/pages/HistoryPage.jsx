@@ -7,7 +7,9 @@ import {
   ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
   ReceiptText, Printer, Mail, FileDown, Ban, MoreVertical, FileCheck2,
+  SlidersHorizontal, CalendarDays,
 } from 'lucide-react';
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
@@ -19,9 +21,15 @@ import { TRANSACTION_TYPES, isTransactionType } from '@/features/pos/transaction
 import { DialogAlert } from '@/components/common/dialog-alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
+const EMPTY_ADVANCED_FILTERS = { dateRange: undefined, type: '', client: '', status: '' };
+const MONTH_NAMES = Array.from({ length: 12 }, (_, month) => {
+  const label = new Intl.DateTimeFormat('es-MX', { month: 'long' }).format(new Date(2026, month, 1));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+});
 
 const TIPO_TABS = [
   { id: null,  label: 'Todos',          icon: LayoutList },
@@ -58,7 +66,23 @@ function getInitials(value) {
 function getDisplayFolio(row) {
   const folio = String(row?.Folio || '').padStart(6, '0');
   if (isTransactionType(row, TRANSACTION_TYPES.COTIZACION)) return `CTZ-${folio}`;
-  return `${row?.SerieCFDI || 'A'}-${folio}`;
+	return folio;
+}
+
+function getInvoiceFolio(row) {
+  if (!row?.Facturada || !row?.FacturaFolio) return '';
+  return `${row?.FacturaSerie || row?.SerieCFDI || 'A'}-${String(row.FacturaFolio).padStart(6, '0')}`;
+}
+
+function dayKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+
+function formatFilterDate(value) {
+  if (!value) return '';
+  return value.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function RowActionButton({ label, icon: Icon, onClick, disabled, tone = 'text-primary hover:bg-primary/10' }) {
@@ -155,7 +179,7 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
   const navigate = useNavigate();
-  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo, obtenerFacturaPDF } = usePosService();
+  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo } = usePosService();
 
   const [transacciones, setTransacciones] = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -174,6 +198,12 @@ export function HistoryPage() {
   const [procesandoAccion, setProcesandoAccion] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const [documentViewer, setDocumentViewer] = useState({ open: false, url: '', fileName: '' });
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedDraft, setAdvancedDraft] = useState(EMPTY_ADVANCED_FILTERS);
+  const [advancedFilters, setAdvancedFilters] = useState(EMPTY_ADVANCED_FILTERS);
+  const [calendarView, setCalendarView] = useState('days');
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [yearPageStart, setYearPageStart] = useState(() => Math.floor(new Date().getFullYear() / 12) * 12);
 
   /* ── Carga de datos ── */
   const cargar = useCallback(async () => {
@@ -229,16 +259,101 @@ export function HistoryPage() {
   /* ── Filtrado por búsqueda ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return transacciones;
-    return transacciones.filter(t =>
-      String(t.Folio ?? '').toLowerCase().includes(q) ||
-      (t.SerieCFDI ?? '').toLowerCase().includes(q) ||
-      (t.RazonSocial ?? '').toLowerCase().includes(q) ||
-      (t.ReceptorRFC ?? '').toLowerCase().includes(q) ||
-      (t.FacturaUUID ?? '').toLowerCase().includes(q) ||
-      (t.TipoOperacion ?? '').toLowerCase().includes(q),
-    );
-  }, [transacciones, search]);
+    const from = dayKey(advancedFilters.dateRange?.from);
+    const to = dayKey(advancedFilters.dateRange?.to || advancedFilters.dateRange?.from);
+    const client = advancedFilters.client.trim().toLowerCase();
+    return transacciones.filter(t => {
+      const matchesQuickSearch = !q ||
+        String(t.Folio ?? '').toLowerCase().includes(q) ||
+        (t.SerieCFDI ?? '').toLowerCase().includes(q) ||
+        (t.RazonSocial ?? '').toLowerCase().includes(q) ||
+        (t.ReceptorRFC ?? '').toLowerCase().includes(q) ||
+        (t.FacturaUUID ?? '').toLowerCase().includes(q) ||
+        getInvoiceFolio(t).toLowerCase().includes(q) ||
+        (t.TipoOperacion ?? '').toLowerCase().includes(q);
+      const transactionDay = dayKey(t.Fecha);
+      const matchesDate = !from || (transactionDay !== null && transactionDay >= from && transactionDay <= to);
+      const matchesType = !advancedFilters.type || String(t.TipoPedidoGuid || '').toLowerCase() === advancedFilters.type;
+      const matchesClient = !client || String(t.RazonSocial || '').toLowerCase().includes(client);
+      const matchesStatus = !advancedFilters.status || t.Estatus === advancedFilters.status;
+      return matchesQuickSearch && matchesDate && matchesType && matchesClient && matchesStatus;
+    });
+  }, [transacciones, search, advancedFilters]);
+
+  const advancedFilterCount = useMemo(() => [
+    advancedFilters.dateRange?.from,
+    advancedFilters.type,
+    advancedFilters.client.trim(),
+    advancedFilters.status,
+  ].filter(Boolean).length, [advancedFilters]);
+
+  const availableStatuses = useMemo(() => Array.from(new Set(
+    transacciones.map(item => item.Estatus).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b, 'es')), [transacciones]);
+
+  const openAdvancedSearch = () => {
+    const initialMonth = advancedFilters.dateRange?.from || new Date();
+    setAdvancedDraft({
+      ...advancedFilters,
+      dateRange: advancedFilters.dateRange ? { ...advancedFilters.dateRange } : undefined,
+    });
+    setCalendarMonth(initialMonth);
+    setCalendarView('days');
+    setYearPageStart(Math.floor(initialMonth.getFullYear() / 12) * 12);
+    setAdvancedOpen(true);
+  };
+
+  const moveCalendar = (amount) => {
+    if (calendarView === 'years') {
+      setYearPageStart(value => value + amount * 12);
+      return;
+    }
+    setCalendarMonth(value => calendarView === 'months'
+      ? new Date(value.getFullYear() + amount, value.getMonth(), 1)
+      : new Date(value.getFullYear(), value.getMonth() + amount, 1));
+  };
+
+  const showMonths = () => {
+    setCalendarView('months');
+    setYearPageStart(Math.floor(calendarMonth.getFullYear() / 12) * 12);
+  };
+
+  const showYears = () => {
+    setYearPageStart(Math.floor(calendarMonth.getFullYear() / 12) * 12);
+    setCalendarView('years');
+  };
+
+  const selectCalendarYear = (year) => {
+    setCalendarMonth(value => new Date(year, value.getMonth(), 1));
+    setCalendarView('months');
+  };
+
+  const selectCalendarMonth = (month) => {
+    setCalendarMonth(value => new Date(value.getFullYear(), month, 1));
+    setCalendarView('days');
+  };
+
+  const applyAdvancedSearch = () => {
+    const hasFilter = advancedDraft.dateRange?.from || advancedDraft.type || advancedDraft.client.trim() || advancedDraft.status;
+    if (!hasFilter) {
+      toast.warning('Selecciona al menos un filtro para realizar la búsqueda.');
+      return;
+    }
+    setAdvancedFilters({
+      ...advancedDraft,
+      client: advancedDraft.client.trim(),
+    });
+    setTipoFiltro(null);
+    setPage(1);
+    setAdvancedOpen(false);
+  };
+
+  const clearAdvancedSearch = () => {
+    setAdvancedDraft(EMPTY_ADVANCED_FILTERS);
+    setAdvancedFilters(EMPTY_ADVANCED_FILTERS);
+    setPage(1);
+    setAdvancedOpen(false);
+  };
 
   /* ── Paginación ── */
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -439,6 +554,25 @@ export function HistoryPage() {
                 />
               </div>
               <button
+                type="button"
+                onClick={openAdvancedSearch}
+                className={cn(
+                  'relative flex h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold transition-colors',
+                  advancedFilterCount
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-border/70 bg-background/75 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary',
+                )}
+                title="Búsqueda avanzada"
+              >
+                <SlidersHorizontal className="size-4" />
+                <span className="hidden 2xl:inline">Búsqueda avanzada</span>
+                {advancedFilterCount > 0 && (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    {advancedFilterCount}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={cargar}
                 disabled={loading}
                 className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/75 text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
@@ -486,7 +620,7 @@ export function HistoryPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="sticky top-0 border-b border-border/70 bg-slate-50/95 backdrop-blur dark:bg-white/[.055]">
-                      {['Folio / serie', 'Emisión', 'Receptor', 'Tipo', 'Total', 'Estado', 'Facturación', 'Acciones'].map(h => (
+					  {['Folio', 'Fecha', 'Cliente', 'Tipo', 'Total', 'Estado', 'Facturación', 'Acciones'].map(h => (
                         <th key={h} className={cn(
                           'py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap',
                           h === 'Acciones' ? 'w-[58px] px-2 text-center' : 'px-5',
@@ -599,14 +733,30 @@ export function HistoryPage() {
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {esCotizacion ? (
                               <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">No aplica</span>
-                            ) : t.Facturada ? (
-                              <span title={t.FacturaUUID || 'CFDI timbrado'} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                <FileCheck2 className="size-3" /> Facturada
-                              </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                                <ReceiptText className="size-3" /> Sin facturar
-                              </span>
+							  <button
+								type="button"
+								onClick={() => t.Facturada
+								  ? handleVerFactura(t)
+								  : navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })}
+								className="group/factura flex flex-col items-start gap-1 text-left"
+								title={t.Facturada ? (t.FacturaUUID || 'Ver CFDI') : 'Facturar venta'}
+							  >
+								<span className={cn(
+								  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition group-hover/factura:brightness-95',
+								  t.Facturada
+									? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+									: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+								)}>
+								  {t.Facturada ? <FileCheck2 className="size-3" /> : <ReceiptText className="size-3" />}
+								  {t.Facturada ? 'Facturada' : 'Sin facturar'}
+								</span>
+								{t.Facturada && (
+								  <span className="pl-1 text-[10px] font-semibold text-muted-foreground transition group-hover/factura:text-primary">
+									{getInvoiceFolio(t) || 'Folio fiscal no disponible'}
+								  </span>
+								)}
+							  </button>
                             )}
                           </td>
 
@@ -698,6 +848,162 @@ export function HistoryPage() {
       </div>
 
       {/* ── Modales ── */}
+      <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <DialogContent className="sm:max-w-[760px] rounded-3xl p-0 overflow-hidden">
+          <DialogHeader className="border-b border-border/70 px-6 py-5 text-left">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <SlidersHorizontal className="size-5" />
+              </div>
+              <div>
+                <DialogTitle>Búsqueda avanzada</DialogTitle>
+                <DialogDescription className="mt-1">Combina uno o varios criterios para localizar ventas y cotizaciones.</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="grid gap-6 px-6 py-5 md:grid-cols-[330px_1fr]">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                  <CalendarDays className="size-4 text-primary" /> Rango de fechas
+                </label>
+                {advancedDraft.dateRange?.from && (
+                  <button type="button" onClick={() => setAdvancedDraft(value => ({ ...value, dateRange: undefined }))} className="text-[11px] font-semibold text-primary hover:underline">Limpiar fechas</button>
+                )}
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-1">
+                <div className="flex h-10 items-center justify-between px-2 pt-1">
+                  <button type="button" onClick={() => moveCalendar(-1)} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-background hover:text-foreground" aria-label="Periodo anterior">
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  {calendarView === 'days' && (
+                    <button type="button" onClick={showMonths} className="rounded-lg px-3 py-1.5 text-sm font-semibold capitalize text-foreground transition hover:bg-background">
+                      {MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                    </button>
+                  )}
+                  {calendarView === 'months' && (
+                    <button type="button" onClick={showYears} className="rounded-lg px-3 py-1.5 text-sm font-semibold text-foreground transition hover:bg-background">
+                      {calendarMonth.getFullYear()}
+                    </button>
+                  )}
+                  {calendarView === 'years' && (
+                    <span className="px-3 py-1.5 text-sm font-semibold text-foreground">{yearPageStart} — {yearPageStart + 11}</span>
+                  )}
+                  <button type="button" onClick={() => moveCalendar(1)} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-background hover:text-foreground" aria-label="Periodo siguiente">
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+
+                {calendarView === 'days' && (
+                  <Calendar
+                    mode="range"
+                    locale={es}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    hideNavigation
+                    selected={advancedDraft.dateRange}
+                    onSelect={(dateRange) => setAdvancedDraft(value => ({ ...value, dateRange }))}
+                    numberOfMonths={1}
+                    className="w-full px-3 pb-3 pt-0"
+                    classNames={{
+                      months: 'w-full',
+                      month: 'w-full',
+                      month_grid: 'w-full table-fixed border-collapse',
+                      month_caption: 'hidden',
+                      weekday: 'h-8 w-auto p-0 text-center text-xs font-medium text-muted-foreground/80',
+                      day: 'group h-9 w-auto px-0 py-px text-center text-sm',
+                      range_middle: 'range-middle [&>button]:!bg-blue-100 [&>button]:!text-blue-800 dark:[&>button]:!bg-blue-400/20 dark:[&>button]:!text-blue-200',
+                    }}
+                  />
+                )}
+
+                {calendarView === 'months' && (
+                  <div className="grid grid-cols-3 gap-2 p-3 pt-2">
+                    {MONTH_NAMES.map((month, index) => (
+                      <button
+                        key={month}
+                        type="button"
+                        onClick={() => selectCalendarMonth(index)}
+                        className={cn(
+                          'h-10 rounded-xl text-xs font-semibold transition hover:bg-primary/10 hover:text-primary',
+                          index === calendarMonth.getMonth() ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground' : 'bg-background/70 text-foreground',
+                        )}
+                      >
+                        {month.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {calendarView === 'years' && (
+                  <div className="grid grid-cols-3 gap-2 p-3 pt-2">
+                    {Array.from({ length: 12 }, (_, index) => yearPageStart + index).map(year => (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => selectCalendarYear(year)}
+                        className={cn(
+                          'h-10 rounded-xl text-xs font-semibold transition hover:bg-primary/10 hover:text-primary',
+                          year === calendarMonth.getFullYear() ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground' : 'bg-background/70 text-foreground',
+                        )}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 min-h-4 text-center text-[11px] font-medium text-muted-foreground">
+                {advancedDraft.dateRange?.from
+                  ? `${formatFilterDate(advancedDraft.dateRange.from)}${advancedDraft.dateRange.to ? ` — ${formatFilterDate(advancedDraft.dateRange.to)}` : ''}`
+                  : 'Selecciona una fecha inicial y una final'}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="advanced-sale-type" className="text-xs font-semibold text-foreground">Tipo de venta</label>
+                <select id="advanced-sale-type" value={advancedDraft.type} onChange={event => setAdvancedDraft(value => ({ ...value, type: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10">
+                  <option value="">Todos los tipos</option>
+                  <option value={TRANSACTION_TYPES.VENTA.guid}>Venta</option>
+                  <option value={TRANSACTION_TYPES.COTIZACION.guid}>Cotización</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="advanced-client" className="text-xs font-semibold text-foreground">Nombre del cliente</label>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input id="advanced-client" value={advancedDraft.client} onChange={event => setAdvancedDraft(value => ({ ...value, client: event.target.value }))} placeholder="Escribe el nombre o razón social" className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="advanced-status" className="text-xs font-semibold text-foreground">Estatus de la venta</label>
+                <select id="advanced-status" value={advancedDraft.status} onChange={event => setAdvancedDraft(value => ({ ...value, status: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10">
+                  <option value="">Todos los estatus</option>
+                  {availableStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </div>
+
+              <div className="rounded-xl border border-blue-500/15 bg-blue-500/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+                Ningún campo es obligatorio individualmente. Selecciona al menos un criterio para iniciar la búsqueda.
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-border/70 bg-muted/20 px-6 py-4 sm:justify-between">
+            <Button type="button" variant="ghost" onClick={clearAdvancedSearch} disabled={!advancedFilterCount && !advancedDraft.dateRange?.from && !advancedDraft.type && !advancedDraft.client && !advancedDraft.status}>Limpiar filtros</Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setAdvancedOpen(false)}>Cancelar</Button>
+              <Button type="button" onClick={applyAdvancedSearch}>
+                <Search className="size-4" /> Buscar
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {modalDescuento && (
         <ModalSolicitarDescuento
           row={modalDescuento}

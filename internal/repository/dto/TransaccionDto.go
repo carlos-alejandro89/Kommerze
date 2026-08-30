@@ -18,5 +18,7 @@ type TransaccionDto struct {
 	SerieCFDI           string
 	Facturada           bool
 	FacturaUUID         string
+	FacturaSerie        string
+	FacturaFolio        int
 	ReceptorRFC         string
 }
