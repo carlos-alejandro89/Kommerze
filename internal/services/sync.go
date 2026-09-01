@@ -90,6 +90,30 @@ func (s *SyncService) SyncEmpaques() ([]any, error) {
 	return result.Data, nil
 }
 
+func (s *SyncService) SyncSatUnidadesMedida() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/unidades-medida/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error consultando unidades de medida SAT: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("el catálogo de unidades de medida SAT respondió %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decodificando unidades de medida SAT: %w", err)
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("no se pudieron obtener las unidades de medida SAT: %s", result.Mensaje)
+	}
+	if err := s.repo.SaveSatUnidadesMedida(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando unidades de medida SAT: %w", err)
+	}
+	return result.Data, nil
+}
+
 func (s *SyncService) SyncMarcas() ([]any, error) {
 	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/marcas/get", s.apiBaseURL))
 	if err != nil {

@@ -187,6 +187,17 @@ func (a *App) SyncEmpaques() (string, error) {
 	return "Sincronizado", nil
 }
 
+func (a *App) SyncSatUnidadesMedida() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncSatUnidadesMedida()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
 func (a *App) SyncMarcas() (string, error) {
 	if a.services.Sync == nil {
 		return "", fmt.Errorf("sincronización no disponible en modo Caja")
@@ -786,6 +797,20 @@ func (a *App) ServiceObtenerOperacionCajeroActiva(responsableID uint) *dto.Respo
 		return a.services.CajaProxy.ObtenerOperacionCajeroActiva(responsableID)
 	}
 	return a.services.OperacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
+}
+
+func (a *App) ServiceObtenerCajaConfigurada() (*models.Caja, error) {
+	clave, err := services.GetMachineID()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo identificar el dispositivo: %w", err)
+	}
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.ObtenerCajaConfigurada(clave)
+	}
+	if a.services.OperacionesCaja == nil {
+		return nil, fmt.Errorf("servicio de caja no disponible")
+	}
+	return a.services.OperacionesCaja.ObtenerCajaConfigurada(clave)
 }
 
 // ServiceObtenerResumenCajero calcula y devuelve el resumen de ingresos del turno del cajero.

@@ -1231,6 +1231,59 @@ export namespace dto {
 
 export namespace models {
 	
+	export class Caja {
+	    ID: number;
+	    Guid: number[];
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    Clave: string;
+	    Nombre: string;
+	    Licencia: string;
+	    Activa: boolean;
+	    PermiteVentas: boolean;
+	    EsPrincipal: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Caja(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.Clave = source["Clave"];
+	        this.Nombre = source["Nombre"];
+	        this.Licencia = source["Licencia"];
+	        this.Activa = source["Activa"];
+	        this.PermiteVentas = source["PermiteVentas"];
+	        this.EsPrincipal = source["EsPrincipal"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DocumentOutput {
 	    kind: string;
 	    fileName?: string;

@@ -110,6 +110,8 @@ export function ServiceLoadReceiptLogo():Promise<string>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
+export function ServiceObtenerCajaConfigurada():Promise<models.Caja>;
+
 export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
 
 export function ServiceObtenerFacturaPDF(arg1:string):Promise<dto.FacturacionResultadoDto>;
@@ -193,6 +195,8 @@ export function SyncSatMetodosPago():Promise<string>;
 export function SyncSatProductos():Promise<string>;
 
 export function SyncSatRegimenFiscal():Promise<string>;
+
+export function SyncSatUnidadesMedida():Promise<string>;
 
 export function SyncSatUsosCfdi():Promise<string>;
 

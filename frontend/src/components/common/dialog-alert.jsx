@@ -64,13 +64,20 @@ export function DialogAlert({ open, onOpenChange, title, description, onConfirm,
                 <DialogFooter className="flex w-full gap-3 sm:justify-center">
                     {onCancel && (
                         <DialogClose asChild>
-                            <Button variant="outline" onClick={onCancel}>
+                            <Button
+                                variant="outline"
+                                className="h-11 w-full rounded-xl px-6 font-semibold transition-transform active:scale-[0.98] sm:w-40"
+                                onClick={onCancel}
+                            >
                                 De acuerdo
                             </Button>
                         </DialogClose>
                     )}
                     {onConfirm && (
-                        <Button className="flex-1 sm:flex-none h-11 px-8 rounded-xl font-bold active:scale-[0.98] transition-transform" onClick={onConfirm}>
+                        <Button
+                            className="h-11 w-full rounded-xl px-6 font-semibold transition-transform active:scale-[0.98] sm:w-40"
+                            onClick={onConfirm}
+                        >
                             Continuar
                         </Button>
                     )}

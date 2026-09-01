@@ -8,6 +8,7 @@ import { useActivation } from '@/providers/ActivationProvider';
 import {
   ServiceObtenerOperacionSucursalActiva,
   ServiceObtenerOperacionCajeroActiva,
+  ServiceObtenerCajaConfigurada,
   ServiceAbrirCaja,
 } from '../../../../wailsjs/go/main/App';
 import { Alert, AlertIcon, AlertContent, AlertTitle } from '@/components/ui/alert';
@@ -38,6 +39,13 @@ export function AperturaCajaPage() {
 
     const fetchEstado = async () => {
       try {
+        try {
+          const caja = await ServiceObtenerCajaConfigurada();
+          setCajaNombre(caja?.Nombre || caja?.nombre || '');
+        } catch (cajaError) {
+          console.error('No se pudo obtener la caja configurada', cajaError);
+          setCajaNombre('');
+        }
         if (sucursalID) {
           const resSuc = await ServiceObtenerOperacionSucursalActiva(sucursalID);
           setOpSucursal(resSuc?.success ? resSuc.data : null);
@@ -57,7 +65,7 @@ export function AperturaCajaPage() {
 
   const handleAbrir = async (e) => {
     e.preventDefault();
-    if (!cajaNombre.trim()) { toast.error('Ingresa el nombre o identificador de la caja'); return; }
+    if (!cajaNombre.trim()) { toast.error('No se encontró el nombre configurado para esta caja'); return; }
     if (!fondoApertura || isNaN(parseFloat(fondoApertura))) { toast.error('Ingresa un fondo de apertura válido'); return; }
     if (!opSucursal?.ID && !opSucursal?.id) { toast.error('No hay jornada activa en la sucursal'); return; }
     if (!responsableID) { toast.error('No se pudo identificar al cajero'); return; }
@@ -147,11 +155,11 @@ export function AperturaCajaPage() {
             <input
               id="cajaNombre"
               type="text"
-              placeholder="Ej: CAJA-01, Terminal Norte"
+              placeholder="Caja no configurada"
               value={cajaNombre}
-              onChange={(e) => setCajaNombre(e.target.value)}
-              disabled={submitting}
-              className="w-full rounded-lg border border-border bg-bg-subtle px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition disabled:opacity-50"
+              readOnly
+              aria-readonly="true"
+              className="w-full cursor-default rounded-lg border border-border bg-muted/55 px-4 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
 

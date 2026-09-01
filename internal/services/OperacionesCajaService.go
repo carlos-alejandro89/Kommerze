@@ -1,6 +1,7 @@
 package services
 
 import (
+	"BitComercio/internal/models"
 	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 
@@ -9,13 +10,19 @@ import (
 
 // OperacionesCajaService gestiona la apertura y cierre de turnos de cajero.
 type OperacionesCajaService struct {
-	repo *repository.OperacionesCajaRepository
+	repo      *repository.OperacionesCajaRepository
+	cajasRepo *repository.CajasRepository
 }
 
 func NewOperacionesCajaService(db *gorm.DB) *OperacionesCajaService {
 	return &OperacionesCajaService{
-		repo: repository.NewOperacionesCajaRepository(db),
+		repo:      repository.NewOperacionesCajaRepository(db),
+		cajasRepo: repository.NewCajasRepository(db),
 	}
+}
+
+func (s *OperacionesCajaService) ObtenerCajaConfigurada(clave string) (*models.Caja, error) {
+	return s.cajasRepo.ObtenerPorClave(clave)
 }
 
 // AbrirCaja inicia el turno de un cajero.

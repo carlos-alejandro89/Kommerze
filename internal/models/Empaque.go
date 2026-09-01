@@ -8,7 +8,9 @@ type Empaque struct {
 	Contenido     float64
 	Sync          bool
 
-	UnidadID *uint
+	UnidadSatID *uint
+
+	UnidadSat *SatUnidadesMedida `gorm:"foreignKey:UnidadSatID"`
 }
 
 func (Empaque) TableName() string {

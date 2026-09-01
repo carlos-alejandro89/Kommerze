@@ -23,6 +23,43 @@ func NewCatalogosRepository(db *gorm.DB) *CatalogosRepository {
 	return &CatalogosRepository{db: db}
 }
 
+func (c *CatalogosRepository) SaveSatUnidadesMedida(data []any) error {
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		for _, fila := range data {
+			fMap, ok := fila.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			guid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["guid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de unidad de medida SAT inválido: %w", err)
+			}
+			remoteID, err := strconv.ParseUint(strings.TrimSpace(fmt.Sprintf("%v", fMap["id"])), 10, 64)
+			if err != nil || remoteID == 0 {
+				return fmt.Errorf("ID de unidad de medida SAT inválido para %s", guid)
+			}
+			unidad := models.SatUnidadesMedida{
+				BaseModel:      models.BaseModel{ID: uint(remoteID), Guid: guid},
+				Clave:          strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", fMap["clave"]))),
+				NombreUnidad:   strings.TrimSpace(fmt.Sprintf("%v", fMap["nombreUnidad"])),
+				DescripcionUso: strings.TrimSpace(fmt.Sprintf("%v", fMap["descripcionUso"])),
+				IsActive:       fmt.Sprintf("%v", fMap["isActive"]) == "true",
+			}
+			if unidad.Clave == "" {
+				return fmt.Errorf("la unidad de medida SAT %s no contiene clave", guid)
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "guid"}},
+				DoUpdates: clause.AssignmentColumns([]string{"clave", "nombre_unidad", "descripcion_uso", "is_active", "updated_at", "deleted_at"}),
+			}).Create(&unidad).Error; err != nil {
+				return fmt.Errorf("error insertando unidad de medida SAT: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 func (c *CatalogosRepository) GetEmpaques() (*dto.ResponseDto, error) {
 	var empaques []models.Empaque
 	if err := c.db.Find(&empaques).Error; err != nil {
@@ -41,6 +78,23 @@ func (c *CatalogosRepository) SaveEmpaques(data []any) error {
 		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
 		contenido, _ := strconv.ParseFloat(fmt.Sprintf("%v", fMap["contenido"]), 64)
 		sincronizado := fmt.Sprintf("%v", fMap["sync"]) == "False"
+		var unidadSatID *uint
+		rawID, exists := fMap["unidadSatId"]
+		if !exists {
+			// Compatibilidad con respuestas anteriores que conservaran el
+			// acrónimo ID completamente en mayúsculas.
+			rawID, exists = fMap["unidadSatID"]
+		}
+		if exists && rawID != nil {
+			parsedID, parseErr := strconv.ParseUint(strings.TrimSpace(fmt.Sprintf("%v", rawID)), 10, 64)
+			if parseErr != nil {
+				return fmt.Errorf("unidadSatId inválido para el empaque %s: %w", guid, parseErr)
+			}
+			if parsedID > 0 {
+				id := uint(parsedID)
+				unidadSatID = &id
+			}
+		}
 
 		empaque := models.Empaque{
 			BaseModel: models.BaseModel{
@@ -50,6 +104,7 @@ func (c *CatalogosRepository) SaveEmpaques(data []any) error {
 			NombreEmpaque: fmt.Sprintf("%v", fMap["nombreEmpaque"]),
 			Contenido:     contenido,
 			Sync:          sincronizado,
+			UnidadSatID:   unidadSatID,
 		}
 
 		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&empaque).Error; err != nil {

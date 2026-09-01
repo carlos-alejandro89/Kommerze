@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
 
 import {
-  SyncLineas, SyncMarcas, SyncEmpaques, SyncSatProductos,
+  SyncLineas, SyncMarcas, SyncEmpaques, SyncSatProductos, SyncSatUnidadesMedida,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
@@ -26,7 +26,7 @@ const STAGES = [
   {
     stage: 1,
     label: 'Etapa 1 — Catálogos base',
-    description: 'Sin dependencias. Pueden ejecutarse en cualquier orden.',
+    description: 'Catálogos base. SAT Unidades de Medida debe sincronizarse antes de Empaques.',
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
     borderColor: 'border-blue-500/20',
@@ -39,6 +39,7 @@ const STAGES = [
       { id: 4,  name: 'SAT Claves Productos',     endpoint: '/catalogos/sat/productos/get',         icon: LayoutGrid, sync: SyncSatProductos },
       { id: 1,  name: 'Líneas',                   endpoint: '/catalogos/lineas/get',                icon: Package,    sync: SyncLineas },
       { id: 2,  name: 'Marcas',                   endpoint: '/catalogos/marcas/get',                icon: Users,      sync: SyncMarcas },
+      { id: 21, name: 'SAT Unidades de Medida',  endpoint: '/catalogos/sat/unidades-medida/get',   icon: LayoutGrid, sync: SyncSatUnidadesMedida },
       { id: 3,  name: 'Empaques',                 endpoint: '/catalogos/empaques/get',              icon: Database,   sync: SyncEmpaques },
       { id: 14, name: 'Perfiles',                 endpoint: '/catalogos/perfiles/get',              icon: Users,      sync: SyncPerfiles },
       { id: 19, name: 'Roles fiscales',           endpoint: '/catalogos/roles-fiscales/get',        icon: Users,      sync: SyncRolesFiscales },

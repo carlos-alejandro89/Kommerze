@@ -210,6 +210,10 @@ export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
 }
 
+export function ServiceObtenerCajaConfigurada() {
+  return window['go']['main']['App']['ServiceObtenerCajaConfigurada']();
+}
+
 export function ServiceObtenerCliente(arg1) {
   return window['go']['main']['App']['ServiceObtenerCliente'](arg1);
 }
@@ -376,6 +380,10 @@ export function SyncSatProductos() {
 
 export function SyncSatRegimenFiscal() {
   return window['go']['main']['App']['SyncSatRegimenFiscal']();
+}
+
+export function SyncSatUnidadesMedida() {
+  return window['go']['main']['App']['SyncSatUnidadesMedida']();
 }
 
 export function SyncSatUsosCfdi() {

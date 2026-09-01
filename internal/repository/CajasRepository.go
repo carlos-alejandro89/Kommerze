@@ -30,3 +30,11 @@ func (c *CajasRepository) ActivarCaja(caja models.Caja) error {
 
 	return nil
 }
+
+func (c *CajasRepository) ObtenerPorClave(clave string) (*models.Caja, error) {
+	var caja models.Caja
+	if err := c.db.Where("clave = ? AND activa = ? AND deleted_at IS NULL", clave, true).First(&caja).Error; err != nil {
+		return nil, err
+	}
+	return &caja, nil
+}

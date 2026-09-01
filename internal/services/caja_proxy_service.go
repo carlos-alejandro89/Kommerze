@@ -577,6 +577,17 @@ func (c *CajaProxyService) ObtenerOperacionCajeroActiva(responsableID uint) *dto
 	return &result
 }
 
+func (c *CajaProxyService) ObtenerCajaConfigurada(clave string) (*models.Caja, error) {
+	var result struct {
+		Success bool        `json:"success"`
+		Data    models.Caja `json:"data"`
+	}
+	if err := c.get("/local/cajero/configurada?clave="+url.QueryEscape(clave), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
 // ObtenerOperacionesCajero lista los turnos de una jornada de sucursal.
 func (c *CajaProxyService) ObtenerOperacionesCajero(operacionSucursalID uint) *dto.ResponseDto {
 	var result dto.ResponseDto

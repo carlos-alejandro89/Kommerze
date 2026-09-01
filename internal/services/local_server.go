@@ -153,6 +153,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/cajero/turno/activo", l.handleOperacionCajeroActiva)
 	mux.HandleFunc("/local/cajero/turno/resumen", l.handleResumenCajero)
 	mux.HandleFunc("/local/cajero/turnos", l.handleOperacionesCajero)
+	mux.HandleFunc("/local/cajero/configurada", l.handleCajaConfigurada)
 
 	l.server = &http.Server{
 		Addr:    addr,
@@ -897,6 +898,24 @@ func (l *LocalServerService) handleOperacionCajeroActiva(w http.ResponseWriter, 
 	}
 	result := l.operacionesCaja.ObtenerOperacionCajeroActiva(responsableID)
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (l *LocalServerService) handleCajaConfigurada(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	clave := strings.TrimSpace(r.URL.Query().Get("clave"))
+	if clave == "" {
+		writeError(w, http.StatusBadRequest, "Identificador del dispositivo requerido")
+		return
+	}
+	caja, err := l.operacionesCaja.ObtenerCajaConfigurada(clave)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "Caja configurada no encontrada")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": caja})
 }
 
 func (l *LocalServerService) handleOperacionesCajero(w http.ResponseWriter, r *http.Request) {
