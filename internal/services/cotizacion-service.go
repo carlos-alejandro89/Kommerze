@@ -2,6 +2,7 @@ package services
 
 import (
 	"BitComercio/internal/models"
+	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 	"bytes"
 	"context"
@@ -207,7 +208,33 @@ func (s *CotizacionService) handleWsMessage(raw []byte) {
 		if s.broadcastFn != nil {
 			s.broadcastFn("transferencia_recibida", transferencia)
 		}
+	case "transferencia_actualizada":
+		var estado dto.TransferenciaEstadoEventDto
+		if err := json.Unmarshal(msg.Data, &estado); err != nil {
+			log.Printf("[CotizacionWS] Estado de transferencia inválido: %v", err)
+			return
+		}
+		cfg, err := LoadKommerzConfig()
+		if err != nil || cfg.License == nil || cfg.License.Sucursal.Guid == "" {
+			log.Printf("[CotizacionWS] No se pudo resolver la sucursal local")
+			return
+		}
+		if err := s.aplicarEstadoTransferencia(estado.PedidoGuid, estado.EstatusGuid, cfg.License.Sucursal.Guid); err != nil {
+			log.Printf("[CotizacionWS] No se pudo aplicar estado de transferencia: %v", err)
+			return
+		}
+		if s.ctx != nil {
+			runtime.EventsEmit(s.ctx, "transferencia_actualizada", estado)
+		}
+		if s.broadcastFn != nil {
+			s.broadcastFn("transferencia_actualizada", estado)
+		}
 	}
+}
+
+func (s *CotizacionService) aplicarEstadoTransferencia(pedidoGuid, estatusGuid, sucursalGuid string) error {
+	repo := repository.NewPosRepository(s.db, s.ctx, s.apiBaseURL, s.client)
+	return repo.AplicarEstadoTransferencia(pedidoGuid, estatusGuid, sucursalGuid)
 }
 
 func (s *CotizacionService) guardarTransferenciaEntrante(evento *dto.TransferenciaRecibidaDto) error {

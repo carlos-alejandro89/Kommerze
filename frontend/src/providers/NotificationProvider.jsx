@@ -147,10 +147,22 @@ export function NotificationProvider({ children }) {
       toast.error(message);
     };
 
+    const handleTransferenciaActualizada = (data) => {
+      if (!data) return;
+      const labels = {
+        '86968037-975a-43ce-880c-043003010105': 'aceptada',
+        '86968037-975a-43ce-880c-043003010106': 'rechazada',
+        '86968037-975a-43ce-880c-043003010103': 'cancelada',
+      };
+      const estado = labels[data.estatusGuid] || 'actualizada';
+      addNotification('info', `Transferencia ${estado}`, 'La sucursal contraparte actualizó el estado de la transferencia.', new Date(), { kind: 'transferencia', pedidoGuid: data.pedidoGuid, data });
+    };
+
     const unsub = EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
     const unsubNetPay = EventsOn('netpay_payment_response', handleNetPayPaymentResponse);
     const unsubTransferencia = EventsOn('transferencia_recibida', handleTransferenciaRecibida);
     const unsubPedidoSync = EventsOn('sync_status', handlePedidoSync);
+    const unsubTransferStatus = EventsOn('transferencia_actualizada', handleTransferenciaActualizada);
 
     return () => {
       if (typeof unsub === 'function') {
@@ -165,6 +177,7 @@ export function NotificationProvider({ children }) {
       if (typeof unsubPedidoSync === 'function') {
         unsubPedidoSync();
       }
+      if (typeof unsubTransferStatus === 'function') unsubTransferStatus();
     };
   }, [addNotification]);
 

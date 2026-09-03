@@ -60,6 +60,7 @@ func (a *App) posService() interface {
 	ConsultaTransacciones(*uint, *uint) (*dto.ResponseDto, error)
 	CancelarVenta(string) (*dto.ResponseDto, error)
 	ConsultarTransferencias() ([]dto.TransferenciaDto, error)
+	ResolverTransferencia(string, string, string) error
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -446,6 +447,10 @@ func (a *App) ServiceCancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) 
 
 func (a *App) ServiceConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	return a.posService().ConsultarTransferencias()
+}
+
+func (a *App) ServiceResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid string) error {
+	return a.posService().ResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid)
 }
 
 func (a *App) ServicePrintReceipt(pedidoGuid string) (*reportmodels.DocumentOutput, error) {

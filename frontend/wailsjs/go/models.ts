@@ -1172,6 +1172,8 @@ export namespace dto {
 	    traspasoGuid: string;
 	    pedidoGuid: string;
 	    folio: string;
+	    sucursalOrigenGuid: string;
+	    sucursalDestinoGuid: string;
 	    sucursalOrigen: string;
 	    sucursalDestino: string;
 	    // Go type: time
@@ -1195,6 +1197,8 @@ export namespace dto {
 	        this.traspasoGuid = source["traspasoGuid"];
 	        this.pedidoGuid = source["pedidoGuid"];
 	        this.folio = source["folio"];
+	        this.sucursalOrigenGuid = source["sucursalOrigenGuid"];
+	        this.sucursalDestinoGuid = source["sucursalDestinoGuid"];
 	        this.sucursalOrigen = source["sucursalOrigen"];
 	        this.sucursalDestino = source["sucursalDestino"];
 	        this.fechaEnvio = this.convertValues(source["fechaEnvio"], null);

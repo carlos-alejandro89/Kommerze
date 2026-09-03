@@ -59,11 +59,13 @@ function StatusBadge({ item }) {
   );
 }
 
-function TransferDetail({ item, onClose }) {
+function TransferDetail({ item, onClose, currentBranchGuid, onResolve }) {
   if (!item) return null;
   const sent = formatDate(item.fechaEnvio);
   const received = formatDate(item.fechaRecepcion);
   const receivedTransfer = isReceived(item);
+  const incoming = String(item.sucursalDestinoGuid || '').toLowerCase() === String(currentBranchGuid || '').toLowerCase();
+  const definitive = /aceptad|rechazad|cancelad/i.test(item.estatus || '');
   const value = `$${Number(item.valorTotal || 0).toLocaleString('es-MX', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -234,11 +236,15 @@ function TransferDetail({ item, onClose }) {
               <span className="text-xl font-extrabold tracking-[-0.03em] text-primary tabular-nums">{value}</span>
             </div>
           </div>
+          <div className="ml-auto flex items-center gap-2">
+          {!definitive && incoming && <><button onClick={() => onResolve('86968037-975a-43ce-880c-043003010106')} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Rechazar</button><button onClick={() => onResolve('86968037-975a-43ce-880c-043003010105')} className="h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground">Aceptar transferencia</button></>}
+          {!definitive && !incoming && <button onClick={() => onResolve('86968037-975a-43ce-880c-043003010103')} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Cancelar envío</button>}
           <DialogClose asChild>
             <button className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground transition hover:bg-muted">
               Cerrar
             </button>
           </DialogClose>
+          </div>
         </footer>
       </DialogContent>
     </Dialog>
@@ -249,7 +255,8 @@ export function TransfersPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { store, license } = useActivation();
-  const { consultarTransferencias } = usePosService();
+  const { consultarTransferencias, resolverTransferencia } = usePosService();
+  const currentBranchGuid = store?.Guid ?? store?.guid ?? license?.sucursal?.guid ?? '';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -270,6 +277,13 @@ export function TransfersPage() {
     }
   }, []);
 
+  const resolveTransfer = async (estatusGuid) => {
+    if (!selected) return;
+    await resolverTransferencia(selected.pedidoGuid, currentBranchGuid, estatusGuid);
+    setSelected(null);
+    await load();
+  };
+
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
@@ -282,8 +296,10 @@ export function TransfersPage() {
 
   useEffect(() => {
     const unsubscribe = EventsOn('transferencia_recibida', () => load());
+    const unsubscribeStatus = EventsOn('transferencia_actualizada', () => load());
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
+      if (typeof unsubscribeStatus === 'function') unsubscribeStatus();
     };
   }, [load]);
 
@@ -374,7 +390,6 @@ export function TransfersPage() {
                     {pageItems.map(item => {
                       const sent = formatDate(item.fechaEnvio);
                       const receivedDate = formatDate(item.fechaRecepcion);
-                      const currentBranchGuid = store?.Guid ?? store?.guid ?? license?.sucursal?.guid ?? '';
                       const incoming = String(item.sucursalDestinoGuid || '').toLowerCase() === String(currentBranchGuid).toLowerCase();
                       return (
                         <tr key={item.traspasoGuid} className="transition hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
@@ -399,7 +414,7 @@ export function TransfersPage() {
           )}
         </div>
       </div>
-      <TransferDetail item={selected} onClose={() => setSelected(null)} />
+      <TransferDetail item={selected} onClose={() => setSelected(null)} currentBranchGuid={currentBranchGuid} onResolve={resolveTransfer} />
     </div>
   );
 }

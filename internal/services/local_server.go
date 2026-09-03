@@ -136,6 +136,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/transacciones/historial", l.handleHistorialTransacciones)
 	mux.HandleFunc("/local/transacciones/cancelar", l.handleCancelarVenta)
 	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
+	mux.HandleFunc("/local/transferencias/estatus", l.handleResolverTransferencia)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
 	mux.HandleFunc("/local/compras/pdf-data", l.handlePurchasePDFData)
@@ -474,6 +475,23 @@ func (l *LocalServerService) handleTransferencias(w http.ResponseWriter, r *http
 		"success": true,
 		"data":    result,
 	})
+}
+
+func (l *LocalServerService) handleResolverTransferencia(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body dto.ResolverTransferenciaDto
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := l.pos.ResolverTransferencia(body.PedidoGuid, body.SucursalGuid, body.EstatusGuid); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
 // ── Clientes handler ──────────────────────────────────────────────────────────

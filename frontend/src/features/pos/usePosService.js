@@ -121,6 +121,8 @@ export function usePosService() {
         ServiceConsultaTransacciones(tipoPedidoID, sucursalID);
 
     const consultarTransferencias = () => ServiceConsultarTransferencias();
+    const resolverTransferencia = (pedidoGuid, sucursalGuid, estatusGuid) =>
+        window.go.main.App.ServiceResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid);
     const cancelarVenta = (pedidoGuid) => ServiceCancelarVenta(pedidoGuid);
     const generarDocumentoVenta = (pedidoGuid) => ServiceGenerateSaleDocument(pedidoGuid);
 
@@ -211,6 +213,7 @@ export function usePosService() {
         consultarHistorialCompras,
         consultarTransacciones,
         consultarTransferencias,
+        resolverTransferencia,
         cancelarVenta,
         generarDocumentoVenta,
         imprimirRecibo,

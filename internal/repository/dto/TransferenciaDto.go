@@ -2,6 +2,17 @@ package dto
 
 import "time"
 
+type ResolverTransferenciaDto struct {
+	PedidoGuid   string `json:"pedidoGuid"`
+	SucursalGuid string `json:"sucursalGuid"`
+	EstatusGuid  string `json:"estatusGuid"`
+}
+
+type TransferenciaEstadoEventDto struct {
+	PedidoGuid  string `json:"pedidoGuid"`
+	EstatusGuid string `json:"estatusGuid"`
+}
+
 type TransferenciaProductoDto struct {
 	NivelGuid    string  `json:"nivelGuid"`
 	Codigo       string  `json:"codigo"`

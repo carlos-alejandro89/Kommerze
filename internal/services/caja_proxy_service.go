@@ -251,6 +251,11 @@ func (c *CajaProxyService) ConsultarTransferencias() ([]dto.TransferenciaDto, er
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) ResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid string) error {
+	var result map[string]any
+	return c.post("/local/transferencias/estatus", dto.ResolverTransferenciaDto{PedidoGuid: pedidoGuid, SucursalGuid: sucursalGuid, EstatusGuid: estatusGuid}, &result)
+}
+
 func (c *CajaProxyService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, error) {
 	var result struct {
 		Success bool                 `json:"success"`

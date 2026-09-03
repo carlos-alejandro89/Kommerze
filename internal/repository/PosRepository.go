@@ -282,6 +282,91 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 	return transferencias, nil
 }
 
+func (r *PosRepository) ResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid string) error {
+	req := dto.ResolverTransferenciaDto{PedidoGuid: pedidoGuid, SucursalGuid: sucursalGuid, EstatusGuid: estatusGuid}
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	resp, err := r.cloudHTTPClient.Post(r.cloudAPIURL+"/pedidos/transferencia/estatus", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("Cloud respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return r.AplicarEstadoTransferencia(pedidoGuid, estatusGuid, sucursalGuid)
+}
+
+func (r *PosRepository) AplicarEstadoTransferencia(pedidoGuid, estatusGuid, sucursalGuid string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var pedido models.Pedido
+		if err := tx.Where("guid = ?", pedidoGuid).First(&pedido).Error; err != nil {
+			return err
+		}
+		var traspaso models.Traspaso
+		if err := tx.Where("pedido_id = ?", pedido.ID).First(&traspaso).Error; err != nil {
+			return err
+		}
+		var actual, nuevo models.Estatus
+		if err := tx.First(&actual, traspaso.EstatusID).Error; err != nil {
+			return err
+		}
+		if actual.Guid.String() == estatusTraspasoAceptadoGuid || actual.Guid.String() == estatusTraspasoRechazadoGuid || actual.Guid.String() == estatusTraspasoCanceladoGuid {
+			return nil
+		}
+		if err := tx.Where("guid = ?", estatusGuid).First(&nuevo).Error; err != nil {
+			return err
+		}
+
+		if estatusGuid == estatusTraspasoAceptadoGuid {
+			var sucursal models.Sucursal
+			if err := tx.Where("guid = ?", sucursalGuid).First(&sucursal).Error; err != nil {
+				return err
+			}
+			var detalles []models.PedidoDetalle
+			if err := tx.Where("pedido_id = ?", pedido.ID).Find(&detalles).Error; err != nil {
+				return err
+			}
+			esDestino := sucursal.ID == traspaso.SucursalDestinoID
+			if esDestino {
+				if err := r.ReintegrarExistencias(detalles, tx); err != nil {
+					return err
+				}
+			} else {
+				var niveles []models.NivelEmpaque
+				ids := make([]uint, 0, len(detalles))
+				for _, d := range detalles {
+					ids = append(ids, d.NivelID)
+				}
+				if err := tx.Where("id IN ?", ids).Find(&niveles).Error; err != nil {
+					return err
+				}
+				guidPorID := map[uint]uuid.UUID{}
+				for _, n := range niveles {
+					guidPorID[n.ID] = n.Guid
+				}
+				items := make([]dto.PedidoProductoDto, 0, len(detalles))
+				for _, d := range detalles {
+					items = append(items, dto.PedidoProductoDto{ID: guidPorID[d.NivelID].String(), Quantity: d.Cantidad})
+				}
+				if err := r.ActualizarExistencias(items, tx); err != nil {
+					return err
+				}
+			}
+			now := time.Now()
+			traspaso.FechaRecepcion = &now
+		}
+		traspaso.EstatusID = nuevo.ID
+		if err := tx.Save(&traspaso).Error; err != nil {
+			return err
+		}
+		return tx.Model(&pedido).Update("estatus_id", nuevo.ID).Error
+	})
+}
+
 func (r *PosRepository) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var tipos []models.TipoPedido
 	err := r.db.Raw(`select * from tipos_pedido order by id`).Scan(&tipos).Error
@@ -700,7 +785,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 		}
 
 		//Actualizar existencias
-		if tipoGuid != models.TipoPedidoCotizacionGuid {
+		if tipoGuid == models.TipoPedidoVentaGuid {
 			if err := r.ActualizarExistencias(itemsPedido, tx); err != nil {
 				return err
 			}
@@ -726,6 +811,9 @@ func (r *PosRepository) ConfirmarTransaccion(
 
 const (
 	estatusTraspasoEnTransitoGuid = "86968037-975a-43ce-880c-043003010104"
+	estatusTraspasoAceptadoGuid   = "86968037-975a-43ce-880c-043003010105"
+	estatusTraspasoRechazadoGuid  = "86968037-975a-43ce-880c-043003010106"
+	estatusTraspasoCanceladoGuid  = "86968037-975a-43ce-880c-043003010103"
 )
 
 func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductosDto) (*dto.ResponseDto, error) {
@@ -833,9 +921,11 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 				return fmt.Errorf("no se pudo registrar el detalle: %w", err)
 			}
 
-			inventario.Existencia = inventario.Existencia.Sub(item.Cantidad)
-			if err := tx.Model(&inventario).Update("existencia", inventario.Existencia).Error; err != nil {
-				return fmt.Errorf("no se pudo actualizar la existencia: %w", err)
+			if !esTransferencia {
+				inventario.Existencia = inventario.Existencia.Sub(item.Cantidad)
+				if err := tx.Model(&inventario).Update("existencia", inventario.Existencia).Error; err != nil {
+					return fmt.Errorf("no se pudo actualizar la existencia: %w", err)
+				}
 			}
 		}
 

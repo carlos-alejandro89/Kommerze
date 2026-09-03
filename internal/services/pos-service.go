@@ -100,3 +100,7 @@ func (s *PosService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) 
 func (s *PosService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
 	return s.posRepository.ConsultarTransferencias()
 }
+
+func (s *PosService) ResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid string) error {
+	return s.posRepository.ResolverTransferencia(pedidoGuid, sucursalGuid, estatusGuid)
+}
