@@ -161,6 +161,19 @@ func (s *CotizacionService) handleWsMessage(raw []byte) {
 				"estatus":    localStatus,
 			})
 		}
+	case "transferencia_recibida":
+		var transferencia map[string]any
+		if err := json.Unmarshal(msg.Data, &transferencia); err != nil {
+			log.Printf("[CotizacionWS] Error deserializando transferencia: %v", err)
+			return
+		}
+		log.Printf("[CotizacionWS] ✅ Transferencia recibida: pedido %v", transferencia["pedidoGuid"])
+		if s.ctx != nil {
+			runtime.EventsEmit(s.ctx, "transferencia_recibida", transferencia)
+		}
+		if s.broadcastFn != nil {
+			s.broadcastFn("transferencia_recibida", transferencia)
+		}
 	}
 }
 

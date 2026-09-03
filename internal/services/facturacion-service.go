@@ -16,14 +16,29 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type FacturacionService struct {
-	db     *gorm.DB
-	client *http.Client
+	db             *gorm.DB
+	client         *http.Client
+	folioMu        sync.Mutex
+	tokenMu        sync.Mutex
+	accessToken    string
+	tokenExpiresAt time.Time
+	tokenAPIHost   string
+	tokenClientID  string
+}
+
+const estatusVentaCanceladaGuid = "86968037-975a-43ce-880c-043003010103"
+
+func pedidoCancelado(pedido *models.Pedido) bool {
+	return pedido.Estatus.Guid.String() == estatusVentaCanceladaGuid ||
+		strings.EqualFold(strings.TrimSpace(pedido.Estatus.Nombre), "Cancelado") ||
+		strings.EqualFold(strings.TrimSpace(pedido.Estatus.Nombre), "Cancelada")
 }
 
 type cfdiEmissionResponse struct {
@@ -143,16 +158,69 @@ func NewFacturacionService(db *gorm.DB) *FacturacionService {
 	return &FacturacionService{db: db, client: &http.Client{Timeout: 30 * time.Second}}
 }
 
+func (s *FacturacionService) facturacionToken(cfg *KommerzConfig) (string, error) {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+
+	apiHost := strings.TrimRight(strings.TrimSpace(cfg.FacturacionAPIHost), "/")
+	clientID := strings.TrimSpace(cfg.FacturacionClientID)
+	if s.accessToken != "" && s.tokenAPIHost == apiHost && s.tokenClientID == clientID && time.Now().Add(time.Minute).Before(s.tokenExpiresAt) {
+		return s.accessToken, nil
+	}
+
+	form := url.Values{"grant_type": {"client_credentials"}, "scope": {"cfdi.emit"}}
+	tokenReq, err := http.NewRequest(http.MethodPost, apiHost+"/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("no se pudo preparar la autenticación de facturación: %w", err)
+	}
+	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenReq.SetBasicAuth(cfg.FacturacionClientID, cfg.FacturacionClientSecret)
+
+	tokenResp, err := s.client.Do(tokenReq)
+	if err != nil {
+		return "", fmt.Errorf("no se pudo autenticar con facturación: %w", err)
+	}
+	defer tokenResp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(tokenResp.Body, 2<<20))
+	if err != nil {
+		return "", fmt.Errorf("no se pudo leer la autenticación de facturación: %w", err)
+	}
+	if tokenResp.StatusCode < 200 || tokenResp.StatusCode >= 300 {
+		return "", fmt.Errorf("autenticación de facturación respondió %d: %s", tokenResp.StatusCode, string(body))
+	}
+
+	var token struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &token); err != nil || strings.TrimSpace(token.AccessToken) == "" {
+		return "", fmt.Errorf("la autenticación no devolvió un access_token válido")
+	}
+	if token.ExpiresIn <= 0 {
+		return "", fmt.Errorf("la autenticación no devolvió una vigencia válida para el token")
+	}
+
+	s.accessToken = token.AccessToken
+	s.tokenExpiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	s.tokenAPIHost = apiHost
+	s.tokenClientID = clientID
+	return s.accessToken, nil
+}
+
 func catalogo(id uint, guid, clave, descripcion string) dto.FacturacionCatalogoDto {
 	return dto.FacturacionCatalogoDto{ID: id, Guid: guid, Clave: clave, Descripcion: descripcion}
 }
 
 func (s *FacturacionService) PrepararFactura(pedidoGuid string) (*dto.FacturacionPreparacionDto, error) {
 	var pedido models.Pedido
-	err := s.db.Preload("Cliente").Preload("SucursalOrigen.Empresa.RegimenFiscal").
+	err := s.db.Preload("Cliente").Preload("Estatus").Preload("SucursalOrigen.Empresa.RegimenFiscal").
 		Where("pedidos.guid = ?", pedidoGuid).First(&pedido).Error
 	if err != nil {
 		return nil, fmt.Errorf("no se encontró la venta: %w", err)
+	}
+	if pedidoCancelado(&pedido) {
+		return nil, fmt.Errorf("la venta está cancelada y no puede ser facturada")
 	}
 
 	var detalles []models.PedidoDetalle
@@ -251,8 +319,11 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		return nil, err
 	}
 	var pedido models.Pedido
-	if err = s.db.Preload("SucursalOrigen.Empresa.RegimenFiscal").Where("guid = ?", req.PedidoGuid).First(&pedido).Error; err != nil {
+	if err = s.db.Preload("Estatus").Preload("SucursalOrigen.Empresa.RegimenFiscal").Where("guid = ?", req.PedidoGuid).First(&pedido).Error; err != nil {
 		return nil, err
+	}
+	if pedidoCancelado(&pedido) {
+		return nil, fmt.Errorf("la venta está cancelada y no puede ser facturada")
 	}
 	var receptor models.EntidadFiscal
 	entityQuery := s.db.Preload("Regimen").
@@ -277,7 +348,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		return nil, fmt.Errorf("método de pago inválido")
 	}
 	var detalles []models.PedidoDetalle
-	if err = s.db.Preload("Nivel.Producto.SatProducto").Preload("Nivel.Empaque").Where("pedido_id = ?", pedido.ID).Find(&detalles).Error; err != nil {
+	if err = s.db.Preload("Nivel.Producto.SatProducto").Preload("Nivel.Empaque.UnidadSat").Where("pedido_id = ?", pedido.ID).Find(&detalles).Error; err != nil {
 		return nil, err
 	}
 	inputs := make([]satSaleLineInput, len(detalles))
@@ -300,7 +371,11 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		if d.Nivel.Producto.SatProducto.Clave != "" {
 			claveProd = d.Nivel.Producto.SatProducto.Clave
 		}
-		conceptos = append(conceptos, map[string]any{"claveProdServ": claveProd, "noIdentificacion": d.Nivel.Codigo, "descripcion": d.Nivel.Producto.Descripcion, "cantidad": satNumber(calc.Quantity), "claveUnidad": "H87", "unidad": d.Nivel.Empaque.NombreEmpaque, "valorUnitario": satNumber(calc.UnitValue), "importe": satNumber(calc.Amount), "objetoImp": obj, "descuento": satNumber(calc.Discount), "impuestos": []map[string]any{{"importeImpuesto": satNumber(calc.TaxAmount), "baseImpuesto": satNumber(calc.TaxBase), "impuesto": "002", "tasaOCuota": calc.TaxRate.StringFixed(6)}}})
+		if d.Nivel.Empaque.UnidadSat == nil || strings.TrimSpace(d.Nivel.Empaque.UnidadSat.Clave) == "" {
+			return nil, fmt.Errorf("el empaque %s del artículo %s no tiene una unidad SAT relacionada", d.Nivel.Empaque.NombreEmpaque, d.Nivel.Codigo)
+		}
+		claveUnidad := strings.ToUpper(strings.TrimSpace(d.Nivel.Empaque.UnidadSat.Clave))
+		conceptos = append(conceptos, map[string]any{"claveProdServ": claveProd, "noIdentificacion": d.Nivel.Codigo, "descripcion": d.Nivel.Producto.Descripcion, "cantidad": satNumber(calc.Quantity), "claveUnidad": claveUnidad, "unidad": d.Nivel.Empaque.NombreEmpaque, "valorUnitario": satNumber(calc.UnitValue), "importe": satNumber(calc.Amount), "objetoImp": obj, "descuento": satNumber(calc.Discount), "impuestos": []map[string]any{{"importeImpuesto": satNumber(calc.TaxAmount), "baseImpuesto": satNumber(calc.TaxBase), "impuesto": "002", "tasaOCuota": calc.TaxRate.StringFixed(6)}}})
 		invoiceItems = append(invoiceItems, reportmodels.InvoiceItem{Codigo: d.Nivel.Codigo, ClaveSAT: claveProd, Descripcion: d.Nivel.Producto.Descripcion, Unidad: d.Nivel.Empaque.NombreEmpaque, Cantidad: satNumber(calc.Quantity), PrecioUnitario: satNumber(calc.UnitValue), Descuento: satNumber(calc.Discount), Impuestos: satNumber(calc.TaxAmount), Importe: satNumber(calc.Amount)})
 	}
 	emp := pedido.SucursalOrigen.Empresa
@@ -317,6 +392,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		facturaSerie = "A"
 	}
 	var facturaFolio int
+	folioReservado := false
 	if pedido.FacturaID != nil {
 		var existente models.Factura
 		if err = s.db.Select("serie", "folio").First(&existente, *pedido.FacturaID).Error; err != nil {
@@ -326,8 +402,23 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 		facturaFolio = existente.Folio
 	}
 	if facturaFolio <= 0 {
-		if err = s.db.Raw("SELECT nextval('consecutivo_folio_factura')").Scan(&facturaFolio).Error; err != nil {
+		// nextval() no es transaccional en PostgreSQL: aun cuando el PAC rechaza
+		// el CFDI, el número queda consumido. Serializamos las emisiones, leemos
+		// el candidato sin avanzar la secuencia y solo lo confirmamos después de
+		// recibir un timbrado satisfactorio.
+		s.folioMu.Lock()
+		folioReservado = true
+		defer s.folioMu.Unlock()
+		var sequenceState struct {
+			LastValue int  `gorm:"column:last_value"`
+			IsCalled  bool `gorm:"column:is_called"`
+		}
+		if err = s.db.Raw("SELECT last_value, is_called FROM consecutivo_folio_factura").Scan(&sequenceState).Error; err != nil {
 			return nil, fmt.Errorf("no se pudo generar el folio interno de la factura: %w", err)
+		}
+		facturaFolio = sequenceState.LastValue
+		if sequenceState.IsCalled {
+			facturaFolio++
 		}
 	}
 	payload := map[string]any{"serie": facturaSerie, "folioInterno": fmt.Sprintf("%06d", facturaFolio), "fecha": fechaCFDI, "cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion, "cveFormaPago": forma.Clave, "formaPago": forma.Descripcion, "subTotal": satNumber(subtotalCFDI), "descuentos": satNumber(descuentosCFDI), "impuestos": satNumber(impuestosCFDI), "total": satNumber(totalCFDI), "rfcEmisor": emp.RFC, "emisor": emp.RazonSocial, "cveRegimenEmisor": emp.RegimenFiscal.Clave, "regimenEmisor": emp.RegimenFiscal.Descripcion, "lugarExpedicion": pedido.SucursalOrigen.CodigoPostal, "rfcReceptor": receptor.RFC, "receptor": receptor.RazonSocial, "cveRegimenReceptor": receptor.Regimen.Clave, "regimenReceptor": receptor.Regimen.Descripcion, "domicilioFiscalReceptor": receptor.CodigoPostal, "cveUsoCFDI": uso.Clave, "usoCFDI": uso.Descripcion, "conceptos": conceptos}
@@ -341,29 +432,14 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	if strings.TrimSpace(cfg.FacturacionXMLPath) == "" {
 		return nil, fmt.Errorf("configura la Carpeta de facturas en Configuración > Facturación")
 	}
-	form := url.Values{"grant_type": {"client_credentials"}, "scope": {"cfdi.emit"}}
-	tokenReq, _ := http.NewRequest(http.MethodPost, strings.TrimRight(cfg.FacturacionAPIHost, "/")+"/oauth/token", strings.NewReader(form.Encode()))
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	tokenReq.SetBasicAuth(cfg.FacturacionClientID, cfg.FacturacionClientSecret)
-	tokenResp, err := s.client.Do(tokenReq)
+	accessToken, err := s.facturacionToken(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("no se pudo autenticar con facturación: %w", err)
-	}
-	defer tokenResp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(tokenResp.Body, 2<<20))
-	if tokenResp.StatusCode < 200 || tokenResp.StatusCode >= 300 {
-		return nil, fmt.Errorf("autenticación de facturación respondió %d: %s", tokenResp.StatusCode, string(body))
-	}
-	var token struct {
-		AccessToken string `json:"access_token"`
-	}
-	if json.Unmarshal(body, &token) != nil || token.AccessToken == "" {
-		return nil, fmt.Errorf("la autenticación no devolvió un access_token")
+		return nil, err
 	}
 	data, _ := json.Marshal(payload)
 	apiReq, _ := http.NewRequest(http.MethodPost, strings.TrimRight(cfg.FacturacionAPIHost, "/")+"/api/facturacion/emitir-cfdi?esGlobal=false", bytes.NewReader(data))
 	apiReq.Header.Set("Content-Type", "application/json")
-	apiReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	apiReq.Header.Set("Authorization", "Bearer "+accessToken)
 	apiResp, err := s.client.Do(apiReq)
 	if err != nil {
 		return nil, fmt.Errorf("no se pudo emitir el CFDI: %w", err)
@@ -382,6 +458,11 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	}
 	if strings.TrimSpace(stamped.Data.UUID) == "" || strings.TrimSpace(stamped.Data.CFDIXMLBase64) == "" {
 		return nil, fmt.Errorf("la respuesta de timbrado no contiene UUID o XML")
+	}
+	if folioReservado {
+		if err = s.db.Exec("SELECT setval('consecutivo_folio_factura', ?, true)", facturaFolio).Error; err != nil {
+			return nil, fmt.Errorf("el CFDI fue timbrado, pero no se pudo confirmar el folio interno %06d: %w", facturaFolio, err)
+		}
 	}
 	stampDate, err := parseStampDate(stamped.Data.FechaTimbrado)
 	if err != nil {

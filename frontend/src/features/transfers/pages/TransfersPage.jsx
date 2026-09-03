@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
+import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import {
   Dialog,
   DialogClose,
@@ -267,6 +268,13 @@ export function TransfersPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn('transferencia_recibida', () => load());
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [load]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

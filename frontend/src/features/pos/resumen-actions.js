@@ -39,10 +39,9 @@ export const ConsultarExistencias = async (consultarExistenciasService, setInval
                 return { ...prev, GuidBase: prev.productoBaseGuid || prev.id, Existencia: 0, CantidadBase: prev.quantity }
             }
 
-            const existencia = prev.fraccionable
-                ? parseDecimal(productoEncontrado.ExistenciaFraccion)
-                : parseDecimal(productoEncontrado.Existencia)
-
+            // La existencia propia de un hijo permanece en cero. Para validar la
+            // venta se usa por separado la existencia de su concentrador.
+            const existencia = parseDecimal(productoEncontrado.Existencia)
             const contenido = parseDecimal(productoEncontrado.Contenido) || 1
             const cantidadBase = prev.fraccionable
                 ? prev.quantity * contenido
@@ -52,22 +51,45 @@ export const ConsultarExistencias = async (consultarExistenciasService, setInval
                 ...prev,
                 GuidBase: productoEncontrado.GuidBase ?? (prev.productoBaseGuid || prev.id),
                 Existencia: existencia,
+                ExistenciaValidacion: prev.fraccionable
+                    ? parseDecimal(productoEncontrado.ExistenciaBase)
+                    : existencia,
                 CantidadBase: cantidadBase,
             }
         })
 
         localStorage.setItem('validCart', JSON.stringify(comparativoExistencias))
 
-        // Validar item por item (iterar sobre el carrito, no sobre el backend)
-        const invalidItemsFound = []
-
-        const isValid = comparativoExistencias.every(item => {
-            if (item.Existencia < item.quantity) {
-                invalidItemsFound.push(item)
-                return false
+        // Acumular todos los niveles que consumen una misma existencia. Esto
+        // incluye varios hijos y la venta directa del propio concentrador.
+        const grupos = comparativoExistencias.reduce((resultado, item) => {
+            const clave = item.GuidBase || item.id
+            const grupo = resultado.get(clave) || {
+                cantidad: 0,
+                existencia: item.ExistenciaValidacion ?? item.Existencia,
+                items: [],
             }
-            return true
-        })
+            grupo.cantidad += item.CantidadBase
+            grupo.existencia = Math.min(
+                grupo.existencia,
+                item.ExistenciaValidacion ?? item.Existencia,
+            )
+            grupo.items.push(item)
+            resultado.set(clave, grupo)
+            return resultado
+        }, new Map())
+
+        const invalidItemsFound = []
+        for (const grupo of grupos.values()) {
+            if (grupo.existencia < grupo.cantidad) {
+                invalidItemsFound.push(...grupo.items.map(item => ({
+                    ...item,
+                    CantidadSolicitadaGrupo: grupo.cantidad,
+                    ExistenciaValidacion: grupo.existencia,
+                })))
+            }
+        }
+        const isValid = invalidItemsFound.length === 0
 
         if (!isValid) {
             setInvalidItems(invalidItemsFound)

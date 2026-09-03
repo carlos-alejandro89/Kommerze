@@ -124,8 +124,22 @@ export function NotificationProvider({ children }) {
       toast.error(message || 'No fue posible aprobar el pago');
     };
 
+    const handleTransferenciaRecibida = (data) => {
+      if (!data) return;
+      const folio = data.folio ? ` #${data.folio}` : '';
+      const unidades = Number(data.unidadesTotales || 0);
+      addNotification(
+        'info',
+        `Nueva transferencia${folio}`,
+        unidades > 0
+          ? `Una sucursal envió ${unidades.toLocaleString('es-MX')} unidades a esta sucursal.`
+          : 'Otra sucursal registró un envío de productos hacia esta sucursal.',
+      );
+    };
+
     const unsub = EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
     const unsubNetPay = EventsOn('netpay_payment_response', handleNetPayPaymentResponse);
+    const unsubTransferencia = EventsOn('transferencia_recibida', handleTransferenciaRecibida);
 
     return () => {
       if (typeof unsub === 'function') {
@@ -133,6 +147,9 @@ export function NotificationProvider({ children }) {
       }
       if (typeof unsubNetPay === 'function') {
         unsubNetPay();
+      }
+      if (typeof unsubTransferencia === 'function') {
+        unsubTransferencia();
       }
     };
   }, [addNotification]);

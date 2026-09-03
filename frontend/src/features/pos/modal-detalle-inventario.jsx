@@ -29,7 +29,9 @@ export function ModalDetalleInventario({ items, open, onOpenChange }) {
                 <div className="no-scrollbar overflow-y-auto max-h-[60vh] p-4">
                     <div className="flex flex-col gap-3">
                         {items.map((item, index) => {
-                            const isSufficient = item.Existencia >= item.quantity;
+                            const existenciaValidada = item.ExistenciaValidacion ?? item.Existencia;
+                            const cantidadValidada = item.CantidadSolicitadaGrupo ?? item.CantidadBase ?? item.quantity;
+                            const isSufficient = existenciaValidada >= cantidadValidada;
 
                             return (
                                 <div
@@ -84,10 +86,10 @@ export function ModalDetalleInventario({ items, open, onOpenChange }) {
                                         <div className="flex items-center gap-8 bg-slate-50 dark:bg-zinc-900/50 p-3 rounded-lg border border-border/40">
                                             <div className="flex flex-col items-end gap-1 min-w-[70px]">
                                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                                                    Solicitado
+                                                    Requerido al concentrador
                                                 </span>
                                                 <span className="text-sm font-black text-foreground tabular-nums leading-none">
-                                                    {item.quantity}
+                                                    {cantidadValidada}
                                                 </span>
                                             </div>
 
@@ -95,10 +97,10 @@ export function ModalDetalleInventario({ items, open, onOpenChange }) {
 
                                             <div className="flex flex-col items-end gap-1 min-w-[70px]">
                                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                                                    Existencia
+                                                    Disponible en concentrador
                                                 </span>
                                                 <span className={`text-sm font-black tabular-nums leading-none ${isSufficient ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-500"}`}>
-                                                    {item.Existencia}
+                                                    {existenciaValidada}
                                                 </span>
                                             </div>
                                         </div>

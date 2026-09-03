@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -148,29 +149,43 @@ func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, erro
 		if strings.EqualFold(pedido.Estatus.Nombre, "Cancelado") || strings.EqualFold(pedido.Estatus.Nombre, "Cancelada") {
 			return fmt.Errorf("la venta ya se encuentra cancelada")
 		}
+		if pedido.FacturaID != nil {
+			return fmt.Errorf("la venta ya está facturada; primero deberá cancelarse su CFDI")
+		}
 		var detalles []models.PedidoDetalle
 		if err := tx.Where("pedido_id = ? AND deleted_at IS NULL", pedido.ID).Find(&detalles).Error; err != nil {
 			return err
 		}
-		for _, detalle := range detalles {
-			var inventario models.SucursalProducto
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("nivel_id = ? AND deleted_at IS NULL", detalle.NivelID).
-				First(&inventario).Error; err != nil {
-				return fmt.Errorf("no se pudo localizar el artículo %d en el inventario: %w", detalle.NivelID, err)
-			}
-			if err := tx.Model(&inventario).Updates(map[string]any{
-				"existencia": inventario.Existencia.Add(detalle.Cantidad),
-				"sync":       false,
-			}).Error; err != nil {
-				return fmt.Errorf("no se pudo devolver el artículo al inventario: %w", err)
-			}
+		if err := r.ReintegrarExistencias(detalles, tx); err != nil {
+			return err
 		}
 		var cancelado models.Estatus
 		if err := tx.Where("guid = ? AND deleted_at IS NULL", estatusVentaCanceladaGuid).First(&cancelado).Error; err != nil {
 			return fmt.Errorf("estatus Cancelado no encontrado en el catálogo sincronizado: %w", err)
 		}
-		return tx.Model(&pedido).Updates(map[string]any{"estatus_id": cancelado.ID, "sync": false}).Error
+		if !strings.EqualFold(strings.TrimSpace(cancelado.Nombre), "Cancelado") {
+			return fmt.Errorf("el GUID configurado para Cancelado corresponde al estatus %q", cancelado.Nombre)
+		}
+		actualizacion := tx.Model(&models.Pedido{}).
+			Where("id = ? AND deleted_at IS NULL", pedido.ID).
+			UpdateColumns(map[string]any{"estatus_id": cancelado.ID, "sync": false})
+		if actualizacion.Error != nil {
+			return fmt.Errorf("no se pudo cambiar el estatus de la venta a Cancelado: %w", actualizacion.Error)
+		}
+		if actualizacion.RowsAffected != 1 {
+			return fmt.Errorf("no se actualizó el estatus de la venta")
+		}
+
+		var estatusConfirmado uint
+		if err := tx.Model(&models.Pedido{}).
+			Select("estatus_id").Where("id = ?", pedido.ID).
+			Scan(&estatusConfirmado).Error; err != nil {
+			return fmt.Errorf("no se pudo confirmar el estatus de la venta: %w", err)
+		}
+		if estatusConfirmado != cancelado.ID {
+			return fmt.Errorf("el estatus Cancelado no quedó aplicado a la venta")
+		}
+		return nil
 	})
 	if err != nil {
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()}), err
@@ -307,22 +322,200 @@ func (r *PosRepository) BeforeCreate(p *models.Pedido, tx *gorm.DB) (err error) 
 	return nil
 }
 
-func (r *PosRepository) ActualizarExistencias(itemsPedido []dto.PedidoProductoDto, tx *gorm.DB) error {
-	for _, item := range itemsPedido {
-		// Actualizar existencias
-		var sp models.SucursalProducto
+type consumoInventarioSolicitado struct {
+	NivelGuid uuid.UUID
+	Cantidad  decimal.Decimal
+}
 
-		if err := tx.
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("guid = ?", item.ID).
-			First(&sp).Error; err != nil {
-			return err
+type resolucionNivelInventario struct {
+	NivelGuid          uuid.UUID       `gorm:"column:nivel_guid"`
+	Codigo             string          `gorm:"column:codigo"`
+	Fraccionable       bool            `gorm:"column:fraccionable"`
+	Contenido          decimal.Decimal `gorm:"column:contenido"`
+	NivelInventarioID  *uint           `gorm:"column:nivel_inventario_id"`
+	CodigoConcentrador *string         `gorm:"column:codigo_concentrador"`
+}
+
+// consumosInventario resuelve el nivel que realmente concentra la existencia y
+// acumula el consumo de todos los hijos antes de validar o modificar inventario.
+func (r *PosRepository) consumosInventario(solicitudes []consumoInventarioSolicitado, tx *gorm.DB) (map[uint]decimal.Decimal, map[uint]string, error) {
+	guids := make([]uuid.UUID, 0, len(solicitudes))
+	for _, solicitud := range solicitudes {
+		if solicitud.NivelGuid == uuid.Nil {
+			return nil, nil, fmt.Errorf("el nivel de empaque es inválido")
+		}
+		if !solicitud.Cantidad.IsPositive() {
+			return nil, nil, fmt.Errorf("la cantidad solicitada debe ser mayor a cero")
+		}
+		guids = append(guids, solicitud.NivelGuid)
+	}
+
+	var resoluciones []resolucionNivelInventario
+	err := tx.Raw(`
+		SELECT nv.guid AS nivel_guid,
+			nv.codigo,
+			p.fraccionable,
+			e.contenido,
+			CASE WHEN p.fraccionable AND p.producto_base_id IS NOT NULL
+				THEN nvb.id ELSE nv.id END AS nivel_inventario_id,
+			CASE WHEN p.fraccionable AND p.producto_base_id IS NOT NULL
+				THEN nvb.codigo ELSE nv.codigo END AS codigo_concentrador
+		FROM nivel_empaque nv
+		JOIN productos p ON p.id = nv.producto_id AND p.deleted_at IS NULL
+		JOIN empaques e ON e.id = nv.empaque_id AND e.deleted_at IS NULL
+		LEFT JOIN nivel_empaque nvb
+			ON nvb.producto_id = p.producto_base_id
+			AND nvb.empaque_id IN (1, 8)
+			AND nvb.deleted_at IS NULL
+		WHERE nv.guid IN ? AND nv.deleted_at IS NULL`, guids).Scan(&resoluciones).Error
+	if err != nil {
+		return nil, nil, fmt.Errorf("no se pudieron resolver los niveles de inventario: %w", err)
+	}
+
+	porGuid := make(map[uuid.UUID]resolucionNivelInventario, len(resoluciones))
+	for _, resolucion := range resoluciones {
+		if anterior, existe := porGuid[resolucion.NivelGuid]; existe && anterior.NivelInventarioID != nil && resolucion.NivelInventarioID != nil && *anterior.NivelInventarioID != *resolucion.NivelInventarioID {
+			return nil, nil, fmt.Errorf("el artículo %s tiene más de un nivel concentrador configurado", resolucion.Codigo)
+		}
+		porGuid[resolucion.NivelGuid] = resolucion
+	}
+
+	consumos := make(map[uint]decimal.Decimal)
+	codigos := make(map[uint]string)
+	for _, solicitud := range solicitudes {
+		resolucion, existe := porGuid[solicitud.NivelGuid]
+		if !existe {
+			return nil, nil, fmt.Errorf("no se encontró el nivel de empaque %s", solicitud.NivelGuid)
+		}
+		if resolucion.NivelInventarioID == nil {
+			return nil, nil, fmt.Errorf("el artículo %s no tiene un producto concentrador válido configurado", resolucion.Codigo)
 		}
 
-		sp.Existencia = sp.Existencia.Sub(item.Quantity) // aqui hace resta: Funciones Sum, Sub, Mul, Div, Cmp
+		cantidadInventario := solicitud.Cantidad
+		if resolucion.Fraccionable {
+			if !resolucion.Contenido.IsPositive() {
+				return nil, nil, fmt.Errorf("el artículo %s no tiene un contenido válido", resolucion.Codigo)
+			}
+			cantidadInventario = cantidadInventario.Mul(resolucion.Contenido)
+		}
 
-		if err := tx.Save(&sp).Error; err != nil {
-			return err
+		nivelID := *resolucion.NivelInventarioID
+		consumos[nivelID] = consumos[nivelID].Add(cantidadInventario)
+		if resolucion.CodigoConcentrador != nil {
+			codigos[nivelID] = *resolucion.CodigoConcentrador
+		}
+	}
+	return consumos, codigos, nil
+}
+
+func (r *PosRepository) ActualizarExistencias(itemsPedido []dto.PedidoProductoDto, tx *gorm.DB) error {
+	solicitudes := make([]consumoInventarioSolicitado, 0, len(itemsPedido))
+	for _, item := range itemsPedido {
+		nivelGuid, err := uuid.Parse(strings.TrimSpace(item.ID))
+		if err != nil {
+			return fmt.Errorf("nivel de empaque inválido: %s", item.ID)
+		}
+		solicitudes = append(solicitudes, consumoInventarioSolicitado{NivelGuid: nivelGuid, Cantidad: item.Quantity})
+	}
+
+	consumos, codigos, err := r.consumosInventario(solicitudes, tx)
+	if err != nil {
+		return err
+	}
+
+	niveles := make([]uint, 0, len(consumos))
+	for nivelID := range consumos {
+		niveles = append(niveles, nivelID)
+	}
+	sort.Slice(niveles, func(i, j int) bool { return niveles[i] < niveles[j] })
+
+	var inventarios []models.SucursalProducto
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("nivel_id IN ? AND deleted_at IS NULL", niveles).
+		Order("nivel_id").Find(&inventarios).Error; err != nil {
+		return fmt.Errorf("no se pudo bloquear el inventario: %w", err)
+	}
+	porNivel := make(map[uint]*models.SucursalProducto, len(inventarios))
+	for i := range inventarios {
+		porNivel[inventarios[i].NivelID] = &inventarios[i]
+	}
+
+	for _, nivelID := range niveles {
+		inventario, existe := porNivel[nivelID]
+		if !existe {
+			return fmt.Errorf("no existe inventario para el producto concentrador %s", codigos[nivelID])
+		}
+		requerido := consumos[nivelID]
+		if inventario.Existencia.LessThan(requerido) {
+			return fmt.Errorf("existencia insuficiente para el producto concentrador %s: disponible %s, solicitado %s", codigos[nivelID], inventario.Existencia.String(), requerido.String())
+		}
+	}
+
+	for _, nivelID := range niveles {
+		inventario := porNivel[nivelID]
+		if err := tx.Model(inventario).Updates(map[string]any{
+			"existencia": inventario.Existencia.Sub(consumos[nivelID]),
+			"sync":       false,
+		}).Error; err != nil {
+			return fmt.Errorf("no se pudo actualizar el inventario del concentrador %s: %w", codigos[nivelID], err)
+		}
+	}
+	return nil
+}
+
+func (r *PosRepository) ReintegrarExistencias(detalles []models.PedidoDetalle, tx *gorm.DB) error {
+	nivelesID := make([]uint, 0, len(detalles))
+	for _, detalle := range detalles {
+		nivelesID = append(nivelesID, detalle.NivelID)
+	}
+	var niveles []models.NivelEmpaque
+	if err := tx.Where("id IN ? AND deleted_at IS NULL", nivelesID).Find(&niveles).Error; err != nil {
+		return fmt.Errorf("no se pudieron resolver los artículos de la venta: %w", err)
+	}
+	guidsPorID := make(map[uint]uuid.UUID, len(niveles))
+	for _, nivel := range niveles {
+		guidsPorID[nivel.ID] = nivel.Guid
+	}
+
+	solicitudes := make([]consumoInventarioSolicitado, 0, len(detalles))
+	for _, detalle := range detalles {
+		nivelGuid, existe := guidsPorID[detalle.NivelID]
+		if !existe {
+			return fmt.Errorf("no se encontró el nivel de empaque %d de la venta", detalle.NivelID)
+		}
+		solicitudes = append(solicitudes, consumoInventarioSolicitado{NivelGuid: nivelGuid, Cantidad: detalle.Cantidad})
+	}
+
+	consumos, codigos, err := r.consumosInventario(solicitudes, tx)
+	if err != nil {
+		return fmt.Errorf("no se pudo resolver el inventario a reintegrar: %w", err)
+	}
+	nivelesInventario := make([]uint, 0, len(consumos))
+	for nivelID := range consumos {
+		nivelesInventario = append(nivelesInventario, nivelID)
+	}
+	sort.Slice(nivelesInventario, func(i, j int) bool { return nivelesInventario[i] < nivelesInventario[j] })
+
+	var inventarios []models.SucursalProducto
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("nivel_id IN ? AND deleted_at IS NULL", nivelesInventario).
+		Order("nivel_id").Find(&inventarios).Error; err != nil {
+		return fmt.Errorf("no se pudo bloquear el inventario a reintegrar: %w", err)
+	}
+	porNivel := make(map[uint]*models.SucursalProducto, len(inventarios))
+	for i := range inventarios {
+		porNivel[inventarios[i].NivelID] = &inventarios[i]
+	}
+	for _, nivelID := range nivelesInventario {
+		inventario, existe := porNivel[nivelID]
+		if !existe {
+			return fmt.Errorf("no existe inventario para el producto concentrador %s", codigos[nivelID])
+		}
+		if err := tx.Model(inventario).Updates(map[string]any{
+			"existencia": inventario.Existencia.Add(consumos[nivelID]),
+			"sync":       false,
+		}).Error; err != nil {
+			return fmt.Errorf("no se pudo reintegrar el producto concentrador %s: %w", codigos[nivelID], err)
 		}
 	}
 	return nil

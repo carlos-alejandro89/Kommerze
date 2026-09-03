@@ -643,6 +643,7 @@ export function HistoryPage() {
                       let sc                = getStatusConfig(t.Estatus);
                       let displayEstatus    = t.Estatus;
                       const esCotizacion    = isTransactionType(t, TRANSACTION_TYPES.COTIZACION);
+					  const esCancelada     = ['Cancelado', 'Cancelada'].includes(t.Estatus);
                       const actionKey       = t.PedidoGuid || t.ID;
                       const actionsOpen     = actionMenuOpen === actionKey;
 
@@ -733,7 +734,15 @@ export function HistoryPage() {
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {esCotizacion ? (
                               <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">No aplica</span>
-                            ) : (
+							) : esCancelada && !t.Facturada ? (
+							  <div className="flex flex-col items-start gap-1">
+								<span className="inline-flex items-center gap-1.5 rounded-full border border-slate-400/20 bg-slate-500/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+								  <Ban className="size-3" />
+								  No facturable
+								</span>
+								<span className="pl-1 text-[10px] text-muted-foreground">Venta cancelada</span>
+							  </div>
+							) : (
 							  <button
 								type="button"
 								onClick={() => t.Facturada
@@ -777,10 +786,10 @@ export function HistoryPage() {
                                   {!esCotizacion && t.Facturada && (
                                     <RowActionButton label="Ver factura" icon={FileCheck2} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerFactura(t); }} tone="text-teal-600 hover:bg-teal-500/10 dark:text-teal-400" />
                                   )}
-                                  {!esCotizacion && !t.Facturada && (
+								  {!esCotizacion && !t.Facturada && !esCancelada && (
                                     <RowActionButton label="Facturar venta" icon={ReceiptText} onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })} tone="text-sky-600 hover:bg-sky-500/10 dark:text-sky-400" />
                                   )}
-                                  {!esCotizacion && !['Cancelado', 'Cancelada'].includes(t.Estatus) && (
+								  {!esCotizacion && !esCancelada && !t.Facturada && (
                                     <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => { setActionMenuOpen(null); setVentaCancelar(t); }} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                                   )}
                                 </div>
