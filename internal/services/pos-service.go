@@ -5,6 +5,8 @@ import (
 	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 	"context"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -28,6 +30,38 @@ func NewPosService(db *gorm.DB, ctx context.Context, apiURL string, cloudClient 
 
 func (s *PosService) SyncPedido(pedidoID uint) {
 	s.posRepository.CloudSync(pedidoID)
+}
+
+func (s *PosService) SyncPedidosPendientes() {
+	var pedidoIDs []uint
+	err := s.db.Model(&models.Pedido{}).
+		Joins("JOIN tipos_pedido ON tipos_pedido.id = pedidos.tipo_pedido_id").
+		Where("pedidos.sync = ? AND tipos_pedido.guid IN ?", false, []string{
+			models.TipoPedidoVentaGuid,
+			models.TipoPedidoCotizacionGuid,
+			models.TipoPedidoBajaMercanciaGuid,
+			models.TipoPedidoTraspasoGuid,
+		}).
+		Order("pedidos.id ASC").
+		Pluck("pedidos.id", &pedidoIDs).Error
+	if err != nil {
+		log.Printf("[PedidoSync] no se pudieron consultar pendientes: %v", err)
+		return
+	}
+	for _, pedidoID := range pedidoIDs {
+		s.SyncPedido(pedidoID)
+	}
+}
+
+func StartSyncPedidosTicker(pos *PosService) {
+	go func() {
+		pos.SyncPedidosPendientes()
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			pos.SyncPedidosPendientes()
+		}
+	}()
 }
 
 func (s *PosService) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {

@@ -137,9 +137,17 @@ export function NotificationProvider({ children }) {
       );
     };
 
+    const handlePedidoSync = (data) => {
+      if (!data || data.success !== false) return;
+      const message = data.error || 'No fue posible registrar la transacción en Cloud.';
+      addNotification('error', 'Sincronización pendiente', message);
+      toast.error(message);
+    };
+
     const unsub = EventsOn('cotizacion_resuelta', handleCotizacionResuelta);
     const unsubNetPay = EventsOn('netpay_payment_response', handleNetPayPaymentResponse);
     const unsubTransferencia = EventsOn('transferencia_recibida', handleTransferenciaRecibida);
+    const unsubPedidoSync = EventsOn('sync_status', handlePedidoSync);
 
     return () => {
       if (typeof unsub === 'function') {
@@ -150,6 +158,9 @@ export function NotificationProvider({ children }) {
       }
       if (typeof unsubTransferencia === 'function') {
         unsubTransferencia();
+      }
+      if (typeof unsubPedidoSync === 'function') {
+        unsubPedidoSync();
       }
     };
   }, [addNotification]);

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -1000,6 +1001,11 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 }
 
 func (r *PosRepository) emitPedidoSyncStatus(pedidoID uint, success bool, message string) {
+	if success {
+		log.Printf("[PedidoSync] pedido=%d estado=OK detalle=%s", pedidoID, message)
+	} else {
+		log.Printf("[PedidoSync] pedido=%d estado=ERROR detalle=%s", pedidoID, message)
+	}
 	if r.ctx == nil {
 		return
 	}
