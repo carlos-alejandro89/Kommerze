@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -22,12 +23,18 @@ import (
 )
 
 type PosRepository struct {
-	db  *gorm.DB
-	ctx context.Context
+	db              *gorm.DB
+	ctx             context.Context
+	cloudAPIURL     string
+	cloudHTTPClient interface {
+		Post(string, string, io.Reader) (*http.Response, error)
+	}
 }
 
-func NewPosRepository(db *gorm.DB, ctx context.Context) *PosRepository {
-	return &PosRepository{db: db, ctx: ctx}
+func NewPosRepository(db *gorm.DB, ctx context.Context, cloudAPIURL string, cloudHTTPClient interface {
+	Post(string, string, io.Reader) (*http.Response, error)
+}) *PosRepository {
+	return &PosRepository{db: db, ctx: ctx, cloudAPIURL: strings.TrimRight(cloudAPIURL, "/"), cloudHTTPClient: cloudHTTPClient}
 }
 func (r *PosRepository) SetContext(ctx context.Context) {
 	r.ctx = ctx
@@ -710,7 +717,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 		return dto.NewResponseDto(false, "Error al confirmar transacción", nil, []string{err.Error()}), err
 	}
 
-	go r.CloudSync(&pedido, sucursalOrigen, sucursalDestino)
+	go r.CloudSync(pedido.ID)
 	return dto.NewResponseDto(true, "Transacción confirmada exitosamente", pedido, nil), nil
 }
 
@@ -854,7 +861,7 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 		return dto.NewResponseDto(false, "No se pudo crear la solicitud", nil, []string{err.Error()}), err
 	}
 
-	go r.CloudSync(&pedido, &solicitud.SucursalOrigenID, solicitud.SucursalDestinoID)
+	go r.CloudSync(pedido.ID)
 	resultado := dto.SolicitudCreadaDto{
 		PedidoGuid:        pedido.Guid.String(),
 		Folio:             pedido.Folio,
@@ -868,12 +875,24 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 	return dto.NewResponseDto(true, "Solicitud creada correctamente", resultado, nil), nil
 }
 
-func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, sucursalDestino *uint) {
+func (r *PosRepository) CloudSync(pedidoID uint) {
+	if r.cloudHTTPClient == nil || r.cloudAPIURL == "" {
+		r.emitPedidoSyncStatus(pedidoID, false, "La conexión Cloud no está configurada")
+		return
+	}
+
+	var pedido models.Pedido
 	// Cargar las relaciones del pedido para obtener sus Guids correspondientes
-	r.db.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").Preload("SucursalOrigen").First(pedido, pedido.ID)
+	if err := r.db.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").Preload("SucursalOrigen").First(&pedido, pedidoID).Error; err != nil {
+		r.emitPedidoSyncStatus(pedidoID, false, "No se pudo cargar el pedido para sincronizar")
+		return
+	}
 
 	var detalles []models.PedidoDetalle
-	r.db.Preload("Nivel").Where("pedido_id = ?", pedido.ID).Find(&detalles)
+	if err := r.db.Preload("Nivel").Where("pedido_id = ?", pedido.ID).Find(&detalles).Error; err != nil {
+		r.emitPedidoSyncStatus(pedidoID, false, "No se pudo cargar el detalle del pedido")
+		return
+	}
 
 	var pedidoDetalleDto []dto.PedidoDetalleRequestDto
 	for _, d := range detalles {
@@ -891,13 +910,15 @@ func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, s
 		})
 	}
 
-	var tr models.Traspaso
-	r.db.Preload("SucursalOrigen").Preload("SucursalDestino").Preload("Estatus").Where("pedido_id = ?", pedido.ID).First(&tr)
-
+	tipoPedidoGuid := pedido.TipoPedido.Guid.String()
 	var traspasoDto *dto.TraspasoRequestDto
 	sucursalOrigenGuid := pedido.SucursalOrigen.Guid.String()
-
-	if tr.ID != 0 && *sucursalOrigen != 0 && *sucursalDestino != 0 {
+	if tipoPedidoGuid == models.TipoPedidoTraspasoGuid {
+		var tr models.Traspaso
+		if err := r.db.Preload("SucursalOrigen").Preload("SucursalDestino").Preload("Estatus").Where("pedido_id = ?", pedido.ID).First(&tr).Error; err != nil {
+			r.emitPedidoSyncStatus(pedidoID, false, "No se pudo cargar la transferencia")
+			return
+		}
 		traspasoDto = &dto.TraspasoRequestDto{
 			SucursalOrigenGuid:  tr.SucursalOrigen.Guid.String(),
 			SucursalDestinoGuid: tr.SucursalDestino.Guid.String(),
@@ -908,55 +929,85 @@ func (r *PosRepository) CloudSync(pedido *models.Pedido, sucursalOrigen *uint, s
 		}
 	}
 
+	var pagosDto []dto.PagoRequestDto
+	if tipoPedidoGuid == models.TipoPedidoVentaGuid {
+		var pagos []models.Pago
+		if err := r.db.Preload("Forma").Where("pedido_id = ?", pedido.ID).Find(&pagos).Error; err != nil {
+			r.emitPedidoSyncStatus(pedidoID, false, "No se pudieron cargar los pagos de la venta")
+			return
+		}
+		for _, pago := range pagos {
+			pagosDto = append(pagosDto, dto.PagoRequestDto{
+				PedidoGuid: pedido.Guid.String(), FormaPagoGuid: pago.Forma.Guid.String(),
+				Fecha: pago.Fecha, Monto: pago.Monto, Saldo: pago.Saldo,
+			})
+		}
+	}
+
 	pedidoRequestDto := dto.PedidoRequestDto{
 		SucursalOrigenGuid: sucursalOrigenGuid,
 		PedidoGuid:         pedido.Guid.String(),
 		EstatusGuid:        pedido.Estatus.Guid.String(),
 		ClienteGuid:        pedido.Cliente.Guid.String(),
-		TipoPedidoGuid:     pedido.TipoPedido.Guid.String(),
+		TipoPedidoGuid:     tipoPedidoGuid,
 		Folio:              pedido.Folio,
 		Fecha:              pedido.Fecha,
 		EsCredito:          pedido.EsCredito,
 		Sync:               pedido.Sync,
 		Comentarios:        pedido.Comentarios,
 		PedidoDetalle:      pedidoDetalleDto,
+		Pagos:              pagosDto,
 		Traspaso:           traspasoDto,
 	}
 
-	// 1. Lógica de la API
-	client := &http.Client{Timeout: 10 * time.Second}
-
-	// Convertir pedido a JSON, etc...
 	payload, err := json.Marshal(pedidoRequestDto)
 	if err != nil {
-		runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
-			"pedido_id": pedidoRequestDto.PedidoGuid,
-			"success":   false,
-			"error":     "No se pudo convertir el pedido a JSON",
-		})
+		r.emitPedidoSyncStatus(pedidoID, false, "No se pudo convertir el pedido a JSON")
 		return
 	}
 
-	fmt.Println(string(payload))
-	resp, err := client.Post("http://localhost:5242/pedidos/registrar", "application/json", bytes.NewBuffer(payload))
-
-	fmt.Println(resp)
-	fmt.Println(err)
+	resp, err := r.cloudHTTPClient.Post(r.cloudAPIURL+"/pedidos/registrar", "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		// 2. Notificar error al frontend de forma independiente
-		runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
-			"pedido_id": pedido.ID,
-			"success":   false,
-			"error":     "No se pudo conectar con el servidor",
-		})
+		r.emitPedidoSyncStatus(pedidoID, false, "No se pudo conectar con el servidor: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		r.emitPedidoSyncStatus(pedidoID, false, fmt.Sprintf("Cloud respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(body))))
+		return
+	}
+	if err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Pedido{}).Where("id = ?", pedidoID).Update("sync", true).Error; err != nil {
+			return err
+		}
+		if tipoPedidoGuid == models.TipoPedidoVentaGuid {
+			if err := tx.Model(&models.Pago{}).Where("pedido_id = ?", pedidoID).Update("sync", true).Error; err != nil {
+				return err
+			}
+		}
+		if tipoPedidoGuid == models.TipoPedidoTraspasoGuid {
+			if err := tx.Model(&models.Traspaso{}).Where("pedido_id = ?", pedidoID).Update("sync", true).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		r.emitPedidoSyncStatus(pedidoID, false, "El pedido llegó a Cloud, pero no pudo marcarse como sincronizado")
+		return
+	}
+	r.emitPedidoSyncStatus(pedidoID, true, "Sincronizado correctamente")
+}
 
-	// 3. Notificar éxito
-	runtime.EventsEmit(r.ctx, "sync_status", map[string]interface{}{
-		"pedido_id": pedido.ID,
-		"success":   true,
-		"message":   "Sincronizado correctamente",
-	})
+func (r *PosRepository) emitPedidoSyncStatus(pedidoID uint, success bool, message string) {
+	if r.ctx == nil {
+		return
+	}
+	payload := map[string]interface{}{"pedido_id": pedidoID, "success": success}
+	if success {
+		payload["message"] = message
+	} else {
+		payload["error"] = message
+	}
+	runtime.EventsEmit(r.ctx, "sync_status", payload)
 }

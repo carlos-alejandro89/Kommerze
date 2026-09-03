@@ -16,7 +16,16 @@ type PedidoRequestDto struct {
 	Sync               bool                      `json:"sync"`
 	Comentarios        string                    `json:"comentarios,omitempty"`
 	PedidoDetalle      []PedidoDetalleRequestDto `json:"pedidoDetalle"`
-	Traspaso           *TraspasoRequestDto       `json:"traspaso"`
+	Pagos              []PagoRequestDto          `json:"pagos,omitempty"`
+	Traspaso           *TraspasoRequestDto       `json:"traspaso,omitempty"`
+}
+
+type PagoRequestDto struct {
+	PedidoGuid    string    `json:"pedidoGuid,omitempty"`
+	FormaPagoGuid string    `json:"formaPagoGuid"`
+	Fecha         time.Time `json:"fecha"`
+	Monto         float64   `json:"monto"`
+	Saldo         float64   `json:"saldo"`
 }
 
 type PedidoDetalleRequestDto struct {

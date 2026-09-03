@@ -30,6 +30,7 @@ type CotizacionService struct {
 	client      *CloudHttpClient
 	ctx         context.Context
 	broadcastFn func(eventType string, data any) // notifica a Cajas conectadas vía WS local
+	syncPedido  func(pedidoID uint)
 	wsConnected atomic.Bool
 }
 
@@ -54,6 +55,12 @@ func (s *CotizacionService) SetContext(ctx context.Context) {
 // Se llama desde services.go después de crear ambos servicios.
 func (s *CotizacionService) SetBroadcast(fn func(eventType string, data any)) {
 	s.broadcastFn = fn
+}
+
+// SetPedidoSync inyecta la sincronización Cloud para reportar la venta que
+// resulta de convertir una cotización, después de confirmar la transacción local.
+func (s *CotizacionService) SetPedidoSync(fn func(pedidoID uint)) {
+	s.syncPedido = fn
 }
 
 // WebSocketConnected informa el estado real de la sesión con Kommerze Cloud.
@@ -452,14 +459,9 @@ func (s *CotizacionService) ConvertirAVenta(
 		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()}), err
 	}
 
-	// CloudSync en goroutine
-	go func() {
-		var sucID *uint
-		if sucursalOrigenID != nil {
-			sucID = sucursalOrigenID
-		}
-		_ = sucID // disponible para CloudSync si se integra
-	}()
+	if s.syncPedido != nil {
+		go s.syncPedido(pedido.ID)
+	}
 
 	return dto.NewResponseDto(true, "Cotizacion convertida a venta correctamente", pedido, nil), nil
 }

@@ -74,7 +74,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	cloudClient := NewCloudHttpClient(apiURL)
 	repoAuditoria := repository.NewAuditoriaSucursalRepository(apiURL, db, cloudClient)
 
-	pos := NewPosService(db, ctx)
+	pos := NewPosService(db, ctx, apiURL, cloudClient)
 	auditoria := NewAuditoriaService(repoAuditoria, apiURL, cloudClient)
 	auth := NewAuthService(repoUsuarios)
 	catalogos := NewCatalogosService(repo)
@@ -91,6 +91,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	// Levantar servidor HTTP interno para que las Cajas se conecten
 	localServer := NewLocalServerService(db, pos, auth, catalogos, clientes, proveedores, compras, cotizacion, receipt, facturacion, operacionesSucursal, operacionesCaja)
 	cotizacion.SetBroadcast(localServer.BroadcastToClients)
+	cotizacion.SetPedidoSync(pos.SyncPedido)
 	go localServer.Start(":8989")
 	log.Printf("[Services] Modo SERVIDOR LOCAL — API interna activa en :8989")
 

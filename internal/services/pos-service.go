@@ -19,11 +19,15 @@ func (s *PosService) SetContext(ctx context.Context) {
 	s.posRepository.SetContext(ctx)
 }
 
-func NewPosService(db *gorm.DB, ctx context.Context) *PosService {
+func NewPosService(db *gorm.DB, ctx context.Context, apiURL string, cloudClient *CloudHttpClient) *PosService {
 	return &PosService{
 		db:            db,
-		posRepository: repository.NewPosRepository(db, ctx),
+		posRepository: repository.NewPosRepository(db, ctx, apiURL, cloudClient),
 	}
+}
+
+func (s *PosService) SyncPedido(pedidoID uint) {
+	s.posRepository.CloudSync(pedidoID)
 }
 
 func (s *PosService) ConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
