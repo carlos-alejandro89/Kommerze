@@ -28,6 +28,12 @@ import {
 } from '@/components/ui/dialog';
 
 const PAGE_SIZE = 15;
+const TRANSFER_STATUS_GUIDS = {
+  canceled: '86968037-975a-43ce-880c-043003010103',
+  inTransit: '86968037-975a-43ce-880c-043003010104',
+  accepted: '86968037-975a-43ce-880c-043003010105',
+  rejected: '86968037-975a-43ce-880c-043003010106',
+};
 
 function formatDate(value, empty = 'Pendiente de recepción') {
   if (!value) return { date: empty, time: '' };
@@ -40,21 +46,33 @@ function formatDate(value, empty = 'Pendiente de recepción') {
 }
 
 function isReceived(item) {
-  return Boolean(item.fechaRecepcion) || /recibid|complet/i.test(item.estatus || '');
+  return Boolean(item.fechaRecepcion) || /recibid|complet|aceptad/i.test(item.estatus || '');
 }
 
 function StatusBadge({ item }) {
-  const received = isReceived(item);
-  const Icon = received ? CheckCircle2 : Truck;
+  const status = String(item.estatus || '').toLowerCase();
+  const statusGuid = String(item.estatusGuid || item.estatusGUID || '').toLowerCase();
+  const rejected = /rechazad/.test(status) || statusGuid === TRANSFER_STATUS_GUIDS.rejected;
+  const canceled = /cancelad/.test(status) || statusGuid === TRANSFER_STATUS_GUIDS.canceled;
+  const accepted = !rejected && !canceled
+    && (isReceived(item) || statusGuid === TRANSFER_STATUS_GUIDS.accepted);
+  const inTransit = /tr[aá]nsito|pendiente|proceso/.test(status)
+    || statusGuid === TRANSFER_STATUS_GUIDS.inTransit;
+  const Icon = rejected || canceled ? AlertCircle : (accepted ? CheckCircle2 : Truck);
+  const colors = rejected || canceled
+    ? 'border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400'
+    : accepted
+      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      : inTransit
+        ? 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+        : 'border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-400';
   return (
     <span className={cn(
       'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
-      received
-        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-        : 'border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      colors,
     )}>
       <Icon className="size-3.5" />
-      {item.estatus || (received ? 'Recibido' : 'En tránsito')}
+      {item.estatus || (accepted ? 'Recibido' : 'En tránsito')}
     </span>
   );
 }

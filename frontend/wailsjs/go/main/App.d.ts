@@ -150,6 +150,8 @@ export function ServicePrintReceipt(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
+export function ServiceResolverTransferencia(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function ServiceRestartApp():Promise<void>;
 
 export function ServiceSaveCloudCredentials(arg1:string,arg2:string):Promise<void>;

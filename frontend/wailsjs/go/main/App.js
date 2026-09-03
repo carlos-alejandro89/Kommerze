@@ -290,6 +290,10 @@ export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
 }
 
+export function ServiceResolverTransferencia(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceResolverTransferencia'](arg1, arg2, arg3);
+}
+
 export function ServiceRestartApp() {
   return window['go']['main']['App']['ServiceRestartApp']();
 }

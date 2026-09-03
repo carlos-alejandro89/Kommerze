@@ -83,6 +83,10 @@ func wrapReceiptText(text string, width int) string {
 }
 
 func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawer bool) []byte {
+	// ESC/POS trabaja en puntos de avance. Se usan 15 para conservar los 5
+	// existentes y añadir los 10 solicitados entre las secciones principales.
+	const rawSectionSpacing = byte(15)
+
 	r.Sucursal = optionalText(r.Sucursal)
 	r.Direccion = optionalText(r.Direccion)
 	r.Telefono = optionalText(r.Telefono)
@@ -102,7 +106,7 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 			b.Write(raster)
 			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00, 0x1B, 0x61, 0x00})
 			// ESC J n: avance fino en puntos entre el logotipo y el encabezado.
-			b.Write([]byte{0x1B, 0x4A, 0x05})
+			b.Write([]byte{0x1B, 0x4A, rawSectionSpacing})
 		}
 	}
 	b.Write([]byte{0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
@@ -121,6 +125,8 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	if r.MostrarCorreo && strings.TrimSpace(r.Correo) != "" {
 		writeEscPosText(&b, wrapReceiptText(r.Correo, width)+"\n")
 	}
+	// Separar visualmente el encabezado de los datos y productos de la venta.
+	b.Write([]byte{0x1B, 0x4A, rawSectionSpacing})
 	b.Write([]byte{0x1B, 0x61, 0x00})
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	writeEscPosText(&b, wrapReceiptText("Folio: "+r.Folio, width)+"\n")
