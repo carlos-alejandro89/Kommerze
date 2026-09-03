@@ -170,23 +170,23 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 
 	cfg, _ := LoadKommerzConfig()
 	address := make([]string, 0, 6)
-	if street := strings.TrimSpace(strings.Join([]string{header.Calle, header.Exterior, header.Interior}, " ")); street != "" {
+	if street := strings.TrimSpace(strings.Join([]string{cleanDocumentText(header.Calle), cleanDocumentText(header.Exterior), cleanDocumentText(header.Interior)}, " ")); street != "" {
 		address = append(address, street)
 	}
 	for _, part := range []string{header.Colonia, header.Ciudad, header.Estado} {
-		if part = strings.TrimSpace(part); part != "" {
+		if part = cleanDocumentText(part); part != "" {
 			address = append(address, part)
 		}
 	}
-	if cp := strings.TrimSpace(header.CodigoPostal); cp != "" {
+	if cp := cleanDocumentText(header.CodigoPostal); cp != "" {
 		address = append(address, "C.P. "+cp)
 	}
 	r := reportmodels.Receipt{
 		TipoPedidoID:   header.TipoPedidoID,
 		TipoPedidoGuid: header.TipoPedidoGuid,
 		Folio:          fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
-		Sucursal: header.Sucursal, Logo: header.Logo, Direccion: strings.Join(address, ", "),
-		Telefono: header.Telefono, Correo: header.Correo,
+		Sucursal: cleanDocumentText(header.Sucursal), Logo: header.Logo, Direccion: strings.Join(address, ", "),
+		Telefono: cleanDocumentText(header.Telefono), Correo: cleanDocumentText(header.Correo),
 		Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,
 	}
 	if cfg != nil {
@@ -272,14 +272,14 @@ func (s *ReceiptService) BuildQuotation(pedidoGuid string) (reportmodels.Quotati
 		return q, fmt.Errorf("el pedido no es una cotización")
 	}
 	address := []string{}
-	for _, part := range []string{strings.TrimSpace(header.Calle + " " + header.Exterior + " " + header.Interior), header.Colonia, header.Ciudad, header.Estado, header.CodigoPostal} {
-		if strings.TrimSpace(part) != "" {
-			address = append(address, strings.TrimSpace(part))
+	for _, part := range []string{strings.TrimSpace(cleanDocumentText(header.Calle) + " " + cleanDocumentText(header.Exterior) + " " + cleanDocumentText(header.Interior)), header.Colonia, header.Ciudad, header.Estado, header.CodigoPostal} {
+		if part = cleanDocumentText(part); part != "" {
+			address = append(address, part)
 		}
 	}
 	q = reportmodels.Quotation{Folio: fmt.Sprintf("COT-%06d", header.Folio), Negocio: header.Negocio,
-		RFCNegocio: header.RFCNegocio, Sucursal: header.Sucursal, DireccionSucursal: strings.Join(address, ", "),
-		TelefonoSucursal: header.TelefonoSucursal, CorreoSucursal: header.CorreoSucursal, Asesor: header.Asesor,
+		RFCNegocio: header.RFCNegocio, Sucursal: cleanDocumentText(header.Sucursal), DireccionSucursal: strings.Join(address, ", "),
+		TelefonoSucursal: cleanDocumentText(header.TelefonoSucursal), CorreoSucursal: cleanDocumentText(header.CorreoSucursal), Asesor: header.Asesor,
 		Cliente: header.Cliente, RFCCliente: header.RFCCliente, TelefonoCliente: header.TelefonoCliente,
 		CorreoCliente: header.CorreoCliente, RegimenCliente: header.RegimenCliente, Fecha: header.Fecha,
 		VigenciaDias: 15, Observaciones: header.Observaciones}

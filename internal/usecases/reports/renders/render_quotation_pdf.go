@@ -23,6 +23,10 @@ func SetKommerzeHorizontalLogo(data []byte) {
 }
 
 func RenderQuotationPDF(q models.Quotation) ([]byte, error) {
+	q.Sucursal = optionalText(q.Sucursal)
+	q.DireccionSucursal = optionalText(q.DireccionSucursal)
+	q.TelefonoSucursal = optionalText(q.TelefonoSucursal)
+	q.CorreoSucursal = optionalText(q.CorreoSucursal)
 	pdf := gofpdf.New("P", "mm", "Letter", "")
 	pdf.SetMargins(10, 10, 10)
 	pdf.SetAutoPageBreak(false, 0)
@@ -72,21 +76,29 @@ func drawQuotationHeader(pdf *gofpdf.Fpdf, q models.Quotation) {
 	pdf.CellFormat(91, 5, tr("Tu solución. Tu negocio."), "", 1, "L", false, 0, "")
 	setRGB(pdf, quotationBlue)
 	pdf.SetFont("Arial", "B", 7.5)
-	drawLocationIcon(pdf, 49, 31.5)
-	pdf.SetXY(54, 30.5)
-	pdf.CellFormat(39, 5, tr(q.Sucursal), "", 1, "L", false, 0, "")
-	pdf.SetFont("Arial", "", 7.2)
-	pdf.SetTextColor(35, 52, 83)
-	pdf.SetXY(54, 35.5)
-	pdf.MultiCell(38, 3.8, tr(q.DireccionSucursal), "", "L", false)
+	if q.Sucursal != "" || q.DireccionSucursal != "" {
+		drawLocationIcon(pdf, 49, 31.5)
+		pdf.SetXY(54, 30.5)
+		pdf.CellFormat(39, 5, tr(q.Sucursal), "", 1, "L", false, 0, "")
+		pdf.SetFont("Arial", "", 7.2)
+		pdf.SetTextColor(35, 52, 83)
+		pdf.SetXY(54, 35.5)
+		pdf.MultiCell(38, 3.8, tr(q.DireccionSucursal), "", "L", false)
+	}
 	setRGBDraw(pdf, quotationLine)
-	pdf.Line(96.5, 30, 96.5, 49)
-	drawPhoneIcon(pdf, 101.5, 31.5)
-	pdf.SetXY(106.5, 30.5)
-	pdf.CellFormat(34.5, 5, tr(q.TelefonoSucursal), "", 1, "L", false, 0, "")
-	drawMailIcon(pdf, 101.5, 38)
-	pdf.SetXY(106.5, 36.8)
-	pdf.CellFormat(34.5, 5, tr(q.CorreoSucursal), "", 1, "L", false, 0, "")
+	if q.TelefonoSucursal != "" || q.CorreoSucursal != "" {
+		pdf.Line(96.5, 30, 96.5, 49)
+	}
+	if q.TelefonoSucursal != "" {
+		drawPhoneIcon(pdf, 101.5, 31.5)
+		pdf.SetXY(106.5, 30.5)
+		pdf.CellFormat(34.5, 5, tr(q.TelefonoSucursal), "", 1, "L", false, 0, "")
+	}
+	if q.CorreoSucursal != "" {
+		drawMailIcon(pdf, 101.5, 38)
+		pdf.SetXY(106.5, 36.8)
+		pdf.CellFormat(34.5, 5, tr(q.CorreoSucursal), "", 1, "L", false, 0, "")
+	}
 
 	setRGB(pdf, quotationBlue)
 	pdf.SetFont("Arial", "B", 21)

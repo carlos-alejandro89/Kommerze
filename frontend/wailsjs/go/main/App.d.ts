@@ -32,6 +32,8 @@ export function ServiceCerrarCaja(arg1:dto.CerrarCajaDto):Promise<dto.ResponseDt
 
 export function ServiceCerrarOperacionSucursal(arg1:dto.CerrarOperacionSucursalDto):Promise<dto.ResponseDto>;
 
+export function ServiceConfigureCloud(arg1:string,arg2:string,arg3:string):Promise<dto.ResponseDto>;
+
 export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicadosDto>,arg3:Array<dto.PedidoProductoDto>,arg4:any,arg5:any,arg6:any,arg7:string):Promise<dto.ResponseDto>;
 
 export function ServiceConsultaProductos(arg1:string,arg2:boolean):Promise<Array<dto.ProductoDto>>;
@@ -94,6 +96,8 @@ export function ServiceGetSucursales():Promise<dto.ResponseDto>;
 
 export function ServiceGetTiposAutorizacion():Promise<Array<dto.TipoAutorizacionDto>>;
 
+export function ServiceGetWebSocketStatus():Promise<boolean>;
+
 export function ServiceGuardarCliente(arg1:dto.GuardarClienteDto):Promise<dto.ClienteDetalleDto>;
 
 export function ServiceGuardarInventarioJSON(arg1:string,arg2:string):Promise<dto.ResponseDto>;
@@ -101,6 +105,8 @@ export function ServiceGuardarInventarioJSON(arg1:string,arg2:string):Promise<dt
 export function ServiceGuardarProveedor(arg1:dto.GuardarProveedorDto):Promise<dto.ProveedorFiscalDto>;
 
 export function ServiceIniciarAuditoria(arg1:string,arg2:string):Promise<dto.ResponseDto>;
+
+export function ServiceInitializeDatabase(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<dto.ResponseDto>;
 
 export function ServiceListarClientes():Promise<Array<dto.ClienteDto>>;
 

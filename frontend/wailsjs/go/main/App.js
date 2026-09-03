@@ -54,6 +54,10 @@ export function ServiceCerrarOperacionSucursal(arg1) {
   return window['go']['main']['App']['ServiceCerrarOperacionSucursal'](arg1);
 }
 
+export function ServiceConfigureCloud(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceConfigureCloud'](arg1, arg2, arg3);
+}
+
 export function ServiceConfirmarTransaccion(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['ServiceConfirmarTransaccion'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
@@ -178,6 +182,10 @@ export function ServiceGetTiposAutorizacion() {
   return window['go']['main']['App']['ServiceGetTiposAutorizacion']();
 }
 
+export function ServiceGetWebSocketStatus() {
+  return window['go']['main']['App']['ServiceGetWebSocketStatus']();
+}
+
 export function ServiceGuardarCliente(arg1) {
   return window['go']['main']['App']['ServiceGuardarCliente'](arg1);
 }
@@ -192,6 +200,10 @@ export function ServiceGuardarProveedor(arg1) {
 
 export function ServiceIniciarAuditoria(arg1, arg2) {
   return window['go']['main']['App']['ServiceIniciarAuditoria'](arg1, arg2);
+}
+
+export function ServiceInitializeDatabase(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ServiceInitializeDatabase'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function ServiceListarClientes() {

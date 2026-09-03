@@ -88,7 +88,13 @@ func drawPurchaseProvider(pdf *gofpdf.Fpdf, r models.PurchaseReport, y float64) 
 	pdf.SetXY(26, y+10)
 	pdf.CellFormat(86, 6, tr(r.Proveedor), "", 1, "L", false, 0, "")
 	providerRows := [][2]string{{"RFC", r.RFCProveedor}, {"RÉGIMEN FISCAL", r.RegimenProveedor}, {"TELÉFONO", r.TelefonoProveedor}, {"CORREO", r.CorreoProveedor}, {"CÓDIGO POSTAL", r.CodigoPostalProveedor}}
-	for i, row := range providerRows {
+	visibleProviderRows := make([][2]string, 0, len(providerRows))
+	for _, row := range providerRows {
+		if row[1] = optionalText(row[1]); row[1] != "" {
+			visibleProviderRows = append(visibleProviderRows, row)
+		}
+	}
+	for i, row := range visibleProviderRows {
 		yy := y + 17 + float64(i)*3.8
 		pdf.SetFont("Arial", "B", 6.2)
 		pdf.SetXY(16, yy)

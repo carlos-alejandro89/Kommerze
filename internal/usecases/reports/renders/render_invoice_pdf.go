@@ -13,6 +13,10 @@ import (
 )
 
 func RenderInvoicePDF(r reportmodels.Invoice) ([]byte, error) {
+	r.Sucursal = optionalText(r.Sucursal)
+	r.Direccion = optionalText(r.Direccion)
+	r.Telefono = optionalText(r.Telefono)
+	r.Correo = optionalText(r.Correo)
 	pdf := gofpdf.New("P", "mm", "Letter", "")
 	pdf.SetMargins(7, 8, 7)
 	pdf.SetAutoPageBreak(false, 0)
@@ -76,24 +80,34 @@ func drawInvoiceHeader(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
 	pdf.CellFormat(62, 4, tr("RFC: "+r.RFCEmisor), "", 1, "L", false, 0, "")
 	pdf.SetXY(58, 27)
 	pdf.MultiCell(62, 3.4, tr(r.RegimenEmisor), "", "L", false)
-	pdf.SetFont("Arial", "B", 6)
-	pdf.SetXY(58, 34)
-	pdf.CellFormat(62, 3, "SUCURSAL", "", 1, "L", false, 0, "")
-	pdf.SetFont("Arial", "", 6.5)
-	pdf.SetXY(58, 38)
-	pdf.MultiCell(62, 3.4, tr(r.Sucursal+" - "+r.Direccion), "", "L", false)
+	location := strings.Join(nonEmptyInvoiceText(r.Sucursal, r.Direccion), " - ")
+	if location != "" {
+		pdf.SetFont("Arial", "B", 6)
+		pdf.SetXY(58, 34)
+		pdf.CellFormat(62, 3, "SUCURSAL", "", 1, "L", false, 0, "")
+		pdf.SetFont("Arial", "", 6.5)
+		pdf.SetXY(58, 38)
+		pdf.MultiCell(62, 3.4, tr(location), "", "L", false)
+	}
 	phone := strings.TrimSpace(r.Telefono)
 	email := strings.TrimSpace(r.Correo)
-	pdf.SetXY(58, 50)
-	pdf.SetFont("Arial", "", 6.5)
-	phoneWidth := pdf.GetStringWidth(tr(phone))
-	pdf.CellFormat(phoneWidth, 3, tr(phone), "", 0, "L", false, 0, "")
-	dotWidth := 5.0
-	setRGBFill(pdf, "65,82,115")
-	pdf.Circle(58+phoneWidth+2.2, 51.35, .7, "F")
-	pdf.SetFont("Arial", "", 6.5)
-	pdf.SetXY(58+phoneWidth+dotWidth, 50)
-	pdf.CellFormat(62-phoneWidth-dotWidth, 3, tr(email), "", 1, "L", false, 0, "")
+	if phone != "" || email != "" {
+		pdf.SetXY(58, 50)
+		pdf.SetFont("Arial", "", 6.5)
+		phoneWidth := pdf.GetStringWidth(tr(phone))
+		if phone != "" {
+			pdf.CellFormat(phoneWidth, 3, tr(phone), "", 0, "L", false, 0, "")
+		}
+		dotWidth := 0.0
+		if phone != "" && email != "" {
+			dotWidth = 5
+			setRGBFill(pdf, "65,82,115")
+			pdf.Circle(58+phoneWidth+2.2, 51.35, .7, "F")
+		}
+		pdf.SetFont("Arial", "", 6.5)
+		pdf.SetXY(58+phoneWidth+dotWidth, 50)
+		pdf.CellFormat(62-phoneWidth-dotWidth, 3, tr(email), "", 1, "L", false, 0, "")
+	}
 	setRGBFill(pdf, quotationBlue)
 	pdf.RoundedRect(126, 9, 82, 8, 2, "1234", "F")
 	pdf.SetTextColor(255, 255, 255)
@@ -116,6 +130,16 @@ func drawInvoiceHeader(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
 	pdf.SetLineWidth(.55)
 	pdf.Line(8, 55, 208, 55)
 	pdf.SetLineWidth(.2)
+}
+
+func nonEmptyInvoiceText(values ...string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = optionalText(value); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func drawInvoiceReceiver(pdf *gofpdf.Fpdf, r reportmodels.Invoice, y float64) {

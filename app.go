@@ -17,6 +17,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +31,7 @@ type App struct {
 	ctx      context.Context
 	db       *gorm.DB
 	services *services.Services
+	setupMu  sync.Mutex
 }
 
 // NewApp creates a new App application struct
@@ -658,6 +661,21 @@ func (a *App) ServiceVerifyLicense() *dto.ResponseDto {
 	return services.VerifyLicense()
 }
 
+// ServiceGetWebSocketStatus permite que el frontend conozca el estado actual
+// aunque la conexión se haya establecido antes de montar sus listeners.
+func (a *App) ServiceGetWebSocketStatus() bool {
+	if a.services == nil {
+		return false
+	}
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.WebSocketConnected()
+	}
+	if a.services.Cotizacion != nil {
+		return a.services.Cotizacion.WebSocketConnected()
+	}
+	return false
+}
+
 // ── Auditoria ────────────────────────────────────────────────────────────────
 
 func (a *App) ServiceObtenerResumenInventario() *dto.ResponseDto {
@@ -980,6 +998,88 @@ func (a *App) ServiceApiCrearProducto(producto requestdto.ProductoCreate) (*dto.
 
 func (a *App) ServiceSaveCloudCredentials(email, password string) error {
 	return services.SaveCloudCredentials(email, password)
+}
+
+// ServiceInitializeDatabase conecta la BD sin reiniciar la aplicación y
+// ejecuta migraciones y datos iniciales dentro del mismo paso del onboarding.
+// Los servicios se crean después de configurar Cloud para que nazcan con la
+// URL y las credenciales definitivas.
+func (a *App) ServiceInitializeDatabase(host, port, user, password, name, sslMode, timeZone string) *dto.ResponseDto {
+	a.setupMu.Lock()
+	defer a.setupMu.Unlock()
+
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return dto.NewResponseDto(false, "No se pudo leer la configuración", nil, []string{err.Error()})
+	}
+	if cfg.Role != services.RoleLocalServer {
+		return dto.NewResponseDto(false, "La base de datos local solo se configura en el rol Servidor Local", nil, nil)
+	}
+	cfg.DBHost = strings.TrimSpace(host)
+	cfg.DBPort = strings.TrimSpace(port)
+	cfg.DBUser = strings.TrimSpace(user)
+	cfg.DBPassword = password
+	cfg.DBName = strings.TrimSpace(name)
+	cfg.DBSSLMode = strings.TrimSpace(sslMode)
+	cfg.TimeZone = strings.TrimSpace(timeZone)
+
+	db, err := database.NewDB(cfg)
+	if err != nil {
+		return dto.NewResponseDto(false, "No se pudo conectar a PostgreSQL", nil, []string{err.Error()})
+	}
+	if err = database.RunMigrations(db); err != nil {
+		return dto.NewResponseDto(false, "No se pudieron ejecutar las migraciones", nil, []string{err.Error()})
+	}
+	if err = database.RunSeeder(db); err != nil {
+		return dto.NewResponseDto(false, "No se pudieron cargar los datos iniciales", nil, []string{err.Error()})
+	}
+	if err = services.SaveKommerzConfig(cfg); err != nil {
+		return dto.NewResponseDto(false, "La base de datos quedó lista, pero no se pudo guardar la configuración", nil, []string{err.Error()})
+	}
+	a.db = db
+	if loc, loadErr := time.LoadLocation(cfg.TimeZone); loadErr == nil {
+		time.Local = loc
+	}
+	return dto.NewResponseDto(true, "Base de datos conectada y migrada correctamente", nil, nil)
+}
+
+// ServiceConfigureCloud valida el acceso, persiste sus parámetros y termina
+// de inicializar los servicios del Servidor Local sin reiniciar la app.
+func (a *App) ServiceConfigureCloud(email, password, apiURL string) *dto.ResponseDto {
+	a.setupMu.Lock()
+	defer a.setupMu.Unlock()
+
+	if a.db == nil {
+		return dto.NewResponseDto(false, "Primero configura la base de datos", nil, nil)
+	}
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return dto.NewResponseDto(false, "No se pudo leer la configuración", nil, []string{err.Error()})
+	}
+	email = strings.TrimSpace(email)
+	apiURL = strings.TrimRight(strings.TrimSpace(apiURL), "/")
+	if email == "" || password == "" {
+		return dto.NewResponseDto(false, "Correo y contraseña de Cloud son obligatorios", nil, nil)
+	}
+	if err = services.ValidateCloudAPIURL(apiURL); err != nil {
+		return dto.NewResponseDto(false, err.Error(), nil, []string{err.Error()})
+	}
+	cloud := services.NewCloudHttpClient(apiURL)
+	if err = cloud.LoginWithCredentials(email, password); err != nil {
+		return dto.NewResponseDto(false, "No se pudo establecer la conexión con Cloud", nil, []string{err.Error()})
+	}
+	cfg.CloudEmail = email
+	cfg.CloudPassword = password
+	cfg.CloudAPIURL = apiURL
+	if err = services.SaveKommerzConfig(cfg); err != nil {
+		return dto.NewResponseDto(false, "No se pudo guardar la configuración Cloud", nil, []string{err.Error()})
+	}
+	if a.services != nil && a.services.Sync != nil {
+		return dto.NewResponseDto(true, "Conexión Cloud validada", nil, nil)
+	}
+	a.services = services.NewServices(a.db, a.ctx, cfg)
+	a.services.SetContext(a.ctx)
+	return dto.NewResponseDto(true, "Conexión Cloud establecida correctamente", nil, nil)
 }
 
 func (a *App) ServiceLoadCloudCredentials() (*services.CloudCredentials, error) {

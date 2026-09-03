@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -29,6 +30,7 @@ type CotizacionService struct {
 	client      *CloudHttpClient
 	ctx         context.Context
 	broadcastFn func(eventType string, data any) // notifica a Cajas conectadas vía WS local
+	wsConnected atomic.Bool
 }
 
 // NewCotizacionService crea el servicio y arranca la goroutine de polling WebSocket.
@@ -52,6 +54,20 @@ func (s *CotizacionService) SetContext(ctx context.Context) {
 // Se llama desde services.go después de crear ambos servicios.
 func (s *CotizacionService) SetBroadcast(fn func(eventType string, data any)) {
 	s.broadcastFn = fn
+}
+
+// WebSocketConnected informa el estado real de la sesión con Kommerze Cloud.
+func (s *CotizacionService) WebSocketConnected() bool {
+	return s.wsConnected.Load()
+}
+
+func (s *CotizacionService) setWebSocketConnected(connected bool) {
+	if previous := s.wsConnected.Swap(connected); previous == connected {
+		return
+	}
+	if s.ctx != nil {
+		runtime.EventsEmit(s.ctx, "websocket:status", map[string]any{"connected": connected, "channel": "cloud"})
+	}
 }
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
@@ -92,9 +108,14 @@ func (s *CotizacionService) wsSession(sucursalGuid string) error {
 	url := fmt.Sprintf("%s/ws/sucursal/%s", s.wsBaseURL, sucursalGuid)
 	conn, _, err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
+		s.setWebSocketConnected(false)
 		return fmt.Errorf("dial WS: %w", err)
 	}
-	defer conn.Close()
+	s.setWebSocketConnected(true)
+	defer func() {
+		s.setWebSocketConnected(false)
+		_ = conn.Close()
+	}()
 	log.Printf("[CotizacionWS] ✅ Conectado a %s", url)
 
 	// Responder pings del servidor

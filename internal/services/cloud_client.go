@@ -24,17 +24,22 @@ func NewCloudHttpClient(apiBaseURL string) *CloudHttpClient {
 }
 
 func (c *CloudHttpClient) Login() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	creds, err := LoadCloudCredentials()
 	if err != nil {
 		return fmt.Errorf("no se han configurado credenciales en la nube: %w", err)
 	}
+	return c.LoginWithCredentials(creds.Email, creds.Password)
+}
+
+// LoginWithCredentials valida credenciales sin requerir que ya estén
+// persistidas. El onboarding lo usa antes de guardar la configuración.
+func (c *CloudHttpClient) LoginWithCredentials(email, password string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	payload, err := json.Marshal(map[string]string{
-		"email":    creds.Email,
-		"password": creds.Password,
+		"email":    email,
+		"password": password,
 	})
 	if err != nil {
 		return err

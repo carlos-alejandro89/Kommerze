@@ -83,6 +83,10 @@ func wrapReceiptText(text string, width int) string {
 }
 
 func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawer bool) []byte {
+	r.Sucursal = optionalText(r.Sucursal)
+	r.Direccion = optionalText(r.Direccion)
+	r.Telefono = optionalText(r.Telefono)
+	r.Correo = optionalText(r.Correo)
 	width := 42
 	if paperWidthMM == 58 {
 		width = 32
@@ -92,18 +96,13 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	// tipografía interna ESC/POS de aspecto más cercano a Arial/Helvetica.
 	b.Write([]byte{0x1B, 0x40, 0x1B, 0x74, 0x10, 0x1B, 0x4D, 0x00})
 	if r.MostrarLogo {
-		if raster, logoWidth := receiptLogoRaster(r.Logo, paperWidthMM); len(raster) > 0 {
-			paperDots := 576
-			if paperWidthMM == 58 {
-				paperDots = 384
-			}
-			leftMargin := (paperDots - logoWidth) / 2
-			if leftMargin < 0 {
-				leftMargin = 0
-			}
-			b.Write([]byte{0x1D, 0x4C, byte(leftMargin), byte(leftMargin >> 8)})
+		if raster, _ := receiptLogoRaster(r.Logo, paperWidthMM); len(raster) > 0 {
+			// Restablecer el margen y centrar explícitamente el raster.
+			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00, 0x1B, 0x61, 0x01})
 			b.Write(raster)
-			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00})
+			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00, 0x1B, 0x61, 0x00})
+			// ESC J n: avance fino en puntos entre el logotipo y el encabezado.
+			b.Write([]byte{0x1B, 0x4A, 0x05})
 		}
 	}
 	b.Write([]byte{0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
@@ -129,19 +128,22 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	writeEscPosText(&b, wrapReceiptText("Cajero: "+r.Cajero, width)+"\n")
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	writeEscPosText(&b, line("Descripción", "Importe", width))
-	for _, item := range r.Items {
+	for index, item := range r.Items {
 		writeEscPosText(&b, wrapReceiptText(strings.ToUpper(item.Descripcion), width)+"\n")
 		writeEscPosText(&b, line(fmt.Sprintf("%.2f x %s", item.Cantidad, money(item.Precio)), money(item.Importe), width))
+		if index < len(r.Items)-1 {
+			// Separación sutil entre productos sin agregar un renglón completo.
+			b.Write([]byte{0x1B, 0x4A, 0x02})
+		}
 	}
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	writeEscPosText(&b, line("Subtotal:", money(r.Subtotal), width))
 	writeEscPosText(&b, line("Descuento:", money(r.Descuento), width))
-	// ESC/POS no permite reducir el texto por píxeles. Usamos Font A en su
-	// tamaño normal y negrita para conservar jerarquía, ganar separación entre
-	// la etiqueta y el importe y evitar traslapes en papel de 58 mm.
-	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x00})
+	// Aumentar únicamente la altura de TOTAL. El ancho permanece normal para
+	// conservar la misma cuadrícula y la alineación derecha del importe.
+	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x01})
 	writeEscPosText(&b, line("TOTAL:", money(r.Total), width))
-	b.Write([]byte{0x1B, 0x45, 0x00})
+	b.Write([]byte{0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00})
 	writeEscPosText(&b, line("Pago:", money(r.Pago), width))
 	writeEscPosText(&b, line("Cambio:", money(r.Cambio), width))
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
@@ -165,7 +167,9 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 			}
 		}
 	}
-	writeEscPosText(&b, "\n\n\n")
+	// ESC d 3: alimentar tres líneas completas antes del corte para evitar que
+	// el último contenido quede pegado al borde del papel.
+	b.Write([]byte{0x1B, 0x64, 0x03})
 	if openDrawer {
 		// ESC p m t1 t2: pulso en el pin 2 del conector de cajón.
 		b.Write([]byte{0x1B, 0x70, 0x00, 0x19, 0xFA})
@@ -200,9 +204,11 @@ func receiptLogoRaster(value string, paperWidthMM int) ([]byte, int) {
 	if err != nil {
 		return nil, 0
 	}
-	maxWidth := 512
+	// El logotipo ocupa como máximo el 60% del ancho imprimible. El margen
+	// horizontal se calcula al escribir el raster para mantenerlo centrado.
+	maxWidth := 346
 	if paperWidthMM == 58 {
-		maxWidth = 384
+		maxWidth = 230
 	}
 	bounds := source.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()

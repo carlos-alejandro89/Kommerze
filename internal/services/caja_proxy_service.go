@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,8 +24,9 @@ import (
 // AuthService y CatalogosService, pero internamente hace peticiones HTTP
 // al Servidor Local. El código de app.go no necesita cambios.
 type CajaProxyService struct {
-	serverURL string
-	client    *http.Client
+	serverURL   string
+	client      *http.Client
+	wsConnected atomic.Bool
 }
 
 func NewCajaProxyService(serverURL string) *CajaProxyService {
@@ -288,6 +290,19 @@ func (c *CajaProxyService) SetContext(ctx context.Context) {
 	go c.listenWS(ctx)
 }
 
+// WebSocketConnected informa si esta Caja mantiene abierto el canal con el
+// Servidor Local.
+func (c *CajaProxyService) WebSocketConnected() bool {
+	return c.wsConnected.Load()
+}
+
+func (c *CajaProxyService) setWebSocketConnected(ctx context.Context, connected bool) {
+	if previous := c.wsConnected.Swap(connected); previous == connected {
+		return
+	}
+	runtime.EventsEmit(ctx, "websocket:status", map[string]any{"connected": connected, "channel": "local"})
+}
+
 func (c *CajaProxyService) listenWS(ctx context.Context) {
 	wsURL := strings.ReplaceAll(c.serverURL, "https://", "wss://")
 	wsURL = strings.ReplaceAll(wsURL, "http://", "ws://")
@@ -306,9 +321,14 @@ func (c *CajaProxyService) listenWS(ctx context.Context) {
 func (c *CajaProxyService) connectWS(ctx context.Context, wsURL string) error {
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
+		c.setWebSocketConnected(ctx, false)
 		return err
 	}
-	defer conn.Close()
+	c.setWebSocketConnected(ctx, true)
+	defer func() {
+		c.setWebSocketConnected(ctx, false)
+		_ = conn.Close()
+	}()
 	log.Printf("[CajaProxy] ✅ Conectado al Servidor Local WS: %s", wsURL)
 
 	for {

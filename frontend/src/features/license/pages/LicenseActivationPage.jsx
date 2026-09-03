@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound, Monitor, Fingerprint, CheckCircle } from 'lucide-react';
-import { ServiceGetMachineID, ServiceActivateLicense } from '../../../../wailsjs/go/main/App';
+import { ServiceGetMachineID, ServiceActivateLicense, ServiceGetSucursalGuid, SyncSucursalProductos } from '../../../../wailsjs/go/main/App';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
 
@@ -21,17 +21,24 @@ export function LicenseActivationPage() {
       .catch(() => { });
   }, []);
 
+  const syncSucursal = async () => {
+    const sucursalGuid = await ServiceGetSucursalGuid();
+    if (sucursalGuid) await SyncSucursalProductos({ sucursalGuid });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const result = await ServiceActivateLicense(formData);
+      await syncSucursal();
       toast.success('Licencia activada correctamente');
       navigate('/login', { replace: true });
     } catch (error) {
       const msg = String(error);
       // 409 = ya activada previamente en este equipo → tratar como éxito
       if (msg.includes('409') || msg.toLowerCase().includes('previamente') || msg.toLowerCase().includes('already')) {
+        await syncSucursal();
         toast.success('Licencia válida. Accediendo al sistema...');
         navigate('/login', { replace: true });
         return;

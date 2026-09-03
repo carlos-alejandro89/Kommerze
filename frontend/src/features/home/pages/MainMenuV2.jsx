@@ -31,6 +31,8 @@ import { useActivation } from '@/providers/ActivationProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { NotificationBell } from '@/components/NotificationBell';
 import { HomeStatusBar } from '../components/HomeStatusBar';
+import { ServiceGetWebSocketStatus } from '../../../../wailsjs/go/main/App';
+import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 
 const THEME_KEY = 'kommerze-theme';
 
@@ -188,6 +190,7 @@ export function MainMenuV2() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [dark, setDark] = useMenuDarkMode();
   const [salesSummary, setSalesSummary] = useState(null);
+  const [webSocketConnected, setWebSocketConnected] = useState(false);
 
   const userName = user?.Nombre ?? user?.nombre ?? user?.CorreoElectronico ?? 'Usuario';
   const firstName = userName.split(' ').filter(Boolean)[0] || 'Usuario';
@@ -237,6 +240,20 @@ export function MainMenuV2() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    ServiceGetWebSocketStatus()
+      .then((connected) => { if (active) setWebSocketConnected(Boolean(connected)); })
+      .catch(() => { if (active) setWebSocketConnected(false); });
+    const unsubscribe = EventsOn('websocket:status', (status) => {
+      if (active) setWebSocketConnected(Boolean(status?.connected));
+    });
+    return () => {
+      active = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -376,8 +393,14 @@ export function MainMenuV2() {
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <button className="hidden items-center gap-2 text-sm font-semibold text-[#194991] dark:text-blue-300 sm:flex">
-                  <span className="size-2.5 rounded-full bg-emerald-500" />
                   Sucursal: {storeName}
+                  <span
+                    className={`relative flex size-2.5 rounded-full ${webSocketConnected ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                    title={webSocketConnected ? 'WebSocket conectado' : 'WebSocket desconectado'}
+                    aria-label={webSocketConnected ? 'WebSocket conectado' : 'WebSocket desconectado'}
+                  >
+                    {webSocketConnected && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-70" />}
+                  </span>
                   <ChevronDown className="size-4 text-[#6a83ab]" />
                 </button>
 

@@ -123,7 +123,7 @@ func saveInvoicePDF(xmlPath string, pdf []byte) (string, error) {
 func joinAddress(parts ...string) string {
 	clean := make([]string, 0, len(parts))
 	for _, part := range parts {
-		if value := strings.TrimSpace(part); value != "" {
+		if value := cleanDocumentText(part); value != "" {
 			clean = append(clean, value)
 		}
 	}

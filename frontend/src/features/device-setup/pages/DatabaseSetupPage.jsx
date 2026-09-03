@@ -10,7 +10,7 @@ import {
   EyeOff,
   Server,
 } from 'lucide-react';
-import { ServiceTestDBConnection, ServiceSaveDBConfig, ServiceRestartApp } from '../../../../wailsjs/go/main/App';
+import { ServiceTestDBConnection, ServiceInitializeDatabase } from '../../../../wailsjs/go/main/App';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
 
@@ -42,7 +42,7 @@ export function DatabaseSetupPage() {
   const [connectionStatus, setConnectionStatus] = useState(null); // null | 'ok' | 'error'
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [restarting, setRestarting] = useState(false);
+  const [initializing, setInitializing] = useState(false);
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -84,7 +84,8 @@ export function DatabaseSetupPage() {
     }
     setSaving(true);
     try {
-      await ServiceSaveDBConfig(
+      setInitializing(true);
+      const result = await ServiceInitializeDatabase(
         form.host,
         form.port,
         form.user,
@@ -93,26 +94,28 @@ export function DatabaseSetupPage() {
         form.sslMode,
         form.timeZone,
       );
-      setRestarting(true);
-      await new Promise((r) => setTimeout(r, 1500));
-      ServiceRestartApp(); // cierra la app → usuario la reabre con config completa
+      if (!result?.success) {
+        throw new Error(result?.message || result?.errors?.join(', ') || 'No se pudo inicializar la base de datos');
+      }
+      toast.success('Base de datos lista');
+      navigate('/device-setup/cloud', { replace: true });
     } catch (err) {
       toast.error('Error al guardar: ' + String(err));
       setSaving(false);
+      setInitializing(false);
     }
   };
 
-  // Pantalla de reinicio
-  if (restarting) {
+  if (initializing) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background gap-6">
         <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/15">
           <div className="size-8 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin" />
         </div>
         <div className="text-center px-6">
-          <h2 className="text-xl font-bold text-foreground mb-2">Configuración guardada</h2>
+          <h2 className="text-xl font-bold text-foreground mb-2">Preparando la base de datos</h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            La aplicación se cerrará. Ábrela nuevamente para continuar con la activación de licencia.
+            Estamos conectando, ejecutando migraciones y cargando los datos iniciales. No cierres la aplicación.
           </p>
         </div>
       </div>
