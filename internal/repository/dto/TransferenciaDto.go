@@ -17,18 +17,20 @@ type TransferenciaProductoDto struct {
 // sucursales. Los importes se exponen como float64 para simplificar el contrato
 // JSON consumido por el WebView.
 type TransferenciaDto struct {
-	TraspasoGuid    string                     `json:"traspasoGuid"`
-	PedidoGuid      string                     `json:"pedidoGuid"`
-	Folio           string                     `json:"folio"`
-	SucursalOrigen  string                     `json:"sucursalOrigen"`
-	SucursalDestino string                     `json:"sucursalDestino"`
-	FechaEnvio      time.Time                  `json:"fechaEnvio"`
-	FechaRecepcion  *time.Time                 `json:"fechaRecepcion"`
-	EstatusGuid     string                     `json:"estatusGuid"`
-	Estatus         string                     `json:"estatus"`
-	TotalProductos  int64                      `json:"totalProductos"`
-	UnidadesTotales float64                    `json:"unidadesTotales"`
-	ValorTotal      float64                    `json:"valorTotal"`
-	Comentarios     string                     `json:"comentarios"`
-	Productos       []TransferenciaProductoDto `json:"productos" gorm:"-"`
+	TraspasoGuid        string                     `json:"traspasoGuid"`
+	PedidoGuid          string                     `json:"pedidoGuid"`
+	Folio               string                     `json:"folio"`
+	SucursalOrigenGuid  string                     `json:"sucursalOrigenGuid"`
+	SucursalDestinoGuid string                     `json:"sucursalDestinoGuid"`
+	SucursalOrigen      string                     `json:"sucursalOrigen"`
+	SucursalDestino     string                     `json:"sucursalDestino"`
+	FechaEnvio          time.Time                  `json:"fechaEnvio"`
+	FechaRecepcion      *time.Time                 `json:"fechaRecepcion"`
+	EstatusGuid         string                     `json:"estatusGuid"`
+	Estatus             string                     `json:"estatus"`
+	TotalProductos      int64                      `json:"totalProductos"`
+	UnidadesTotales     float64                    `json:"unidadesTotales"`
+	ValorTotal          float64                    `json:"valorTotal"`
+	Comentarios         string                     `json:"comentarios"`
+	Productos           []TransferenciaProductoDto `json:"productos" gorm:"-"`
 }

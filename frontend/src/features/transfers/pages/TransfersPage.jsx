@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
+import { useActivation } from '@/providers/ActivationProvider';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import {
   Dialog,
@@ -246,6 +247,8 @@ function TransferDetail({ item, onClose }) {
 
 export function TransfersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { store, license } = useActivation();
   const { consultarTransferencias } = usePosService();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -268,6 +271,14 @@ export function TransfersPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const pedidoGuid = searchParams.get('pedido');
+    if (!pedidoGuid || loading || !items.length) return;
+    const transfer = items.find(item => item.pedidoGuid === pedidoGuid);
+    if (transfer) setSelected(transfer);
+    setSearchParams({}, { replace: true });
+  }, [items, loading, searchParams, setSearchParams]);
 
   useEffect(() => {
     const unsubscribe = EventsOn('transferencia_recibida', () => load());
@@ -363,9 +374,11 @@ export function TransfersPage() {
                     {pageItems.map(item => {
                       const sent = formatDate(item.fechaEnvio);
                       const receivedDate = formatDate(item.fechaRecepcion);
+                      const currentBranchGuid = store?.Guid ?? store?.guid ?? license?.sucursal?.guid ?? '';
+                      const incoming = String(item.sucursalDestinoGuid || '').toLowerCase() === String(currentBranchGuid).toLowerCase();
                       return (
                         <tr key={item.traspasoGuid} className="transition hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
-                          <td className="whitespace-nowrap px-5 py-3.5"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">#{item.folio}</button><p className="mt-1 text-[10px] text-muted-foreground">{item.sucursalOrigen}</p></td>
+                          <td className="whitespace-nowrap px-5 py-3.5"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">#{item.folio}</button><span className={cn('ml-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide', incoming ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600')}>{incoming ? 'Entrante' : 'Salida'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.sucursalOrigen}</p></td>
                           <td className="px-5 py-3.5 font-medium text-foreground">{item.sucursalDestino}</td>
                           <td className="whitespace-nowrap px-5 py-3.5"><p className="text-xs font-medium">{sent.date}</p><p className="text-xs text-muted-foreground">{sent.time}</p></td>
                           <td className="whitespace-nowrap px-5 py-3.5"><p className={cn('text-xs font-medium', !item.fechaRecepcion && 'text-amber-600 dark:text-amber-400')}>{receivedDate.date}</p>{receivedDate.time && <p className="text-xs text-muted-foreground">{receivedDate.time}</p>}</td>

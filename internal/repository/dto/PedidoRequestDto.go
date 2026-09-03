@@ -50,3 +50,19 @@ type TraspasoRequestDto struct {
 	FechaRecepcion      *time.Time `json:"fechaRecepcion"`
 	Sync                bool       `json:"sync"`
 }
+
+type TransferenciaRecibidaDto struct {
+	PedidoGuid          string                    `json:"pedidoGuid"`
+	Folio               int                       `json:"folio"`
+	SucursalOrigenGuid  string                    `json:"sucursalOrigenGuid"`
+	SucursalDestinoGuid string                    `json:"sucursalDestinoGuid"`
+	EstatusGuid         string                    `json:"estatusGuid"`
+	ClienteGuid         string                    `json:"clienteGuid"`
+	TipoPedidoGuid      string                    `json:"tipoPedidoGuid"`
+	Fecha               time.Time                 `json:"fecha"`
+	FechaEnvio          time.Time                 `json:"fechaEnvio"`
+	EsCredito           bool                      `json:"esCredito"`
+	PedidoDetalle       []PedidoDetalleRequestDto `json:"pedidoDetalle"`
+	TotalProductos      int                       `json:"totalProductos"`
+	UnidadesTotales     float64                   `json:"unidadesTotales"`
+}

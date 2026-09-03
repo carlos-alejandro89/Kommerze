@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Check, Trash2, Volume2, VolumeX, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,8 +11,11 @@ import {
 import { useNotifications } from '@/providers/NotificationProvider';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function NotificationBell() {
+  const navigate = useNavigate();
+  const [selectedNotification, setSelectedNotification] = useState(null);
   const { 
     notifications, 
     unreadCount, 
@@ -22,7 +26,17 @@ export function NotificationBell() {
     clearAll 
   } = useNotifications();
 
+  const openNotification = (notif) => {
+    markAsRead(notif.id);
+    if (notif.metadata?.kind === 'transferencia' && notif.metadata.pedidoGuid) {
+      navigate(`/transfers?pedido=${encodeURIComponent(notif.metadata.pedidoGuid)}`);
+      return;
+    }
+    setSelectedNotification(notif);
+  };
+
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger className="relative flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground lg:in-data-[sidebar-collapsed]:hidden!">
         <Bell className="size-4" />
@@ -98,7 +112,7 @@ export function NotificationBell() {
               return (
                 <div 
                   key={notif.id}
-                  onClick={() => markAsRead(notif.id)}
+                  onClick={() => openNotification(notif)}
                   className={cn(
                     "flex items-start gap-3 p-3 transition-colors hover:bg-slate-50 dark:hover:bg-zinc-800/50 cursor-pointer",
                     !notif.read && "bg-slate-50/50 dark:bg-zinc-800/30"
@@ -150,5 +164,19 @@ export function NotificationBell() {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    <Dialog open={Boolean(selectedNotification)} onOpenChange={open => { if (!open) setSelectedNotification(null); }}>
+      <DialogContent className="max-w-lg rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>{selectedNotification?.title}</DialogTitle>
+          <DialogDescription>
+            {selectedNotification?.timestamp && formatDistanceToNow(new Date(selectedNotification.timestamp), { addSuffix: true, locale: es })}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-xl border border-border/70 bg-muted/25 p-4 text-sm leading-relaxed text-foreground">
+          {selectedNotification?.description}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

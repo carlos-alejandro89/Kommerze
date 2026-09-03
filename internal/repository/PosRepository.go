@@ -209,6 +209,8 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 			t.guid::text as traspaso_guid,
 			p.guid::text as pedido_guid,
 			p.folio,
+			so.guid::text as sucursal_origen_guid,
+			sd.guid::text as sucursal_destino_guid,
 			coalesce(so.nombre_sucursal, 'Sucursal no disponible') as sucursal_origen,
 			coalesce(sd.nombre_sucursal, 'Sucursal no disponible') as sucursal_destino,
 			t.fecha_envio,
@@ -227,7 +229,7 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 		left join pedido_detalle pd on pd.pedido_id = p.id and pd.deleted_at is null
 		where t.deleted_at is null
 		group by t.id, t.guid, p.guid, p.folio, p.comentarios,
-			so.nombre_sucursal, sd.nombre_sucursal, t.fecha_envio,
+			so.guid, sd.guid, so.nombre_sucursal, sd.nombre_sucursal, t.fecha_envio,
 			t.fecha_recepcion, e.guid, e.nombre
 		order by t.fecha_envio desc, p.folio desc`
 

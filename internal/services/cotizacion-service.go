@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -190,12 +191,16 @@ func (s *CotizacionService) handleWsMessage(raw []byte) {
 			})
 		}
 	case "transferencia_recibida":
-		var transferencia map[string]any
+		var transferencia dto.TransferenciaRecibidaDto
 		if err := json.Unmarshal(msg.Data, &transferencia); err != nil {
 			log.Printf("[CotizacionWS] Error deserializando transferencia: %v", err)
 			return
 		}
-		log.Printf("[CotizacionWS] ✅ Transferencia recibida: pedido %v", transferencia["pedidoGuid"])
+		if err := s.guardarTransferenciaEntrante(&transferencia); err != nil {
+			log.Printf("[CotizacionWS] Error guardando transferencia entrante %s: %v", transferencia.PedidoGuid, err)
+			return
+		}
+		log.Printf("[CotizacionWS] ✅ Transferencia recibida: pedido %s", transferencia.PedidoGuid)
 		if s.ctx != nil {
 			runtime.EventsEmit(s.ctx, "transferencia_recibida", transferencia)
 		}
@@ -203,6 +208,82 @@ func (s *CotizacionService) handleWsMessage(raw []byte) {
 			s.broadcastFn("transferencia_recibida", transferencia)
 		}
 	}
+}
+
+func (s *CotizacionService) guardarTransferenciaEntrante(evento *dto.TransferenciaRecibidaDto) error {
+	pedidoGuid, err := uuid.Parse(evento.PedidoGuid)
+	if err != nil {
+		return fmt.Errorf("GUID de pedido inválido: %w", err)
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var existente int64
+		if err := tx.Model(&models.Pedido{}).Where("guid = ?", pedidoGuid).Count(&existente).Error; err != nil {
+			return err
+		}
+		if existente > 0 {
+			return nil
+		}
+
+		var origen, destino models.Sucursal
+		if err := tx.Where("guid = ?", evento.SucursalOrigenGuid).First(&origen).Error; err != nil {
+			return fmt.Errorf("sucursal origen no encontrada: %w", err)
+		}
+		if err := tx.Where("guid = ?", evento.SucursalDestinoGuid).First(&destino).Error; err != nil {
+			return fmt.Errorf("sucursal destino no encontrada: %w", err)
+		}
+		var estatus models.Estatus
+		if err := tx.Where("guid = ?", evento.EstatusGuid).First(&estatus).Error; err != nil {
+			return fmt.Errorf("estatus no encontrado: %w", err)
+		}
+		var tipo models.TipoPedido
+		if err := tx.Where("guid = ?", evento.TipoPedidoGuid).First(&tipo).Error; err != nil {
+			return fmt.Errorf("tipo de pedido no encontrado: %w", err)
+		}
+		var cliente models.Cliente
+		if err := tx.Where("guid = ?", evento.ClienteGuid).First(&cliente).Error; err != nil {
+			return fmt.Errorf("cliente no encontrado: %w", err)
+		}
+
+		pedido := models.Pedido{
+			BaseModel:        models.BaseModel{Guid: pedidoGuid},
+			EstatusID:        &estatus.ID,
+			ClienteID:        &cliente.ID,
+			TipoPedidoID:     &tipo.ID,
+			SucursalOrigenID: &origen.ID,
+			Folio:            evento.Folio,
+			Fecha:            evento.Fecha,
+			EsCredito:        evento.EsCredito,
+			Sync:             true,
+		}
+		if err := tx.Create(&pedido).Error; err != nil {
+			return fmt.Errorf("guardando pedido: %w", err)
+		}
+		for _, item := range evento.PedidoDetalle {
+			var nivel models.NivelEmpaque
+			if err := tx.Where("guid = ?", item.NivelGuid).First(&nivel).Error; err != nil {
+				return fmt.Errorf("nivel de empaque %s no encontrado: %w", item.NivelGuid, err)
+			}
+			detalle := models.PedidoDetalle{
+				PedidoID: pedido.ID, NivelID: nivel.ID,
+				Cantidad: decimal.NewFromFloat(item.Cantidad), PrecioCompra: decimal.NewFromFloat(item.PrecioCompra),
+				PrecioVenta: decimal.NewFromFloat(item.PrecioVenta), Descuento: decimal.NewFromFloat(item.Descuento),
+				TrasladoIVA: decimal.NewFromFloat(item.TrasladoIVA), TasaIVA: decimal.NewFromFloat(item.TasaIVA),
+				RetencionISR: decimal.NewFromFloat(item.RetencionISR), TasaISR: decimal.NewFromFloat(item.TasaISR),
+				InfoAdicional: item.InfoAdicional,
+			}
+			if err := tx.Create(&detalle).Error; err != nil {
+				return fmt.Errorf("guardando detalle: %w", err)
+			}
+		}
+		traspaso := models.Traspaso{
+			PedidoID: pedido.ID, SucursalOrigenID: origen.ID, SucursalDestinoID: destino.ID,
+			EstatusID: estatus.ID, FechaEnvio: evento.FechaEnvio, Sync: true,
+		}
+		if err := tx.Create(&traspaso).Error; err != nil {
+			return fmt.Errorf("guardando traspaso: %w", err)
+		}
+		return nil
+	})
 }
 
 // aplicarResolucion actualiza la BD con la respuesta del autorizador.

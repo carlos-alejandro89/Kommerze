@@ -51,14 +51,15 @@ export function NotificationProvider({ children }) {
     }
   }, [isMuted]);
 
-  const addNotification = useCallback((type, title, description, timestamp = new Date()) => {
+  const addNotification = useCallback((type, title, description, timestamp = new Date(), metadata = null) => {
     const newNotif = {
       id: Math.random().toString(36).substring(7),
       type, // 'success', 'error', 'info'
       title,
       description,
       timestamp,
-      read: false
+      read: false,
+      metadata,
     };
 
     setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep max 50
@@ -134,6 +135,8 @@ export function NotificationProvider({ children }) {
         unidades > 0
           ? `Una sucursal envió ${unidades.toLocaleString('es-MX')} unidades a esta sucursal.`
           : 'Otra sucursal registró un envío de productos hacia esta sucursal.',
+        new Date(),
+        { kind: 'transferencia', pedidoGuid: data.pedidoGuid, data },
       );
     };
 
