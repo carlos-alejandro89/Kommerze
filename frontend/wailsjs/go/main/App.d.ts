@@ -68,6 +68,8 @@ export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.Docume
 
 export function ServiceGenerateSaleDocument(arg1:string):Promise<models.DocumentOutput>;
 
+export function ServiceGenerateTransferReport(arg1:string):Promise<models.DocumentOutput>;
+
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
 export function ServiceGetKommerzConfig():Promise<services.KommerzConfig>;

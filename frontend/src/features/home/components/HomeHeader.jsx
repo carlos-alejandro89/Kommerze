@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
  * Muestra: Logo + Branding | Sucursal/Terminal (centro) | Fecha/Hora + Usuario (derecha)
  */
 export function HomeHeader() {
-  const { store, operation, license } = useActivation();
+  const { store, license, deviceName } = useActivation();
   const { user } = useAuth();
   const [now, setNow] = useState(new Date());
 
@@ -19,7 +19,7 @@ export function HomeHeader() {
   }, []);
 
   const storeName = store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze POS';
-  const terminalName = operation?.Nombre ?? 'Terminal 01';
+  const terminalName = deviceName || 'Dispositivo';
   const userName = user?.Nombre ?? user?.CorreoElectronico ?? 'Usuario';
 
   const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });

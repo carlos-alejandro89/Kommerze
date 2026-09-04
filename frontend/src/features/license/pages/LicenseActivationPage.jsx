@@ -5,9 +5,11 @@ import { KeyRound, Monitor, Fingerprint, CheckCircle } from 'lucide-react';
 import { ServiceGetMachineID, ServiceActivateLicense, ServiceGetSucursalGuid, SyncSucursalProductos } from '../../../../wailsjs/go/main/App';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
+import { useActivation } from '@/providers/ActivationProvider';
 
 export function LicenseActivationPage() {
   const navigate = useNavigate();
+  const { setDeviceName } = useActivation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     licenseKey: 'KMZ-STD-23DK-320A',
@@ -31,6 +33,7 @@ export function LicenseActivationPage() {
     setLoading(true);
     try {
       const result = await ServiceActivateLicense(formData);
+      setDeviceName(formData.deviceName.trim());
       await syncSucursal();
       toast.success('Licencia activada correctamente');
       navigate('/login', { replace: true });
@@ -38,6 +41,7 @@ export function LicenseActivationPage() {
       const msg = String(error);
       // 409 = ya activada previamente en este equipo → tratar como éxito
       if (msg.includes('409') || msg.toLowerCase().includes('previamente') || msg.toLowerCase().includes('already')) {
+        setDeviceName(formData.deviceName.trim());
         await syncSucursal();
         toast.success('Licencia válida. Accediendo al sistema...');
         navigate('/login', { replace: true });

@@ -150,7 +150,7 @@ const ALL_MODULES = [
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { isCaja, store } = useActivation();
+  const { isCaja, store, deviceName } = useActivation();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -207,7 +207,7 @@ export function HomePage() {
                 <MapPin className="size-4 text-primary" strokeWidth={2.3} />
                 <span>{storeName ?? 'Sucursal principal'}</span>
                 <span className="text-muted-foreground/55">•</span>
-                <span>Terminal 01</span>
+                <span>{deviceName || 'Dispositivo'}</span>
               </p>
             </div>
           </section>

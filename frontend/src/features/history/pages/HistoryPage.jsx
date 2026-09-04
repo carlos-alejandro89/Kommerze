@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, RefreshCw, AlertCircle,
   ShoppingCart, FileText, Tag,
   LayoutList, BadgeCheck, BadgeX, Loader2,
-  ReceiptText, Printer, Mail, FileDown, Ban, MoreVertical, FileCheck2,
+  ReceiptText, Printer, Mail, FileDown, Ban, FileCheck2,
   SlidersHorizontal, CalendarDays,
 } from 'lucide-react';
 import { es } from 'date-fns/locale';
@@ -22,6 +22,7 @@ import { DialogAlert } from '@/components/common/dialog-alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { RowActionButton, RowActionsMenu } from '@/components/common/row-actions-menu';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
@@ -83,23 +84,6 @@ function dayKey(value) {
 function formatFilterDate(value) {
   if (!value) return '';
   return value.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function RowActionButton({ label, icon: Icon, onClick, disabled, tone = 'text-primary hover:bg-primary/10' }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className={cn('group/action relative flex size-8 items-center justify-center rounded-full transition disabled:opacity-40', tone)}
-    >
-      <Icon className="size-3.5" />
-      <span className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-950 px-2.5 py-1.5 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover/action:opacity-100">
-        {label}
-      </span>
-    </button>
-  );
 }
 
 /* ── Badges de estatus de pedido ── */
@@ -771,14 +755,11 @@ export function HistoryPage() {
 
                           {/* Acciones */}
                           <td className="relative w-[58px] px-2 py-3.5">
-                            <div className="relative ml-auto flex w-9 items-center justify-end">
-                              <div className={cn(
-                                'absolute right-11 top-1/2 z-40 flex -translate-y-1/2 items-center gap-2 origin-right transition-all duration-200 ease-out',
-                                actionsOpen
-                                  ? 'pointer-events-auto translate-x-0 scale-100 opacity-100'
-                                  : 'pointer-events-none translate-x-3 scale-95 opacity-0',
-                              )}>
-                                <div className="flex items-center rounded-full border border-border/70 bg-background/95 p-1 shadow-[0_16px_36px_-16px_rgba(20,54,110,.75)] backdrop-blur-xl">
+                            <RowActionsMenu
+                              open={actionsOpen}
+                              disabled={procesandoAccion}
+                              onToggle={() => setActionMenuOpen(current => current === actionKey ? null : actionKey)}
+                            >
                                   <RowActionButton label="Ver detalle" icon={Eye} onClick={() => { setActionMenuOpen(null); setModalVer(t); }} />
                                   <RowActionButton label="Ver documento" icon={FileDown} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerDocumento(t); }} tone="text-blue-600 hover:bg-blue-500/10 dark:text-blue-400" />
                                   <RowActionButton label="Imprimir" icon={Printer} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleImprimir(t); }} tone="text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" />
@@ -789,10 +770,9 @@ export function HistoryPage() {
 								  {!esCotizacion && !t.Facturada && !esCancelada && (
                                     <RowActionButton label="Facturar venta" icon={ReceiptText} onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })} tone="text-sky-600 hover:bg-sky-500/10 dark:text-sky-400" />
                                   )}
-								  {!esCotizacion && !esCancelada && !t.Facturada && (
+                                  {!esCotizacion && !esCancelada && !t.Facturada && (
                                     <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => { setActionMenuOpen(null); setVentaCancelar(t); }} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                                   )}
-                                </div>
                                 {esCotizacion && (
                                   <CotizacionAcciones
                                     row={t}
@@ -800,23 +780,7 @@ export function HistoryPage() {
                                     onConvertirVenta={handleConvertirVenta}
                                   />
                                 )}
-                              </div>
-                              <button
-                                type="button"
-                                disabled={procesandoAccion}
-                                aria-label={actionsOpen ? 'Cerrar acciones' : 'Mostrar acciones'}
-                                aria-expanded={actionsOpen}
-                                onClick={() => setActionMenuOpen(current => current === actionKey ? null : actionKey)}
-                                className={cn(
-                                  'flex size-9 shrink-0 items-center justify-center rounded-full transition disabled:opacity-50',
-                                  actionsOpen
-                                    ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-primary',
-                                )}
-                              >
-                                <MoreVertical className="size-4" />
-                              </button>
-                            </div>
+                            </RowActionsMenu>
                           </td>
                         </tr>
                       );

@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
 import { NotificationBell } from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
+import { WebSocketStatusIndicator } from '@/components/WebSocketStatusIndicator';
 
 const THEME_KEY = 'kommerze-theme';
 
@@ -41,7 +42,7 @@ function useDarkMode() {
  */
 export function AppHeader({ showPageTitle = true }) {
   const { user, logout } = useAuth();
-  const { store, operation, license } = useActivation();
+  const { store, license, deviceName } = useActivation();
   const location = useLocation();
   const navigate = useNavigate();
   const [dark, setDark] = useDarkMode();
@@ -74,7 +75,7 @@ export function AppHeader({ showPageTitle = true }) {
 
   // Datos de contexto
   const storeName    = store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze';
-  const terminalName = operation?.Nombre ?? 'Terminal 01';
+  const terminalName = deviceName || 'Dispositivo';
   const userName     = user?.Nombre ?? user?.CorreoElectronico ?? 'Usuario';
   const userEmail    = user?.CorreoElectronico ?? '';
 
@@ -114,8 +115,9 @@ export function AppHeader({ showPageTitle = true }) {
             {pageTitle}
           </h1>
         )}
-        <p className="text-[10px] text-muted-foreground leading-none">
-          {storeName} · {terminalName}
+        <p className="flex items-center gap-1.5 text-[10px] leading-none text-muted-foreground">
+          <span>{storeName} · {terminalName}</span>
+          <WebSocketStatusIndicator />
         </p>
       </div>
 

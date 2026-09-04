@@ -148,11 +148,24 @@ func (a *App) receiptService() interface {
 	BuildReceipt(string) (reportmodels.Receipt, error)
 	BuildQuotation(string) (reportmodels.Quotation, error)
 	BuildPurchaseReport(string) (reportmodels.PurchaseReport, error)
+	BuildTransferReport(string) (reportmodels.TransferReport, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
 	}
 	return a.services.Receipt
+}
+
+func (a *App) ServiceGenerateTransferReport(pedidoGuid string) (*reportmodels.DocumentOutput, error) {
+	report, err := a.receiptService().BuildTransferReport(pedidoGuid)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderTransferPDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el reporte de transferencia: %w", err)
+	}
+	return &reportmodels.DocumentOutput{Kind: "pdf", FileName: "transferencia-" + report.Folio + ".pdf", DataBase64: base64.StdEncoding.EncodeToString(pdf)}, nil
 }
 
 func (a *App) ServiceGeneratePurchaseReport(pedidoGuid string) (*reportmodels.DocumentOutput, error) {

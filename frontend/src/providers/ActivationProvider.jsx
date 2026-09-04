@@ -7,6 +7,7 @@ import {
   ServiceObtenerValorInventario,
   ServiceGetKommerzConfig,
   ServiceTestLocalServerConnection,
+  ServiceObtenerCajaConfigurada,
 } from '../../wailsjs/go/main/App';
 
 const ActivationContext = createContext(undefined);
@@ -21,6 +22,7 @@ export const ActivationProvider = ({ children }) => {
   const [valorInventario, setValorInventario] = useState(0);
   const [deviceRole, setDeviceRole]           = useState(null);   // null = no cargado aún
   const [localServerURL, setLocalServerURL]   = useState('');
+  const [deviceName, setDeviceName]           = useState('');
   const [isInitialized, setIsInitialized]     = useState(false);
 
   // ── Inicialización ─────────────────────────────────────────────────────────
@@ -38,6 +40,15 @@ export const ActivationProvider = ({ children }) => {
         }
 
         setDeviceRole(cfg.role);
+
+        // El nombre visible del dispositivo es el asignado al activar/configurar
+        // la caja, no el nombre de la jornada de la sucursal.
+        try {
+          const configuredDevice = await ServiceObtenerCajaConfigurada();
+          setDeviceName(configuredDevice?.Nombre || configuredDevice?.nombre || '');
+        } catch (deviceError) {
+          console.warn('[ActivationProvider] No se pudo obtener el nombre del dispositivo:', deviceError);
+        }
 
         // 2. Modo Caja: verificar conectividad
         if (cfg.role === 'caja') {
@@ -168,9 +179,9 @@ export const ActivationProvider = ({ children }) => {
         isValid, isStoreOpen, storeStatus,
         valorInventario, getInventoryValue,
         // Rol del dispositivo
-        deviceRole, localServerURL,
+        deviceRole, localServerURL, deviceName,
         // Setters para actualizar en memoria desde las páginas de setup
-        setDeviceRole, setLocalServerURL,
+        setDeviceRole, setLocalServerURL, setDeviceName,
         isInitialized,
         isCaja: deviceRole === 'caja',
         isLocalServer: deviceRole === 'servidor_local',

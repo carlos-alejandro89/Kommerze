@@ -391,10 +391,14 @@ export function CortesSucursalPage() {
                 <>
                   <Section title="Ventas e Inventario" icon={Package} iconColor="text-violet-500">
                     <Row label="Inventario Inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
-                    <Row label="Valor Ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
                     <Row label="Valor de las compras" value={fmt(opSucursal?.ValorCompras || opSucursal?.valorCompras)} />
+                    <Row label="Valor bruto de las ventas" value={fmt(opSucursal?.ValorBrutoVentas || opSucursal?.valorBrutoVentas)} />
+                    <Row label="Descuentos aplicados" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
+                    <Row label="Valor real de las ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
+                    <Row label="Transferencias entrantes" value={fmt(opSucursal?.TransferenciasEntrantes || opSucursal?.transferenciasEntrantes)} />
+                    <Row label="Transferencias de salida" value={fmt(opSucursal?.TransferenciasSalientes || opSucursal?.transferenciasSalientes)} />
                     <Row label="Bajas de mercancía" value={fmt(opSucursal?.BajasMercancia || opSucursal?.bajasMercancia)} />
-                    <Row label="Descuentos" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
+                    <Row label="Ajuste de inventario" value={fmt(opSucursal?.AjusteInventario || opSucursal?.ajusteInventario)} />
                     <Row label="Inventario Final" value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} />
                   </Section>
 

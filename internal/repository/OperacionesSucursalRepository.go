@@ -116,9 +116,12 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 	// operación está activa se calculan en vivo para que el tablero financiero
 	// represente todas las transacciones realizadas hasta este momento.
 	acum := o.CalcularAcumuladosDia(operacion)
+	operacion.ValorBrutoVentas = acum.ValorBrutoVentas
 	operacion.ValorVentas = acum.ValorVentas
 	operacion.ValorCompras = acum.ValorCompras
 	operacion.DescuentosAplicados = acum.DescuentosAplicados
+	operacion.TransferenciasEntrantes = acum.TransferenciasEntrantes
+	operacion.TransferenciasSalientes = acum.TransferenciasSalientes
 	operacion.IngresoEfectivo = acum.IngresoEfectivo
 	operacion.IngresoTarjetas = acum.IngresoTarjetas
 	operacion.IngresoCheques = acum.IngresoCheques
@@ -130,11 +133,8 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 	operacion.CFDITransferencia = decimal.NewFromInt(int64(acum.CFDITransferencia))
 	operacion.CFDIOtros = decimal.NewFromInt(int64(acum.CFDIOtros))
 	operacion.BajasMercancia = acum.BajasMercancia
-	operacion.ValorFinalInventario = operacion.ValorInicialInventario.
-		Add(acum.ValorCompras).
-		Sub(acum.ValorVentas).
-		Sub(acum.BajasMercancia).
-		Add(operacion.AjusteInventario)
+	operacion.AjusteInventario = acum.AjusteInventario
+	operacion.ValorFinalInventario = acum.ValorFinalInventario
 
 	return dto.NewResponseDto(true, "Jornada activa encontrada", operacion, nil)
 }
@@ -270,20 +270,25 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 
 // acumuladosDia contiene los totales calculados desde pedidos/pagos del período.
 type acumuladosDia struct {
-	ValorVentas          decimal.Decimal
-	ValorCompras         decimal.Decimal
-	BajasMercancia       decimal.Decimal
-	DescuentosAplicados  decimal.Decimal
-	IngresoEfectivo      decimal.Decimal
-	IngresoTarjetas      decimal.Decimal
-	IngresoCheques       decimal.Decimal
-	IngresoTransferencia decimal.Decimal
-	IngresoOtros         decimal.Decimal
-	CFDIEfectivo         int
-	CFDITarjetas         int
-	CFDICheques          int
-	CFDITransferencia    int
-	CFDIOtros            int
+	ValorBrutoVentas        decimal.Decimal
+	ValorVentas             decimal.Decimal
+	ValorCompras            decimal.Decimal
+	BajasMercancia          decimal.Decimal
+	DescuentosAplicados     decimal.Decimal
+	TransferenciasEntrantes decimal.Decimal
+	TransferenciasSalientes decimal.Decimal
+	AjusteInventario        decimal.Decimal
+	ValorFinalInventario    decimal.Decimal
+	IngresoEfectivo         decimal.Decimal
+	IngresoTarjetas         decimal.Decimal
+	IngresoCheques          decimal.Decimal
+	IngresoTransferencia    decimal.Decimal
+	IngresoOtros            decimal.Decimal
+	CFDIEfectivo            int
+	CFDITarjetas            int
+	CFDICheques             int
+	CFDITransferencia       int
+	CFDIOtros               int
 }
 
 // CalcularAcumuladosDia agrega ventas y pagos del período de la operación.
@@ -299,23 +304,26 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 	// Totales por tipo de transacción. Los IDs locales de tipo y estatus no son
 	// estables porque ambos catálogos se sincronizan desde Cloud.
 	type ventaRow struct {
-		Ventas     decimal.Decimal
-		Compras    decimal.Decimal
-		Bajas      decimal.Decimal
-		Descuentos decimal.Decimal
+		VentasBrutas decimal.Decimal
+		Ventas       decimal.Decimal
+		Compras      decimal.Decimal
+		Bajas        decimal.Decimal
+		Descuentos   decimal.Decimal
 	}
 	var venta ventaRow
 	o.db.Raw(`
 		SELECT
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
-				THEN (pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * pd.descuento / 100)
+				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS ventas_brutas,
+			COALESCE(SUM(CASE WHEN tp.guid::text = ?
+				THEN (pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
 				ELSE 0 END), 0) AS ventas,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
 				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS compras,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
 				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS bajas,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
-				THEN (pd.precio_venta * pd.cantidad) * pd.descuento / 100 ELSE 0 END), 0) AS descuentos
+				THEN (pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100 ELSE 0 END), 0) AS descuentos
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
 		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
@@ -327,14 +335,61 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		  AND pd.deleted_at IS NULL
 		  AND tp.deleted_at IS NULL
 		  AND e.deleted_at IS NULL
-	`, models.TipoPedidoVentaGuid, models.TipoPedidoCompraGuid,
+	`, models.TipoPedidoVentaGuid, models.TipoPedidoVentaGuid, models.TipoPedidoCompraGuid,
 		models.TipoPedidoBajaMercanciaGuid, models.TipoPedidoVentaGuid,
 		operacion.SucursalID, operacion.FechaInicio, fechaFin, "Completado").Scan(&venta)
 
+	result.ValorBrutoVentas = venta.VentasBrutas
 	result.ValorVentas = venta.Ventas
 	result.ValorCompras = venta.Compras
 	result.BajasMercancia = venta.Bajas
 	result.DescuentosAplicados = venta.Descuentos
+
+	// Las transferencias afectan el valor del inventario únicamente cuando ya
+	// fueron aceptadas. Se contabilizan en la jornada en la que ocurrió la
+	// recepción, que es el momento en que se aplican ambos movimientos.
+	type transferenciaRow struct {
+		Entrantes decimal.Decimal
+		Salientes decimal.Decimal
+	}
+	var transferencia transferenciaRow
+	o.db.Raw(`
+		SELECT
+			COALESCE(SUM(CASE WHEN t.sucursal_destino_id = ?
+				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS entrantes,
+			COALESCE(SUM(CASE WHEN t.sucursal_origen_id = ?
+				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS salientes
+		FROM traspasos t
+		INNER JOIN pedidos p ON p.id = t.pedido_id
+		INNER JOIN pedido_detalle pd ON pd.pedido_id = p.id
+		INNER JOIN estatus e ON e.id = t.estatus_id
+		WHERE (t.sucursal_origen_id = ? OR t.sucursal_destino_id = ?)
+		  AND COALESCE(t.fecha_recepcion, t.fecha_envio) BETWEEN ? AND ?
+		  AND e.guid::text = ?
+		  AND t.deleted_at IS NULL
+		  AND p.deleted_at IS NULL
+		  AND pd.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
+	`, operacion.SucursalID, operacion.SucursalID,
+		operacion.SucursalID, operacion.SucursalID,
+		operacion.FechaInicio, fechaFin,
+		"86968037-975a-43ce-880c-043003010105").Scan(&transferencia)
+	result.TransferenciasEntrantes = transferencia.Entrantes
+	result.TransferenciasSalientes = transferencia.Salientes
+
+	// Ajuste = inventario final - bajas -
+	//          (inventario inicial + compras - ventas brutas - transferencias de salida)
+	// El inventario final corresponde al valor real de las existencias actuales.
+	o.db.Model(&models.SucursalProducto{}).
+		Select("COALESCE(SUM(precio_venta * existencia), 0)").
+		Scan(&result.ValorFinalInventario)
+	valorEsperado := operacion.ValorInicialInventario.
+		Add(result.ValorCompras).
+		Sub(result.ValorBrutoVentas).
+		Sub(result.TransferenciasSalientes)
+	result.AjusteInventario = result.ValorFinalInventario.
+		Sub(result.BajasMercancia).
+		Sub(valorEsperado)
 
 	// Pagos agrupados por clave SAT de forma de pago
 	type pagoRow struct {
@@ -417,33 +472,30 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 	estatusID := uint(2) // cerrado
 	usuarioCierre := datos.UsuarioCierreID
 
-	// Valor final = inicial + compras - ventas + ajustes
-	valorFinal := operacion.ValorInicialInventario.
-		Add(acum.ValorCompras).
-		Sub(acum.ValorVentas).
-		Sub(acum.BajasMercancia).
-		Add(operacion.AjusteInventario)
-
 	updates := map[string]any{
-		"estatus_id":             &estatusID,
-		"usuario_cierre_id":      &usuarioCierre,
-		"fecha_fin":              ahora,
-		"valor_ventas":           acum.ValorVentas,
-		"valor_compras":          acum.ValorCompras,
-		"descuentos_aplicados":   acum.DescuentosAplicados,
-		"bajas_mercancia":        acum.BajasMercancia,
-		"valor_final_inventario": valorFinal,
-		"ingreso_efectivo":       acum.IngresoEfectivo,
-		"ingreso_tarjetas":       acum.IngresoTarjetas,
-		"ingreso_cheques":        acum.IngresoCheques,
-		"ingreso_transferencia":  acum.IngresoTransferencia,
-		"ingreso_otros":          acum.IngresoOtros,
-		"cfdi_efectivo":          acum.CFDIEfectivo,
-		"cfdi_tarjetas":          acum.CFDITarjetas,
-		"cfdi_cheques":           acum.CFDICheques,
-		"cfdi_transferencia":     acum.CFDITransferencia,
-		"cfdi_otros":             acum.CFDIOtros,
-		"updated_at":             ahora,
+		"estatus_id":               &estatusID,
+		"usuario_cierre_id":        &usuarioCierre,
+		"fecha_fin":                ahora,
+		"valor_bruto_ventas":       acum.ValorBrutoVentas,
+		"valor_ventas":             acum.ValorVentas,
+		"valor_compras":            acum.ValorCompras,
+		"descuentos_aplicados":     acum.DescuentosAplicados,
+		"transferencias_entrantes": acum.TransferenciasEntrantes,
+		"transferencias_salientes": acum.TransferenciasSalientes,
+		"bajas_mercancia":          acum.BajasMercancia,
+		"ajuste_inventario":        acum.AjusteInventario,
+		"valor_final_inventario":   acum.ValorFinalInventario,
+		"ingreso_efectivo":         acum.IngresoEfectivo,
+		"ingreso_tarjetas":         acum.IngresoTarjetas,
+		"ingreso_cheques":          acum.IngresoCheques,
+		"ingreso_transferencia":    acum.IngresoTransferencia,
+		"ingreso_otros":            acum.IngresoOtros,
+		"cfdi_efectivo":            acum.CFDIEfectivo,
+		"cfdi_tarjetas":            acum.CFDITarjetas,
+		"cfdi_cheques":             acum.CFDICheques,
+		"cfdi_transferencia":       acum.CFDITransferencia,
+		"cfdi_otros":               acum.CFDIOtros,
+		"updated_at":               ahora,
 	}
 
 	if err := o.db.Model(&operacion).Updates(updates).Error; err != nil {

@@ -7,6 +7,7 @@ import {
   Boxes,
   CheckCircle2,
   Eye,
+  FileDown,
   MapPin,
   Package,
   PackageCheck,
@@ -26,6 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RowActionButton, RowActionsMenu } from '@/components/common/row-actions-menu';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 15;
 const TRANSFER_STATUS_GUIDS = {
@@ -34,6 +37,18 @@ const TRANSFER_STATUS_GUIDS = {
   accepted: '86968037-975a-43ce-880c-043003010105',
   rejected: '86968037-975a-43ce-880c-043003010106',
 };
+
+function formatTransferFolio(value) {
+  const numeric = String(value ?? '').replace(/\D/g, '');
+  return numeric ? numeric.padStart(7, '0') : '0000000';
+}
+
+function isDefinitiveTransfer(item) {
+  const status = String(item?.estatus || '').toLowerCase();
+  const statusGuid = String(item?.estatusGuid || item?.estatusGUID || '').toLowerCase();
+  return /aceptad|rechazad|cancelad/.test(status)
+    || [TRANSFER_STATUS_GUIDS.accepted, TRANSFER_STATUS_GUIDS.rejected, TRANSFER_STATUS_GUIDS.canceled].includes(statusGuid);
+}
 
 function formatDate(value, empty = 'Pendiente de recepción') {
   if (!value) return { date: empty, time: '' };
@@ -107,7 +122,7 @@ function TransferDetail({ item, onClose, currentBranchGuid, onResolve }) {
                 <StatusBadge item={item} />
               </div>
               <DialogDescription className="flex flex-wrap items-center gap-x-2 text-xs">
-                <span className="font-mono font-bold text-foreground">Folio #{item.folio}</span>
+                <span className="font-mono font-bold text-foreground">Folio #{formatTransferFolio(item.folio)}</span>
                 <span aria-hidden="true">•</span>
                 <span>Seguimiento del envío entre sucursales</span>
               </DialogDescription>
@@ -121,7 +136,7 @@ function TransferDetail({ item, onClose, currentBranchGuid, onResolve }) {
             <dl className="grid gap-x-10 gap-y-3 sm:grid-cols-2">
               <div className="grid grid-cols-[120px_minmax(0,1fr)] items-baseline gap-3">
                 <dt className="text-xs text-muted-foreground">Folio</dt>
-                <dd className="font-mono text-xs font-bold text-foreground">#{item.folio}</dd>
+                <dd className="font-mono text-xs font-bold text-foreground">#{formatTransferFolio(item.folio)}</dd>
               </div>
               <div className="grid grid-cols-[120px_minmax(0,1fr)] items-baseline gap-3">
                 <dt className="text-xs text-muted-foreground">Estatus</dt>
@@ -255,8 +270,8 @@ function TransferDetail({ item, onClose, currentBranchGuid, onResolve }) {
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
-          {!definitive && incoming && <><button onClick={() => onResolve('86968037-975a-43ce-880c-043003010106')} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Rechazar</button><button onClick={() => onResolve('86968037-975a-43ce-880c-043003010105')} className="h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground">Aceptar transferencia</button></>}
-          {!definitive && !incoming && <button onClick={() => onResolve('86968037-975a-43ce-880c-043003010103')} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Cancelar envío</button>}
+          {!definitive && incoming && <><button onClick={() => onResolve(item, TRANSFER_STATUS_GUIDS.rejected)} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Rechazar</button><button onClick={() => onResolve(item, TRANSFER_STATUS_GUIDS.accepted)} className="h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground">Aceptar transferencia</button></>}
+          {!definitive && !incoming && <button onClick={() => onResolve(item, TRANSFER_STATUS_GUIDS.canceled)} className="h-10 rounded-xl border border-red-200 px-4 text-xs font-semibold text-red-600">Cancelar envío</button>}
           <DialogClose asChild>
             <button className="h-10 rounded-xl border border-border/70 bg-background px-5 text-xs font-semibold text-foreground transition hover:bg-muted">
               Cerrar
@@ -273,7 +288,7 @@ export function TransfersPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { store, license } = useActivation();
-  const { consultarTransferencias, resolverTransferencia } = usePosService();
+  const { consultarTransferencias, resolverTransferencia, generarReporteTransferencia } = usePosService();
   const currentBranchGuid = store?.Guid ?? store?.guid ?? license?.sucursal?.guid ?? '';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -281,6 +296,9 @@ export function TransfersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
+  const [processingAction, setProcessingAction] = useState(false);
+  const [documentViewer, setDocumentViewer] = useState({ open: false, url: '', fileName: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -295,11 +313,31 @@ export function TransfersPage() {
     }
   }, []);
 
-  const resolveTransfer = async (estatusGuid) => {
-    if (!selected) return;
-    await resolverTransferencia(selected.pedidoGuid, currentBranchGuid, estatusGuid);
+  const resolveTransfer = async (item, estatusGuid) => {
+    if (!item) return;
+    await resolverTransferencia(item.pedidoGuid, currentBranchGuid, estatusGuid);
     setSelected(null);
+    setActionMenuOpen(null);
     await load();
+  };
+
+  const openTransferDocument = async (item) => {
+    setProcessingAction(true);
+    setActionMenuOpen(null);
+    try {
+      const result = await generarReporteTransferencia(item.pedidoGuid);
+      if (!result?.dataBase64) throw new Error('El reporte no contiene información');
+      const bytes = Uint8Array.from(atob(result.dataBase64), char => char.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      setDocumentViewer(current => {
+        if (current.url) URL.revokeObjectURL(current.url);
+        return { open: true, url, fileName: result.fileName || `transferencia-${formatTransferFolio(item.folio)}.pdf` };
+      });
+    } catch (err) {
+      toast.error(`No se pudo generar el documento: ${err?.message || String(err)}`);
+    } finally {
+      setProcessingAction(false);
+    }
   };
 
   useEffect(() => { load(); }, [load]);
@@ -326,6 +364,7 @@ export function TransfersPage() {
     if (!query) return items;
     return items.filter(item => [
       item.folio,
+      formatTransferFolio(item.folio),
       item.sucursalOrigen,
       item.sucursalDestino,
       item.estatus,
@@ -411,13 +450,28 @@ export function TransfersPage() {
                       const incoming = String(item.sucursalDestinoGuid || '').toLowerCase() === String(currentBranchGuid).toLowerCase();
                       return (
                         <tr key={item.traspasoGuid} className="transition hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
-                          <td className="whitespace-nowrap px-5 py-3.5"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">#{item.folio}</button><span className={cn('ml-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide', incoming ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600')}>{incoming ? 'Entrante' : 'Salida'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.sucursalOrigen}</p></td>
+                          <td className="whitespace-nowrap px-5 py-3.5"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">{formatTransferFolio(item.folio)}</button><span className={cn('ml-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide', incoming ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600')}>{incoming ? 'Entrante' : 'Salida'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.sucursalOrigen}</p></td>
                           <td className="px-5 py-3.5 font-medium text-foreground">{item.sucursalDestino}</td>
                           <td className="whitespace-nowrap px-5 py-3.5"><p className="text-xs font-medium">{sent.date}</p><p className="text-xs text-muted-foreground">{sent.time}</p></td>
                           <td className="whitespace-nowrap px-5 py-3.5"><p className={cn('text-xs font-medium', !item.fechaRecepcion && 'text-amber-600 dark:text-amber-400')}>{receivedDate.date}</p>{receivedDate.time && <p className="text-xs text-muted-foreground">{receivedDate.time}</p>}</td>
                           <td className="px-5 py-3.5"><p className="font-semibold">{item.totalProductos || 0}</p><p className="text-[10px] text-muted-foreground">{item.unidadesTotales || 0} unidades</p></td>
                           <td className="px-5 py-3.5"><StatusBadge item={item} /></td>
-                          <td className="px-5 py-3.5"><button onClick={() => setSelected(item)} className="flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/65 px-2.5 py-1.5 text-[11px] font-semibold transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary"><Eye className="size-3" /> Ver</button></td>
+                          <td className="relative w-[58px] px-2 py-3.5">
+                            <RowActionsMenu
+                              open={actionMenuOpen === item.traspasoGuid}
+                              disabled={processingAction}
+                              onToggle={() => setActionMenuOpen(current => current === item.traspasoGuid ? null : item.traspasoGuid)}
+                            >
+                              <RowActionButton label="Ver detalle" icon={Eye} onClick={() => { setActionMenuOpen(null); setSelected(item); }} />
+                              <RowActionButton label="Ver documento" icon={FileDown} disabled={processingAction} onClick={() => openTransferDocument(item)} tone="text-blue-600 hover:bg-blue-500/10 dark:text-blue-400" />
+                              {!isDefinitiveTransfer(item) && incoming && (
+                                <RowActionButton label="Rechazar transferencia" icon={AlertCircle} onClick={() => resolveTransfer(item, TRANSFER_STATUS_GUIDS.rejected)} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
+                              )}
+                              {!isDefinitiveTransfer(item) && !incoming && (
+                                <RowActionButton label="Cancelar transferencia" icon={AlertCircle} onClick={() => resolveTransfer(item, TRANSFER_STATUS_GUIDS.canceled)} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
+                              )}
+                            </RowActionsMenu>
+                          </td>
                         </tr>
                       );
                     })}
@@ -433,6 +487,18 @@ export function TransfersPage() {
         </div>
       </div>
       <TransferDetail item={selected} onClose={() => setSelected(null)} currentBranchGuid={currentBranchGuid} onResolve={resolveTransfer} />
+      <Dialog open={documentViewer.open} onOpenChange={open => {
+        if (!open && documentViewer.url) URL.revokeObjectURL(documentViewer.url);
+        setDocumentViewer(current => ({ ...current, open, url: open ? current.url : '' }));
+      }}>
+        <DialogContent className="flex h-[90vh] w-[min(1120px,calc(100vw-32px))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="border-b border-border/70 px-5 py-4 text-left">
+            <DialogTitle>Documento de transferencia</DialogTitle>
+            <DialogDescription>{documentViewer.fileName}</DialogDescription>
+          </DialogHeader>
+          {documentViewer.url && <iframe title="Documento de transferencia" src={documentViewer.url} className="min-h-0 flex-1 bg-muted" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -126,6 +126,10 @@ export function ServiceGenerateSaleDocument(arg1) {
   return window['go']['main']['App']['ServiceGenerateSaleDocument'](arg1);
 }
 
+export function ServiceGenerateTransferReport(arg1) {
+  return window['go']['main']['App']['ServiceGenerateTransferReport'](arg1);
+}
+
 export function ServiceGetEmpaques() {
   return window['go']['main']['App']['ServiceGetEmpaques']();
 }

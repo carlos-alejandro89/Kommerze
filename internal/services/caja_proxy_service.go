@@ -289,6 +289,17 @@ func (c *CajaProxyService) BuildPurchaseReport(pedidoGuid string) (reportmodels.
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) BuildTransferReport(pedidoGuid string) (reportmodels.TransferReport, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    reportmodels.TransferReport `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/transferencias/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
+		return reportmodels.TransferReport{}, err
+	}
+	return result.Data, nil
+}
+
 // SetContext inicia la conexión WebSocket hacia el Servidor Local
 // para recibir eventos en tiempo real y emitirlos al frontend de esta Caja.
 func (c *CajaProxyService) SetContext(ctx context.Context) {

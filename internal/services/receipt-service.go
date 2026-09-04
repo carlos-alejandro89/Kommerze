@@ -18,6 +18,76 @@ func NewReceiptService(db *gorm.DB) *ReceiptService {
 	return &ReceiptService{db: db}
 }
 
+func (s *ReceiptService) BuildTransferReport(pedidoGuid string) (reportmodels.TransferReport, error) {
+	var report reportmodels.TransferReport
+	var header struct {
+		PedidoGuid, TraspasoGuid, Estatus, Negocio, RazonSocial, RFCNegocio string
+		SucursalOrigen, DireccionOrigen, TelefonoOrigen, CorreoOrigen       string
+		SucursalDestino, DireccionDestino, Comentarios                      string
+		Folio                                                               int
+		FechaEnvio                                                          time.Time
+		FechaRecepcion                                                      *time.Time
+	}
+	if err := s.db.Raw(`
+		SELECT p.guid::text pedido_guid, t.guid::text traspaso_guid, p.folio,
+		       COALESCE(es.nombre, 'En tránsito') estatus,
+		       COALESCE(NULLIF(emp.nombre_comercial, ''), NULLIF(emp.razon_social, ''), 'KOMMERZE') negocio,
+		       COALESCE(emp.razon_social, '') razon_social,
+		       COALESCE(emp.rfc, '') rfc_negocio,
+		       COALESCE(so.nombre_sucursal, 'Sucursal origen') sucursal_origen,
+		       concat_ws(', ', NULLIF(trim(concat_ws(' ', so.calle, so.exterior, so.interior)), ''),
+		          NULLIF(so.colonia, ''), NULLIF(so.ciudad, ''), NULLIF(so.estado, ''),
+		          CASE WHEN NULLIF(so.codigo_postal, '') IS NULL THEN NULL ELSE 'C.P. ' || so.codigo_postal END) direccion_origen,
+		       COALESCE(so.telefono, '') telefono_origen, COALESCE(so.correo, '') correo_origen,
+		       COALESCE(sd.nombre_sucursal, 'Sucursal destino') sucursal_destino,
+		       concat_ws(', ', NULLIF(trim(concat_ws(' ', sd.calle, sd.exterior, sd.interior)), ''),
+		          NULLIF(sd.colonia, ''), NULLIF(sd.ciudad, ''), NULLIF(sd.estado, ''),
+		          CASE WHEN NULLIF(sd.codigo_postal, '') IS NULL THEN NULL ELSE 'C.P. ' || sd.codigo_postal END) direccion_destino,
+		       t.fecha_envio, t.fecha_recepcion, COALESCE(p.comentarios, '') comentarios
+		FROM traspasos t
+		JOIN pedidos p ON p.id=t.pedido_id AND p.deleted_at IS NULL
+		JOIN sucursales so ON so.id=t.sucursal_origen_id AND so.deleted_at IS NULL
+		JOIN sucursales sd ON sd.id=t.sucursal_destino_id AND sd.deleted_at IS NULL
+		JOIN estatus es ON es.id=t.estatus_id AND es.deleted_at IS NULL
+		LEFT JOIN empresas emp ON emp.id=so.empresa_id AND emp.deleted_at IS NULL
+		WHERE p.guid=? AND t.deleted_at IS NULL`, pedidoGuid).Scan(&header).Error; err != nil {
+		return report, err
+	}
+	if header.TraspasoGuid == "" {
+		return report, fmt.Errorf("transferencia no encontrada")
+	}
+	report = reportmodels.TransferReport{
+		PedidoGuid: header.PedidoGuid, TraspasoGuid: header.TraspasoGuid,
+		Folio: fmt.Sprintf("%07d", header.Folio), Estatus: header.Estatus,
+		Negocio: header.Negocio, RazonSocial: header.RazonSocial, RFCNegocio: header.RFCNegocio,
+		SucursalOrigen: header.SucursalOrigen, DireccionOrigen: header.DireccionOrigen,
+		TelefonoOrigen: header.TelefonoOrigen, CorreoOrigen: header.CorreoOrigen,
+		SucursalDestino: header.SucursalDestino, DireccionDestino: header.DireccionDestino,
+		FechaEnvio: header.FechaEnvio, FechaRecepcion: header.FechaRecepcion,
+		Comentarios: header.Comentarios,
+	}
+	if err := s.db.Raw(`
+		SELECT COALESCE(ne.codigo, '') codigo, COALESCE(pr.descripcion, 'Producto') descripcion,
+		       COALESCE(em.empaque, 'Unidad') unidad, pd.cantidad::double precision cantidad,
+		       pd.precio_venta::double precision precio_venta,
+		       pd.descuento::double precision descuento,
+		       ((pd.cantidad * pd.precio_venta) - pd.descuento)::double precision importe
+		FROM pedido_detalle pd
+		JOIN pedidos p ON p.id=pd.pedido_id AND p.deleted_at IS NULL
+		JOIN nivel_empaque ne ON ne.id=pd.nivel_id AND ne.deleted_at IS NULL
+		JOIN productos pr ON pr.id=ne.producto_id AND pr.deleted_at IS NULL
+		LEFT JOIN empaques em ON em.id=ne.empaque_id AND em.deleted_at IS NULL
+		WHERE p.guid=? AND pd.deleted_at IS NULL ORDER BY pd.id`, pedidoGuid).Scan(&report.Items).Error; err != nil {
+		return report, err
+	}
+	report.TotalProductos = len(report.Items)
+	for _, item := range report.Items {
+		report.UnidadesTotales += item.Cantidad
+		report.ValorTotal += item.Importe
+	}
+	return report, nil
+}
+
 func (s *ReceiptService) BuildPurchaseReport(pedidoGuid string) (reportmodels.PurchaseReport, error) {
 	var report reportmodels.PurchaseReport
 	var header struct {

@@ -27,7 +27,7 @@ function buildNavGroups(items) {
 
 export function Sidebar({ open, onToggle }) {
   const { logout } = useAuth();
-  const { store, operation, license, isCaja } = useActivation();
+  const { store, license, isCaja, deviceName } = useActivation();
   const navigate = useNavigate();
 
   // Filtrar ítems según rol del dispositivo
@@ -66,7 +66,7 @@ export function Sidebar({ open, onToggle }) {
               {store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze POS'}
             </span>
             <span className="text-[11px] text-sidebar-muted truncate leading-tight">
-              {operation?.Nombre ?? 'Terminal 01'}
+              {deviceName || 'Dispositivo'}
             </span>
           </div>
         )}

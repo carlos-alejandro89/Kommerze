@@ -137,6 +137,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/transacciones/cancelar", l.handleCancelarVenta)
 	mux.HandleFunc("/local/transferencias", l.handleTransferencias)
 	mux.HandleFunc("/local/transferencias/estatus", l.handleResolverTransferencia)
+	mux.HandleFunc("/local/transferencias/pdf-data", l.handleTransferPDFData)
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
 	mux.HandleFunc("/local/compras/pdf-data", l.handlePurchasePDFData)
@@ -202,6 +203,20 @@ func (l *LocalServerService) handlePurchasePDFData(w http.ResponseWriter, r *htt
 		return
 	}
 	result, err := l.receipt.BuildPurchaseReport(guid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleTransferPDFData(w http.ResponseWriter, r *http.Request) {
+	guid := r.URL.Query().Get("pedidoGuid")
+	if guid == "" {
+		writeError(w, http.StatusBadRequest, "pedidoGuid requerido")
+		return
+	}
+	result, err := l.receipt.BuildTransferReport(guid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
