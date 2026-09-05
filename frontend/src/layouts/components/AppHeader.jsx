@@ -153,14 +153,14 @@ export function AppHeader({ showPageTitle = true }) {
           <button
             onClick={() => setMenuOpen(v => !v)}
             className={cn(
-              'flex items-center gap-2 rounded-xl px-2.5 py-1.5',
+              'flex items-center gap-2 rounded-full px-2.5 py-1.5',
               'bg-muted/60 border border-border',
               'hover:bg-muted transition-all duration-150',
             )}
             aria-label="Menú de usuario"
             aria-expanded={menuOpen}
           >
-            <div className="flex size-6 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30 text-[10px] font-bold text-primary shrink-0">
+            <div className="flex size-6 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30 text-[10px] font-bold text-primary shrink-0">
               {initials || <User className="size-3.5" />}
             </div>
             <span className="text-[12px] font-medium text-foreground max-w-[110px] truncate hidden sm:block">

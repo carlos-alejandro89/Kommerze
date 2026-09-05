@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ServiceConsultaProductos, ServiceGetLineas, ServiceGetMarcas } from '../../../../wailsjs/go/main/App';
 import { ProductRequestModal } from '../components/ProductRequestModal';
 import { loadProductRequestItems, saveProductRequestItems } from '../request-storage';
+import { StockFilterSwitch } from '@/components/common/stock-filter-switch';
 
 export function ProductsPage() {
   const navigate = useNavigate();
@@ -169,18 +170,8 @@ export function ProductsPage() {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Existencia */}
-          <div className="space-y-3">
-            <label className="flex items-center cursor-pointer group">
-              <input
-                type="checkbox"
-                className="rounded border-border text-primary focus:ring-primary/30 size-3.5 mr-2"
-                checked={showOnlyWithStock}
-                onChange={(e) => setShowOnlyWithStock(e.target.checked)}
-              />
-              <span className="text-[11px] font-bold text-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
-                Sólo con existencia
-              </span>
-            </label>
+          <div className="rounded-xl border border-border/55 bg-muted/[.16] px-3 py-2.5">
+            <StockFilterSwitch checked={showOnlyWithStock} onCheckedChange={setShowOnlyWithStock} className="justify-between" />
           </div>
 
           {/* Líneas */}
@@ -291,14 +282,14 @@ export function ProductsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <div className="relative w-full sm:w-[330px]">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Buscar productos, SKUs..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-bg-subtle pl-9 pr-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+                  className="h-10 w-full rounded-full border border-border/70 bg-background/75 pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 
