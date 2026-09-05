@@ -127,11 +127,11 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 	operacion.IngresoCheques = acum.IngresoCheques
 	operacion.IngresoTransferencia = acum.IngresoTransferencia
 	operacion.IngresoOtros = acum.IngresoOtros
-	operacion.CFDIEfectivo = decimal.NewFromInt(int64(acum.CFDIEfectivo))
-	operacion.CFDITarjetas = decimal.NewFromInt(int64(acum.CFDITarjetas))
-	operacion.CFDICheques = decimal.NewFromInt(int64(acum.CFDICheques))
-	operacion.CFDITransferencia = decimal.NewFromInt(int64(acum.CFDITransferencia))
-	operacion.CFDIOtros = decimal.NewFromInt(int64(acum.CFDIOtros))
+	operacion.CFDIEfectivo = acum.CFDIEfectivo
+	operacion.CFDITarjetas = acum.CFDITarjetas
+	operacion.CFDICheques = acum.CFDICheques
+	operacion.CFDITransferencia = acum.CFDITransferencia
+	operacion.CFDIOtros = acum.CFDIOtros
 	operacion.BajasMercancia = acum.BajasMercancia
 	operacion.AjusteInventario = acum.AjusteInventario
 	operacion.ValorFinalInventario = acum.ValorFinalInventario
@@ -284,11 +284,11 @@ type acumuladosDia struct {
 	IngresoCheques          decimal.Decimal
 	IngresoTransferencia    decimal.Decimal
 	IngresoOtros            decimal.Decimal
-	CFDIEfectivo            int
-	CFDITarjetas            int
-	CFDICheques             int
-	CFDITransferencia       int
-	CFDIOtros               int
+	CFDIEfectivo            decimal.Decimal
+	CFDITarjetas            decimal.Decimal
+	CFDICheques             decimal.Decimal
+	CFDITransferencia       decimal.Decimal
+	CFDIOtros               decimal.Decimal
 }
 
 // CalcularAcumuladosDia agrega ventas y pagos del período de la operación.
@@ -393,16 +393,14 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 
 	// Pagos agrupados por clave SAT de forma de pago
 	type pagoRow struct {
-		Clave  string
-		Total  decimal.Decimal
-		Conteo int
+		Clave string
+		Total decimal.Decimal
 	}
 	var pagos []pagoRow
 	o.db.Raw(`
 		SELECT 
 			s.clave,
-			COALESCE(SUM(pg.monto), 0) AS total,
-			COUNT(pg.id)               AS conteo
+			COALESCE(SUM(pg.monto), 0) AS total
 		FROM pagos pg
 		INNER JOIN pedidos p          ON p.id = pg.pedido_id
 		INNER JOIN sat_formas_pago s  ON s.id = pg.forma_id
@@ -421,19 +419,50 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		switch p.Clave {
 		case "01": // Efectivo
 			result.IngresoEfectivo = p.Total
-			result.CFDIEfectivo = p.Conteo
 		case "04", "28", "29": // Tarjetas de crédito, débito y monedero
 			result.IngresoTarjetas = result.IngresoTarjetas.Add(p.Total)
-			result.CFDITarjetas += p.Conteo
 		case "02": // Cheque nominativo
 			result.IngresoCheques = p.Total
-			result.CFDICheques = p.Conteo
 		case "03": // Transferencia electrónica
 			result.IngresoTransferencia = p.Total
-			result.CFDITransferencia = p.Conteo
 		default: // Otros métodos
 			result.IngresoOtros = result.IngresoOtros.Add(p.Total)
-			result.CFDIOtros += p.Conteo
+		}
+	}
+
+	// Valor efectivamente facturado durante la jornada, agrupado por la forma
+	// de pago registrada en el CFDI. El DISTINCT evita duplicar una factura si
+	// llegara a estar relacionada con más de un pedido.
+	var facturado []pagoRow
+	o.db.Raw(`
+		SELECT forma.clave, COALESCE(SUM(documento.total), 0) AS total
+		FROM (
+			SELECT DISTINCT f.id, f.forma_pago_id, f.total
+			FROM facturas f
+			INNER JOIN pedidos p ON p.factura_id = f.id
+			WHERE p.sucursal_origen_id = ?
+			  AND f.fecha_factura BETWEEN ? AND ?
+			  AND LOWER(COALESCE(f.estatus, 'vigente')) = 'vigente'
+			  AND f.deleted_at IS NULL
+			  AND p.deleted_at IS NULL
+		) documento
+		INNER JOIN sat_formas_pago forma ON forma.id = documento.forma_pago_id
+		WHERE forma.deleted_at IS NULL
+		GROUP BY forma.clave
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&facturado)
+
+	for _, f := range facturado {
+		switch f.Clave {
+		case "01":
+			result.CFDIEfectivo = f.Total
+		case "04", "28", "29":
+			result.CFDITarjetas = result.CFDITarjetas.Add(f.Total)
+		case "02":
+			result.CFDICheques = f.Total
+		case "03":
+			result.CFDITransferencia = f.Total
+		default:
+			result.CFDIOtros = result.CFDIOtros.Add(f.Total)
 		}
 	}
 

@@ -26,7 +26,7 @@ func MigrateTables(db *gorm.DB) error {
 		return err
 	}
 
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 
 		// Configuración / Seguridad
 		&models.Empresa{},
@@ -42,6 +42,7 @@ func MigrateTables(db *gorm.DB) error {
 		&models.Empaque{},
 		&models.Producto{},
 		&models.NivelEmpaque{},
+		&models.ReglaConversionProducto{},
 		&models.SucursalProducto{},
 
 		// Ventas / Clientes
@@ -66,7 +67,37 @@ func MigrateTables(db *gorm.DB) error {
 		// Auditoría
 		&models.Auditoria{},
 		&models.AuditoriaProducto{},
-	)
+	); err != nil {
+		return err
+	}
+
+	// Solo puede existir una regla activa por combinación. El índice parcial
+	// permite conservar el historial de reglas desactivadas o eliminadas.
+	if err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_regla_conversion_activa
+		ON reglas_conversion_producto (nivel_empaque_origen_id, nivel_empaque_destino_id)
+		WHERE activo = TRUE AND deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("no se pudo crear el índice de reglas de conversión: %w", err)
+	}
+
+	// Un nivel no puede convertirse hacia sí mismo.
+	if err := db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'chk_regla_niveles_distintos'
+			) THEN
+				ALTER TABLE reglas_conversion_producto
+				ADD CONSTRAINT chk_regla_niveles_distintos
+				CHECK (nivel_empaque_origen_id <> nivel_empaque_destino_id);
+			END IF;
+		END $$;
+	`).Error; err != nil {
+		return fmt.Errorf("no se pudo crear la validación de niveles de conversión: %w", err)
+	}
+
+	return nil
 }
 
 // repairOrphanFiscalRegimenReferences prepara bases existentes antes de que

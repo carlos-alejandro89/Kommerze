@@ -78,6 +78,10 @@ export function ServiceConsultarHistorialCompras() {
   return window['go']['main']['App']['ServiceConsultarHistorialCompras']();
 }
 
+export function ServiceConsultarProductosConvertibles(arg1) {
+  return window['go']['main']['App']['ServiceConsultarProductosConvertibles'](arg1);
+}
+
 export function ServiceConsultarTransferencias() {
   return window['go']['main']['App']['ServiceConsultarTransferencias']();
 }
@@ -104,6 +108,10 @@ export function ServiceCrearSolicitudProductos(arg1) {
 
 export function ServiceDeleteReceiptLogo() {
   return window['go']['main']['App']['ServiceDeleteReceiptLogo']();
+}
+
+export function ServiceEjecutarConversion(arg1) {
+  return window['go']['main']['App']['ServiceEjecutarConversion'](arg1);
 }
 
 export function ServiceEmailReceipt(arg1, arg2) {

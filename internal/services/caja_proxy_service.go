@@ -137,6 +137,28 @@ func (c *CajaProxyService) ConsultaProductos(busqueda string, conExistencia bool
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) ConsultarProductos(busqueda string) ([]dto.ConversionProductoDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    []dto.ConversionProductoDto `json:"data"`
+	}
+	if err := c.get("/local/conversiones/productos?q="+url.QueryEscape(busqueda), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) EjecutarConversion(datos dto.EjecutarConversionDto) (*dto.ResultadoConversionDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    *dto.ResultadoConversionDto `json:"data"`
+	}
+	if err := c.post("/local/conversiones/ejecutar", datos, &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
 func (c *CajaProxyService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var result struct {
 		Success bool                `json:"success"`

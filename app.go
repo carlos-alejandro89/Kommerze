@@ -95,6 +95,16 @@ func (a *App) catalogosService() interface {
 	return a.services.Catalogos
 }
 
+func (a *App) conversionesService() interface {
+	ConsultarProductos(string) ([]dto.ConversionProductoDto, error)
+	EjecutarConversion(dto.EjecutarConversionDto) (*dto.ResultadoConversionDto, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Conversiones
+}
+
 // clientesService devuelve la implementación correcta según el modo del dispositivo.
 // Servidor Local → ClientesService (acceso directo a BD)
 // Caja           → CajaProxyService (HTTP al Servidor Local)
@@ -417,6 +427,14 @@ func (a *App) SyncEstatus() (string, error) {
 
 func (a *App) ServiceConsultaProductos(busqueda string, conExistencia bool) ([]dto.ProductoDto, error) {
 	return a.posService().ConsultaProductos(busqueda, conExistencia)
+}
+
+func (a *App) ServiceConsultarProductosConvertibles(busqueda string) ([]dto.ConversionProductoDto, error) {
+	return a.conversionesService().ConsultarProductos(busqueda)
+}
+
+func (a *App) ServiceEjecutarConversion(datos dto.EjecutarConversionDto) (*dto.ResultadoConversionDto, error) {
+	return a.conversionesService().EjecutarConversion(datos)
 }
 
 func (a *App) ServiceObtenerTiposPedido() ([]models.TipoPedido, error) {
@@ -784,10 +802,14 @@ func (a *App) ServiceCerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDt
 
 // ── Operaciones de Caja ───────────────────────────────────────────────────────
 
-// ServiceAbrirCaja inicia el turno de un cajero. Solo disponible en Servidor Local.
+// ServiceAbrirCaja inicia el turno de un cajero. En modo Caja delega la
+// validación y apertura al Servidor Local.
 func (a *App) ServiceAbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy.AbrirCaja(datos)
+	}
 	if a.services.OperacionesCaja == nil {
-		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
+		return dto.NewResponseDto(false, "No disponible", nil, nil)
 	}
 	return a.services.OperacionesCaja.AbrirCaja(datos)
 }

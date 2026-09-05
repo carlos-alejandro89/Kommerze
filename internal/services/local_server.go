@@ -64,13 +64,14 @@ type LocalServerService struct {
 	cotizacion          *CotizacionService
 	receipt             *ReceiptService
 	facturacion         *FacturacionService
+	conversiones        *ConversionService
 	operacionesSucursal *OperacionesSucursalService
 	operacionesCaja     *OperacionesCajaService
 	hub                 *wsHub
 	server              *http.Server
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, conversiones *ConversionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
@@ -82,6 +83,7 @@ func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat 
 		cotizacion:          cotizacion,
 		receipt:             receipt,
 		facturacion:         facturacion,
+		conversiones:        conversiones,
 		operacionesSucursal: opSucursal,
 		operacionesCaja:     opCaja,
 		hub:                 newWsHub(),
@@ -106,6 +108,8 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/health", l.handleHealth)
 	mux.HandleFunc("/local/auth/login", l.handleLogin)
 	mux.HandleFunc("/local/productos", l.handleProductos)
+	mux.HandleFunc("/local/conversiones/productos", l.handleProductosConvertibles)
+	mux.HandleFunc("/local/conversiones/ejecutar", l.handleEjecutarConversion)
 	mux.HandleFunc("/local/transacciones", l.handleTransacciones)
 	mux.HandleFunc("/local/solicitudes-productos", l.handleSolicitudesProductos)
 	mux.HandleFunc("/local/tipos-pedido", l.handleTiposPedido)
@@ -319,6 +323,37 @@ func (l *LocalServerService) handleProductos(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": productos})
+}
+
+func (l *LocalServerService) handleProductosConvertibles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	productos, err := l.conversiones.ConsultarProductos(r.URL.Query().Get("q"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": productos})
+}
+
+func (l *LocalServerService) handleEjecutarConversion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var datos dto.EjecutarConversionDto
+	if err := json.NewDecoder(r.Body).Decode(&datos); err != nil {
+		writeError(w, http.StatusBadRequest, "Datos de conversión inválidos")
+		return
+	}
+	resultado, err := l.conversiones.EjecutarConversion(datos)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": resultado})
 }
 
 func (l *LocalServerService) handleTiposPedido(w http.ResponseWriter, r *http.Request) {

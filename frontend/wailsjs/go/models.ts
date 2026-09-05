@@ -3,6 +3,7 @@ export namespace dto {
 	export class AbrirCajaDto {
 	    OperacionSucursalID: number;
 	    ResponsableCajaID: number;
+	    CajaID: number;
 	    CajaNombre: string;
 	    FondoCajaApertura: number;
 	
@@ -14,6 +15,7 @@ export namespace dto {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.OperacionSucursalID = source["OperacionSucursalID"];
 	        this.ResponsableCajaID = source["ResponsableCajaID"];
+	        this.CajaID = source["CajaID"];
 	        this.CajaNombre = source["CajaNombre"];
 	        this.FondoCajaApertura = source["FondoCajaApertura"];
 	    }
@@ -289,6 +291,81 @@ export namespace dto {
 	        this.costo = source["costo"];
 	    }
 	}
+	export class ConversionProductoDto {
+	    reglaId: number;
+	    reglaGuid: string;
+	    nivelOrigenId: number;
+	    nivelOrigenGuid: string;
+	    codigoOrigen: string;
+	    productoOrigen: string;
+	    empaqueOrigen: string;
+	    contenidoOrigen: number;
+	    unidadOrigen: string;
+	    imagenOrigen: string;
+	    // Go type: decimal
+	    existenciaOrigen: any;
+	    nivelDestinoId: number;
+	    nivelDestinoGuid: string;
+	    codigoDestino: string;
+	    productoDestino: string;
+	    empaqueDestino: string;
+	    contenidoDestino: number;
+	    unidadDestino: string;
+	    imagenDestino: string;
+	    // Go type: decimal
+	    existenciaDestino: any;
+	    // Go type: decimal
+	    factorSugerido: any;
+	    factorConversion: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConversionProductoDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reglaId = source["reglaId"];
+	        this.reglaGuid = source["reglaGuid"];
+	        this.nivelOrigenId = source["nivelOrigenId"];
+	        this.nivelOrigenGuid = source["nivelOrigenGuid"];
+	        this.codigoOrigen = source["codigoOrigen"];
+	        this.productoOrigen = source["productoOrigen"];
+	        this.empaqueOrigen = source["empaqueOrigen"];
+	        this.contenidoOrigen = source["contenidoOrigen"];
+	        this.unidadOrigen = source["unidadOrigen"];
+	        this.imagenOrigen = source["imagenOrigen"];
+	        this.existenciaOrigen = this.convertValues(source["existenciaOrigen"], null);
+	        this.nivelDestinoId = source["nivelDestinoId"];
+	        this.nivelDestinoGuid = source["nivelDestinoGuid"];
+	        this.codigoDestino = source["codigoDestino"];
+	        this.productoDestino = source["productoDestino"];
+	        this.empaqueDestino = source["empaqueDestino"];
+	        this.contenidoDestino = source["contenidoDestino"];
+	        this.unidadDestino = source["unidadDestino"];
+	        this.imagenDestino = source["imagenDestino"];
+	        this.existenciaDestino = this.convertValues(source["existenciaDestino"], null);
+	        this.factorSugerido = this.convertValues(source["factorSugerido"], null);
+	        this.factorConversion = source["factorConversion"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CotizacionItemDto {
 	    nivelGuid: string;
 	    nivelCodigo: string;
@@ -449,6 +526,20 @@ export namespace dto {
 		    }
 		    return a;
 		}
+	}
+	export class EjecutarConversionDto {
+	    reglaGuid: string;
+	    cantidad: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EjecutarConversionDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reglaGuid = source["reglaGuid"];
+	        this.cantidad = source["cantidad"];
+	    }
 	}
 	export class EmitirFacturacionRequestDto {
 	    pedidoGuid: string;
@@ -1034,6 +1125,46 @@ export namespace dto {
 	        this.data = source["data"];
 	        this.errors = source["errors"];
 	    }
+	}
+	export class ResultadoConversionDto {
+	    // Go type: decimal
+	    cantidadOrigen: any;
+	    // Go type: decimal
+	    cantidadDestino: any;
+	    // Go type: decimal
+	    existenciaOrigen: any;
+	    // Go type: decimal
+	    existenciaDestino: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResultadoConversionDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cantidadOrigen = this.convertValues(source["cantidadOrigen"], null);
+	        this.cantidadDestino = this.convertValues(source["cantidadDestino"], null);
+	        this.existenciaOrigen = this.convertValues(source["existenciaOrigen"], null);
+	        this.existenciaDestino = this.convertValues(source["existenciaDestino"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class SolicitudProductoItemDto {
 	    nivelGuid: string;

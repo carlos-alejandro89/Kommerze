@@ -54,6 +54,8 @@ const CortesSucursalPage = lazy(() => import('@/features/pos/pages/CortesSucursa
 const HomePage = lazy(() => import('@/features/home/pages/HomePage').then(m => ({ default: m.HomePage })));
 const MainMenuV2 = lazy(() => import('@/features/home/pages/MainMenuV2').then(m => ({ default: m.MainMenuV2 })));
 const AuditoriaPage = lazy(() => import('@/features/audit/pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
+const ConversionsPage = lazy(() => import('@/features/conversions/pages/ConversionsPage').then(m => ({ default: m.ConversionsPage })));
+const ConversionFlowPage = lazy(() => import('@/features/conversions/pages/ConversionFlowPage').then(m => ({ default: m.ConversionFlowPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -191,6 +193,14 @@ export const router = createBrowserRouter(
         {
           path: '/transfers',
           element: <SuspensePage><TransfersPage /></SuspensePage>,
+        },
+        {
+          path: '/conversions',
+          element: <SuspensePage><ConversionsPage /></SuspensePage>,
+        },
+        {
+          path: '/conversions/new',
+          element: <SuspensePage><ConversionFlowPage /></SuspensePage>,
         },
         {
           path: '/clients',

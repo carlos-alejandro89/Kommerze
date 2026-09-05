@@ -27,6 +27,7 @@ export function AperturaCajaPage() {
   const [opSucursal, setOpSucursal]   = useState(null);
   const [turnoActivo, setTurnoActivo] = useState(null);
 
+  const [cajaID, setCajaID]               = useState(0);
   const [cajaNombre, setCajaNombre]       = useState('');
   const [fondoApertura, setFondoApertura] = useState('');
 
@@ -41,9 +42,11 @@ export function AperturaCajaPage() {
       try {
         try {
           const caja = await ServiceObtenerCajaConfigurada();
+          setCajaID(caja?.ID || caja?.id || 0);
           setCajaNombre(caja?.Nombre || caja?.nombre || '');
         } catch (cajaError) {
           console.error('No se pudo obtener la caja configurada', cajaError);
+          setCajaID(0);
           setCajaNombre('');
         }
         if (sucursalID) {
@@ -75,6 +78,7 @@ export function AperturaCajaPage() {
       const res = await ServiceAbrirCaja({
         OperacionSucursalID: opSucursal?.ID || opSucursal?.id,
         ResponsableCajaID:   responsableID,
+        CajaID:              cajaID,
         CajaNombre:          cajaNombre.trim(),
         FondoCajaApertura:   parseFloat(fondoApertura),
       });

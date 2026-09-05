@@ -4,6 +4,7 @@ package dto
 type AbrirCajaDto struct {
 	OperacionSucursalID uint
 	ResponsableCajaID   uint
+	CajaID              uint
 	CajaNombre          string  // nombre o identificador libre de la caja (ej. "CAJA-01")
 	FondoCajaApertura   float64 // efectivo con el que inicia el cajero
 }

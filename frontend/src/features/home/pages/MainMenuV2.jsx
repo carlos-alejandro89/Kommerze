@@ -16,6 +16,7 @@ import {
   Package,
   PackageCheck,
   RefreshCcw,
+  Repeat2,
   Search,
   Settings,
   ShoppingBag,
@@ -64,7 +65,7 @@ const MODULES = [
   { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard' },
   { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura' },
   { id: 'sucursales', title: 'Sucursales', subtitle: 'Gestión de sucursales', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true },
-  { id: 'usuarios', title: 'Usuarios', subtitle: 'Usuarios y permisos', icon: User, color: '#30b9ce' },
+  { id: 'conversiones', title: 'Conversiones', subtitle: 'Transformación entre presentaciones', icon: Repeat2, color: '#30b9ce', to: '/conversions' },
   { id: 'configuracion', title: 'Configuración', subtitle: 'Parámetros del sistema', icon: Settings, color: '#607996', to: '/settings' },
 ];
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, RefreshCw, Play, Square, Users, DollarSign, Banknote, CreditCard, FileText, MoreHorizontal, BarChart3, Package, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowDownLeft, ArrowUpRight, Building2, RefreshCw, Play, Square, Users, DollarSign, Banknote, CreditCard, FileText, MoreHorizontal, BarChart3, Package, PackageX, ShoppingCart, BadgePercent, TrendingUp, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -159,6 +159,22 @@ export function CortesSucursalPage() {
     return Number(estatusID) === 1 && !fechaFin;
   });
   const turnosCerrados = turnos.length - turnosActivos.length;
+  const ingresosFormaPago = [
+    { label: 'Efectivo', value: opSucursal?.IngresoEfectivo || opSucursal?.ingresoEfectivo, icon: Banknote, tone: 'emerald' },
+    { label: 'Tarjetas', value: opSucursal?.IngresoTarjetas || opSucursal?.ingresoTarjetas, icon: CreditCard, tone: 'blue' },
+    { label: 'Cheques', value: opSucursal?.IngresoCheques || opSucursal?.ingresoCheques, icon: FileText, tone: 'amber' },
+    { label: 'Transferencia', value: opSucursal?.IngresoTransferencia || opSucursal?.ingresoTransferencia, icon: ArrowDownLeft, tone: 'violet' },
+    { label: 'Otros', value: opSucursal?.IngresoOtros || opSucursal?.ingresoOtros, icon: MoreHorizontal, tone: 'cyan' },
+  ];
+  const cfdiFormaPago = [
+    { label: 'Efectivo', value: opSucursal?.CFDIEfectivo || opSucursal?.cfdiEfectivo, icon: Banknote, tone: 'emerald' },
+    { label: 'Tarjetas', value: opSucursal?.CFDITarjetas || opSucursal?.cfdiTarjetas, icon: CreditCard, tone: 'blue' },
+    { label: 'Cheques', value: opSucursal?.CFDICheques || opSucursal?.cfdiCheques, icon: FileText, tone: 'amber' },
+    { label: 'Transferencia', value: opSucursal?.CFDITransferencia || opSucursal?.cfdiTransferencia, icon: ArrowDownLeft, tone: 'violet' },
+    { label: 'Otros', value: opSucursal?.CFDIOtros || opSucursal?.cfdiOtros, icon: MoreHorizontal, tone: 'cyan' },
+  ];
+  const totalIngresos = ingresosFormaPago.reduce((total, item) => total + Number(item.value || 0), 0);
+  const totalCFDI = cfdiFormaPago.reduce((total, item) => total + Number(item.value || 0), 0);
 
   if (loading) {
     return (
@@ -207,8 +223,8 @@ export function CortesSucursalPage() {
           </header>
 
           {/* Tabs */}
-          <div className="mt-4 flex justify-end rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">
-            <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/35 p-1" role="tablist">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+            <div className="flex h-[58px] items-center gap-7 overflow-x-auto border-b border-border/70 px-5" role="tablist">
               {TABS.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -218,8 +234,10 @@ export function CortesSucursalPage() {
                     aria-selected={isActive}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      'relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all',
-                      isActive ? 'border border-border/60 bg-background text-primary shadow-sm' : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                      'relative flex h-full shrink-0 items-center gap-1.5 px-1 text-xs font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors',
+                      isActive
+                        ? 'text-primary after:bg-primary'
+                        : 'text-muted-foreground after:bg-transparent hover:text-foreground',
                     )}
                   >
                     <tab.icon className="size-3.5" />
@@ -389,46 +407,44 @@ export function CortesSucursalPage() {
                 </div>
               ) : (
                 <>
-                  <Section title="Ventas e Inventario" icon={Package} iconColor="text-violet-500">
-                    <Row label="Inventario Inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
-                    <Row label="Valor de las compras" value={fmt(opSucursal?.ValorCompras || opSucursal?.valorCompras)} />
-                    <Row label="Valor bruto de las ventas" value={fmt(opSucursal?.ValorBrutoVentas || opSucursal?.valorBrutoVentas)} />
-                    <Row label="Descuentos aplicados" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
-                    <Row label="Valor real de las ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
-                    <Row label="Transferencias entrantes" value={fmt(opSucursal?.TransferenciasEntrantes || opSucursal?.transferenciasEntrantes)} />
-                    <Row label="Transferencias de salida" value={fmt(opSucursal?.TransferenciasSalientes || opSucursal?.transferenciasSalientes)} />
-                    <Row label="Bajas de mercancía" value={fmt(opSucursal?.BajasMercancia || opSucursal?.bajasMercancia)} />
-                    <Row label="Ajuste de inventario" value={fmt(opSucursal?.AjusteInventario || opSucursal?.ajusteInventario)} />
-                    <Row label="Inventario Final" value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} />
+                  <Section title="Ventas e Inventario" icon={Package} iconColor="text-violet-500" contentClassName="p-0">
+                    <div className="grid gap-px bg-border/60 md:grid-cols-2">
+                      <FinancialMetric icon={Package} tone="violet" label="Valor inventario inicial" value={fmt(opSucursal?.ValorInicialInventario || opSucursal?.valorInicialInventario)} />
+                      <FinancialMetric icon={CreditCard} tone="amber" label="Ventas a crédito" value={fmt(opSucursal?.Creditos || opSucursal?.creditos)} />
+                      <FinancialMetric icon={ShoppingCart} tone="blue" label="Valor de las compras" value={fmt(opSucursal?.ValorCompras || opSucursal?.valorCompras)} />
+                      <FinancialMetric icon={ArrowDownLeft} tone="emerald" label="Transferencias entrantes" value={fmt(opSucursal?.TransferenciasEntrantes || opSucursal?.transferenciasEntrantes)} />
+                      <FinancialMetric icon={BarChart3} tone="blue" label="Valor bruto de las ventas" value={fmt(opSucursal?.ValorBrutoVentas || opSucursal?.valorBrutoVentas)} />
+                      <FinancialMetric icon={ArrowUpRight} tone="amber" label="Transferencias de salida" value={fmt(opSucursal?.TransferenciasSalientes || opSucursal?.transferenciasSalientes)} />
+                      <FinancialMetric icon={BadgePercent} tone="amber" label="Descuentos aplicados" value={fmt(opSucursal?.DescuentosAplicados || opSucursal?.descuentosAplicados)} />
+                      <FinancialMetric icon={PackageX} tone="rose" label="Bajas de mercancía" value={fmt(opSucursal?.BajasMercancia || opSucursal?.bajasMercancia)} />
+                      <FinancialMetric icon={TrendingUp} tone="emerald" label="Valor real de las ventas" value={fmt(opSucursal?.ValorVentas || opSucursal?.valorVentas)} highlight />
+                      <FinancialMetric icon={SlidersHorizontal} tone="cyan" label="Ajuste de inventario" value={fmt(opSucursal?.AjusteInventario || opSucursal?.ajusteInventario)} />
+                      <div className="hidden bg-white/75 dark:bg-white/[.025] md:block" aria-hidden="true" />
+                      <FinancialMetric icon={DollarSign} tone="blue" label="Valor final inventario" value={fmt(opSucursal?.ValorFinalInventario || opSucursal?.valorFinalInventario)} highlight />
+                    </div>
                   </Section>
 
-                  <Section title="Ingresos por Forma de Pago" icon={DollarSign} iconColor="text-emerald-500">
-                    {[
-                      { label: 'Efectivo', val: opSucursal?.IngresoEfectivo || opSucursal?.ingresoEfectivo, icon: Banknote, color: 'text-emerald-500' },
-                      { label: 'Tarjetas', val: opSucursal?.IngresoTarjetas || opSucursal?.ingresoTarjetas, icon: CreditCard, color: 'text-blue-500' },
-                      { label: 'Cheques', val: opSucursal?.IngresoCheques || opSucursal?.ingresoCheques, icon: FileText, color: 'text-amber-500' },
-                      { label: 'Transferencia', val: opSucursal?.IngresoTransferencia || opSucursal?.ingresoTransferencia, icon: DollarSign, color: 'text-violet-500' },
-                      { label: 'Otros', val: opSucursal?.IngresoOtros || opSucursal?.ingresoOtros, icon: MoreHorizontal, color: 'text-muted-foreground' },
-                    ].map(({ label, val, icon: Icon, color }) => (
-                      <div key={label} className="flex items-center gap-2 py-2.5 border-b border-border last:border-0">
-                        <Icon className={cn('size-3.5 shrink-0', color)} />
-                        <span className="flex-1 text-sm text-muted-foreground">{label}</span>
-                        <span className="text-sm font-semibold text-foreground">{fmt(val)}</span>
-                      </div>
-                    ))}
-                  </Section>
-
-                  <Section title="CFDI por Forma de Pago" icon={FileText} iconColor="text-amber-500">
-                    {[
-                      ['Efectivo', 'CFDIEfectivo', 'cfdiEfectivo'],
-                      ['Tarjetas', 'CFDITarjetas', 'cfdiTarjetas'],
-                      ['Cheques', 'CFDICheques', 'cfdiCheques'],
-                      ['Transferencia', 'CFDITransferencia', 'cfdiTransferencia'],
-                      ['Otros', 'CFDIOtros', 'cfdiOtros'],
-                    ].map(([label, key1, key2]) => (
-                      <Row key={label} label={label} value={`${opSucursal?.[key1] || opSucursal?.[key2] || 0} cfdi`} />
-                    ))}
-                  </Section>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 px-2" aria-hidden="true">
+                      <span className="h-px flex-1 bg-border/80" />
+                      <span className="size-1.5 rounded-full bg-border" />
+                      <span className="h-px flex-1 bg-border/80" />
+                    </div>
+                    <div className="grid gap-px overflow-hidden rounded-2xl border border-white/70 bg-border/60 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 md:grid-cols-2">
+                      <FinancialColumn title="Ingresos por forma de pago" icon={DollarSign} iconColor="text-emerald-500">
+                        {ingresosFormaPago.map(item => (
+                          <FinancialMetric key={item.label} icon={item.icon} tone={item.tone} label={item.label} value={fmt(item.value)} />
+                        ))}
+                        <FinancialMetric icon={DollarSign} tone="emerald" label="Total ingresos" value={fmt(totalIngresos)} highlight />
+                      </FinancialColumn>
+                      <FinancialColumn title="CFDI por forma de pago" icon={FileText} iconColor="text-amber-500">
+                      {cfdiFormaPago.map(item => (
+                        <FinancialMetric key={item.label} icon={item.icon} tone={item.tone} label={item.label} value={fmt(item.value)} />
+                      ))}
+                      <FinancialMetric icon={FileText} tone="amber" label="Total facturado" value={fmt(totalCFDI)} highlight />
+                      </FinancialColumn>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -437,7 +453,7 @@ export function CortesSucursalPage() {
         </div>
       </div>
 
-      {activeTab === 'jornada' && (
+      {(activeTab === 'jornada' || activeTab === 'financiero') && (
         <footer className="shrink-0 border-t border-white/70 bg-white/78 px-5 py-3.5 shadow-[0_-14px_38px_-32px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-background/85 lg:px-6">
           <div className="mx-auto flex max-w-[1320px] items-center justify-end gap-3">
             <button onClick={fetchDatos} disabled={loading} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/75 px-4 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50">
@@ -495,14 +511,49 @@ function JornadaMetric({ icon: Icon, label, value, tone }) {
   );
 }
 
-function Section({ title, icon: Icon, iconColor, children }) {
+function Section({ title, icon: Icon, iconColor, contentClassName, children }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/65 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
       <div className="flex items-center gap-2 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.025] to-transparent px-5 py-3.5 dark:border-white/10 dark:from-blue-400/[.09] dark:via-blue-400/[.025]">
         <Icon className={cn('size-4', iconColor)} />
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[.08em] text-foreground">{title}</h2>
       </div>
-      <div className="px-5 py-1">{children}</div>
+      <div className={cn('px-5 py-1', contentClassName)}>{children}</div>
+    </div>
+  );
+}
+
+function FinancialColumn({ title, icon: Icon, iconColor, children }) {
+  return (
+    <section className="grid content-start gap-px bg-border/60">
+      <div className="flex items-center gap-2 border-b border-[#e5edf8]/80 bg-gradient-to-r from-blue-500/[.065] via-blue-500/[.025] to-transparent px-5 py-3.5 dark:border-white/10 dark:from-blue-400/[.09] dark:via-blue-400/[.025]">
+        <Icon className={cn('size-4', iconColor)} strokeWidth={1.8} />
+        <h2 className="text-[11px] font-semibold uppercase tracking-[.08em] text-foreground">{title}</h2>
+      </div>
+      <div className="grid gap-px bg-border/60">{children}</div>
+    </section>
+  );
+}
+
+function FinancialMetric({ icon: Icon, tone, label, value, highlight }) {
+  const tones = {
+    violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  };
+
+  return (
+    <div className="flex min-h-[76px] items-center gap-3 bg-white/75 px-4 py-3 dark:bg-white/[.025]">
+      <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', tones[tone] || tones.blue)}>
+        <Icon className="size-4" strokeWidth={1.75} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[.09em] text-muted-foreground">{label}</p>
+        <p className={cn('mt-0.5 text-base font-semibold tracking-[-0.015em]', highlight ? 'text-primary' : 'text-foreground')}>{value}</p>
+      </div>
     </div>
   );
 }

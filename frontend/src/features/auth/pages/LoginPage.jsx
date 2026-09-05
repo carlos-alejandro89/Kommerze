@@ -72,39 +72,37 @@ export function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#001b4c] p-3 sm:p-5 lg:p-7">
+    <main className="relative min-h-screen overflow-hidden bg-[#001b4c] p-2 sm:p-3 lg:p-4">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(30,120,255,.62),transparent_34%),radial-gradient(circle_at_100%_100%,rgba(1,74,178,.42),transparent_42%),linear-gradient(135deg,#043d95_0%,#001d51_45%,#001238_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom_right,transparent,black,transparent)]" />
 
-      <section className="relative mx-auto grid min-h-[calc(100vh-24px)] max-w-[1600px] gap-5 sm:min-h-[calc(100vh-40px)] lg:min-h-[calc(100vh-56px)] lg:grid-cols-[minmax(400px,37%)_1fr] xl:gap-8">
-        <div className="relative z-10 flex items-center justify-center overflow-hidden rounded-[24px] border border-white/80 bg-white px-6 py-8 shadow-[0_24px_64px_-34px_rgba(0,7,31,.68)] sm:px-10 lg:px-12 xl:px-16">
+      <section className="relative mx-auto flex min-h-[calc(100vh-16px)] w-full overflow-hidden rounded-[24px] border border-white/20 bg-white shadow-[0_28px_80px_-36px_rgba(0,7,31,.75)] sm:min-h-[calc(100vh-24px)] lg:min-h-[calc(100vh-32px)]">
+        <div className="relative z-10 flex w-full shrink-0 items-center justify-center overflow-x-hidden overflow-y-auto bg-white px-7 py-10 sm:px-9 lg:w-[560px] lg:px-10 xl:w-[600px]">
+          <div className="pointer-events-none absolute -right-32 -top-32 size-80 rounded-full bg-primary/5 blur-3xl" />
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: 'easeOut' }}
-            className="w-full max-w-[370px]"
+            className="relative w-full max-w-[420px]"
           >
             <img
               src="/media/kommerze-logo-horizontal.png"
               alt="Kommerze"
-              className="mb-7 h-auto w-[166px] max-w-[56%] object-contain object-left"
+              className="mb-6 h-auto w-[150px] max-w-[52%] object-contain object-left"
             />
 
-            <div className="mb-7">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                Acceso al sistema
-              </p>
-              <h1 className="text-[27px] font-semibold leading-tight tracking-[-0.025em] text-[#071a43] sm:text-[30px]">
+            <div className="mb-7 space-y-2">
+              <h1 className="text-2xl font-bold leading-tight tracking-tight text-[#071a43]">
                 Bienvenido de nuevo
               </h1>
-              <p className="mt-2.5 max-w-sm text-[13px] leading-[1.6] text-slate-500">
+              <p className="max-w-sm text-sm leading-relaxed text-slate-500">
                 Ingresa tus credenciales para continuar con la operación de tu negocio.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="username" className="text-[12px] font-medium text-[#203457]">
+                <label htmlFor="username" className="text-sm font-medium text-[#203457]">
                   Usuario o correo electrónico
                 </label>
                 <div className="group relative">
@@ -119,13 +117,13 @@ export function LoginPage() {
                     disabled={loading}
                     value={formData.username}
                     onChange={(event) => setFormData({ ...formData, username: event.target.value })}
-                    className="h-[48px] w-full rounded-[10px] border border-slate-200/90 bg-white pl-10.5 pr-3.5 text-[13px] font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary/80 focus:ring-3 focus:ring-primary/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-lg border border-slate-200/90 bg-slate-50/80 py-2.5 pl-10.5 pr-3.5 text-sm font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-[12px] font-medium text-[#203457]">
+                <label htmlFor="password" className="text-sm font-medium text-[#203457]">
                   Contraseña
                 </label>
                 <div className="group relative">
@@ -138,7 +136,7 @@ export function LoginPage() {
                     disabled={loading}
                     value={formData.password}
                     onChange={(event) => setFormData({ ...formData, password: event.target.value })}
-                    className="h-[48px] w-full rounded-[10px] border border-slate-200/90 bg-white pl-10.5 pr-11 text-[13px] font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary/80 focus:ring-3 focus:ring-primary/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-lg border border-slate-200/90 bg-slate-50/80 py-2.5 pl-10.5 pr-11 text-sm font-normal text-[#10234b] outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -154,7 +152,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex h-[49px] w-full items-center justify-center gap-2 rounded-[10px] bg-gradient-to-r from-[#075be8] to-[#0b76f0] px-5 text-[13px] font-semibold text-white shadow-[0_12px_24px_-16px_rgba(0,91,232,.85)] transition hover:-translate-y-px hover:shadow-[0_15px_26px_-16px_rgba(0,91,232,.72)] focus:outline-none focus:ring-3 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#075be8] to-[#0b76f0] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
                   <>
@@ -170,18 +168,18 @@ export function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-7 flex items-center justify-center gap-1.5 text-[10.5px] font-normal text-slate-400">
+            <div className="mt-7 flex items-center justify-center gap-1.5 border-t border-slate-200 pt-4 text-[10.5px] font-normal text-slate-400">
               <ShieldCheck className="size-3.5 text-emerald-500" strokeWidth={1.8} />
               Acceso seguro a Kommerze POS
             </div>
           </motion.div>
         </div>
 
-        <div className="relative hidden min-h-0 overflow-hidden rounded-[26px] border border-white/10 lg:block">
+        <div className="relative hidden min-h-0 flex-1 overflow-hidden lg:block">
           <img
             src={loginStore}
             alt="Atención a cliente en una tienda de pinturas"
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-cover object-[64%_center]"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#001b4c]/20 via-transparent to-[#001438]/28" />
           <motion.div

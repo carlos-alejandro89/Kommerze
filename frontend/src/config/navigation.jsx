@@ -9,6 +9,7 @@ import {
   X,
   Building2,
   Handshake,
+  Repeat2,
 } from 'lucide-react';
 
 /**
@@ -47,6 +48,12 @@ export const MAIN_NAV = [
     icon: Package,
     path: '/products',
     serverOnly: true,
+  },
+  {
+    id: 'conversions',
+    title: 'Conversiones',
+    icon: Repeat2,
+    path: '/conversions',
   },
   {
     id: 'suppliers',

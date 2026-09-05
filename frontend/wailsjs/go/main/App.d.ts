@@ -44,6 +44,8 @@ export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promi
 
 export function ServiceConsultarHistorialCompras():Promise<Array<dto.CompraHistorialDto>>;
 
+export function ServiceConsultarProductosConvertibles(arg1:string):Promise<Array<dto.ConversionProductoDto>>;
+
 export function ServiceConsultarTransferencias():Promise<Array<dto.TransferenciaDto>>;
 
 export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.PagosAplicadosDto>,arg3:any):Promise<dto.ResponseDto>;
@@ -57,6 +59,8 @@ export function ServiceCrearCompra(arg1:dto.CrearCompraDto):Promise<dto.Response
 export function ServiceCrearSolicitudProductos(arg1:dto.SolicitudProductosDto):Promise<dto.ResponseDto>;
 
 export function ServiceDeleteReceiptLogo():Promise<void>;
+
+export function ServiceEjecutarConversion(arg1:dto.EjecutarConversionDto):Promise<dto.ResultadoConversionDto>;
 
 export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 

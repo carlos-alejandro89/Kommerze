@@ -4,6 +4,7 @@ import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -21,15 +22,78 @@ func NewOperacionesCajaRepository(db *gorm.DB) *OperacionesCajaRepository {
 // AbrirCaja inicia el turno de un cajero dentro de una jornada de sucursal.
 // Crea un registro OperacionCajero con EstatusID=1 (activo).
 func (r *OperacionesCajaRepository) AbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
+	cajaNombre := strings.TrimSpace(datos.CajaNombre)
+	if cajaNombre == "" {
+		return dto.NewResponseDto(false, "No se encontró el nombre configurado para esta caja", nil, nil)
+	}
+
+	var jornada models.OperacionSucursal
+	if err := r.db.First(&jornada, datos.OperacionSucursalID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return dto.NewResponseDto(false, "No se encontró la jornada activa de la sucursal", nil, nil)
+		}
+		return dto.NewResponseDto(false, "No se pudo validar la jornada: "+err.Error(), nil, []string{err.Error()})
+	}
+
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return dto.NewResponseDto(false, "No se pudo iniciar la apertura de caja", nil, []string{tx.Error.Error()})
+	}
+	defer tx.Rollback()
+
+	// Serializa aperturas concurrentes del mismo dispositivo y sucursal. Así
+	// dos solicitudes simultáneas no pueden superar la validación a la vez.
+	claveBloqueo := fmt.Sprintf("caja:%d:%s", jornada.SucursalID, strings.ToLower(cajaNombre))
+	if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", claveBloqueo).Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo validar la disponibilidad de la caja", nil, []string{err.Error()})
+	}
+
+	var turnoExistente models.OperacionCajero
+	consultaTurno := tx.
+		Preload("ResponsableCaja").
+		Joins("INNER JOIN operaciones_sucursal os ON os.id = operacion_cajero.operacion_sucursal_id").
+		Where("os.sucursal_id = ?", jornada.SucursalID).
+		Where("operacion_cajero.estatus_id = ?", 1).
+		Where("operacion_cajero.fecha_fin IS NULL").
+		Where("os.deleted_at IS NULL")
+	if datos.CajaID != 0 {
+		consultaTurno = consultaTurno.Where(
+			"operacion_cajero.caja_id = ? OR (operacion_cajero.caja_id IS NULL AND LOWER(TRIM(operacion_cajero.caja_nombre)) = LOWER(TRIM(?)))",
+			datos.CajaID, cajaNombre,
+		)
+	} else {
+		consultaTurno = consultaTurno.Where("LOWER(TRIM(operacion_cajero.caja_nombre)) = LOWER(TRIM(?))", cajaNombre)
+	}
+	err := consultaTurno.First(&turnoExistente).Error
+	if err == nil {
+		responsable := strings.TrimSpace(turnoExistente.ResponsableCaja.Nombre)
+		if responsable == "" {
+			responsable = turnoExistente.ResponsableCaja.CorreoElectronico
+		}
+		if turnoExistente.ResponsableCajaID != datos.ResponsableCajaID {
+			mensaje := fmt.Sprintf("La caja %s ya se encuentra abierta por %s. Ese usuario debe cerrar su turno antes de que otra cuenta pueda abrirla.", cajaNombre, responsable)
+			return dto.NewResponseDto(false, mensaje, turnoExistente, nil)
+		}
+		return dto.NewResponseDto(false, fmt.Sprintf("La caja %s ya tiene un turno abierto para este usuario.", cajaNombre), turnoExistente, nil)
+	}
+	if err != gorm.ErrRecordNotFound {
+		return dto.NewResponseDto(false, "No se pudo validar la disponibilidad de la caja: "+err.Error(), nil, []string{err.Error()})
+	}
+
 	estatusID := uint(1) // activo
 
 	fondo := decimal.NewFromFloat(datos.FondoCajaApertura)
 	zero := decimal.NewFromFloat(0)
+	var cajaID *uint
+	if datos.CajaID != 0 {
+		cajaID = &datos.CajaID
+	}
 
 	operacion := models.OperacionCajero{
 		OperacionSucursalID:  datos.OperacionSucursalID,
 		ResponsableCajaID:    datos.ResponsableCajaID,
-		CajaNombre:           datos.CajaNombre,
+		CajaID:               cajaID,
+		CajaNombre:           cajaNombre,
 		EstatusID:            &estatusID,
 		FechaInicio:          time.Now(),
 		FondoCajaApertura:    fondo,
@@ -42,8 +106,11 @@ func (r *OperacionesCajaRepository) AbrirCaja(datos dto.AbrirCajaDto) *dto.Respo
 		IngresoOtros:         &zero,
 	}
 
-	if err := r.db.Create(&operacion).Error; err != nil {
+	if err := tx.Create(&operacion).Error; err != nil {
 		return dto.NewResponseDto(false, fmt.Sprintf("Error al abrir caja: %s", err.Error()), nil, []string{err.Error()})
+	}
+	if err := tx.Commit().Error; err != nil {
+		return dto.NewResponseDto(false, fmt.Sprintf("Error al confirmar la apertura de caja: %s", err.Error()), nil, []string{err.Error()})
 	}
 
 	// Cargar relaciones para la respuesta
