@@ -159,6 +159,22 @@ func (c *CajaProxyService) EjecutarConversion(datos dto.EjecutarConversionDto) (
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) ConsultarConversiones() ([]dto.ConversionHistorialDto, error) {
+	var result struct {
+		Success bool                         `json:"success"`
+		Data    []dto.ConversionHistorialDto `json:"data"`
+	}
+	if err := c.get("/local/conversiones/historial", &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) CancelarConversion(pedidoGuid string) error {
+	var result map[string]any
+	return c.post("/local/conversiones/cancelar", map[string]string{"pedidoGuid": pedidoGuid}, &result)
+}
+
 func (c *CajaProxyService) ObtenerTiposPedido() ([]models.TipoPedido, error) {
 	var result struct {
 		Success bool                `json:"success"`
@@ -318,6 +334,17 @@ func (c *CajaProxyService) BuildTransferReport(pedidoGuid string) (reportmodels.
 	}
 	if err := c.get(fmt.Sprintf("/local/transferencias/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
 		return reportmodels.TransferReport{}, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) BuildConversionReport(pedidoGuid string) (reportmodels.ConversionReport, error) {
+	var result struct {
+		Success bool                          `json:"success"`
+		Data    reportmodels.ConversionReport `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/conversiones/pdf-data?pedidoGuid=%s", url.QueryEscape(pedidoGuid)), &result); err != nil {
+		return reportmodels.ConversionReport{}, err
 	}
 	return result.Data, nil
 }

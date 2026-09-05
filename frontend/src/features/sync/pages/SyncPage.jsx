@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
 
 import {
-  SyncLineas, SyncMarcas, SyncEmpaques, SyncSatProductos, SyncSatUnidadesMedida,
+  SyncLineas, SyncMarcas, SyncEmpaques, SyncReglasConversionProducto, SyncSatProductos, SyncSatUnidadesMedida,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
@@ -85,6 +85,7 @@ const STAGES = [
     badgeBg: 'bg-orange-500/15 text-orange-600',
     catalogs: [
       { id: 10, name: 'Niveles Empaque',        endpoint: '/catalogos/niveles-empaque/get',     icon: LayoutGrid, sync: SyncNivelesEmpaque },
+      { id: 22, name: 'Reglas de conversión',   endpoint: '/catalogos/reglas-conversion-producto/get', icon: LayoutGrid, sync: SyncReglasConversionProducto },
     ],
   },
   {

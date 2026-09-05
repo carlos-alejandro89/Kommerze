@@ -110,6 +110,9 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/productos", l.handleProductos)
 	mux.HandleFunc("/local/conversiones/productos", l.handleProductosConvertibles)
 	mux.HandleFunc("/local/conversiones/ejecutar", l.handleEjecutarConversion)
+	mux.HandleFunc("/local/conversiones/historial", l.handleHistorialConversiones)
+	mux.HandleFunc("/local/conversiones/cancelar", l.handleCancelarConversion)
+	mux.HandleFunc("/local/conversiones/pdf-data", l.handleConversionPDFData)
 	mux.HandleFunc("/local/transacciones", l.handleTransacciones)
 	mux.HandleFunc("/local/solicitudes-productos", l.handleSolicitudesProductos)
 	mux.HandleFunc("/local/tipos-pedido", l.handleTiposPedido)
@@ -354,6 +357,56 @@ func (l *LocalServerService) handleEjecutarConversion(w http.ResponseWriter, r *
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": resultado})
+}
+
+func (l *LocalServerService) handleHistorialConversiones(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	items, err := l.conversiones.ConsultarConversiones()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": items})
+}
+
+func (l *LocalServerService) handleCancelarConversion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body struct {
+		PedidoGuid string `json:"pedidoGuid"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Solicitud inválida")
+		return
+	}
+	if err := l.conversiones.CancelarConversion(body.PedidoGuid); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Conversión cancelada"})
+}
+
+func (l *LocalServerService) handleConversionPDFData(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	guid := r.URL.Query().Get("pedidoGuid")
+	if guid == "" {
+		writeError(w, http.StatusBadRequest, "pedidoGuid requerido")
+		return
+	}
+	result, err := l.receipt.BuildConversionReport(guid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
 }
 
 func (l *LocalServerService) handleTiposPedido(w http.ResponseWriter, r *http.Request) {

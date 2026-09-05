@@ -18,6 +18,72 @@ func NewReceiptService(db *gorm.DB) *ReceiptService {
 	return &ReceiptService{db: db}
 }
 
+func (s *ReceiptService) BuildConversionReport(pedidoGuid string) (reportmodels.ConversionReport, error) {
+	var report reportmodels.ConversionReport
+	var row struct {
+		Folio                                                                      int
+		Fecha                                                                      time.Time
+		Estatus, Negocio, RazonSocial, RFCNegocio, Sucursal                        string
+		TelefonoSucursal, CorreoSucursal                                           string
+		OrigenCodigo, OrigenProducto, OrigenEmpaque                                string
+		DestinoCodigo, DestinoProducto, DestinoEmpaque                             string
+		CantidadOrigen, CantidadDestino, Factor                                    float64
+		PrecioVentaOrigen, PrecioVentaDestino, ValorVentaOrigen, ValorVentaDestino float64
+		ExistenciaDestinoInicial, ExistenciaDestinoFinal                           float64
+	}
+	if err := s.db.Raw(`
+		SELECT p.folio, p.fecha, es.nombre estatus,
+		       COALESCE(NULLIF(emp.nombre_comercial, ''), NULLIF(emp.razon_social, ''), 'KOMMERZE') negocio,
+		       COALESCE(emp.razon_social, '') razon_social, COALESCE(emp.rfc, '') rfc_negocio,
+		       COALESCE(su.nombre_sucursal, '') sucursal, COALESCE(su.telefono, '') telefono_sucursal,
+		       COALESCE(su.correo, '') correo_sucursal,
+		       no.codigo origen_codigo, po.descripcion origen_producto,
+		       COALESCE(eo.empaque, '') origen_empaque,
+		       pd.cantidad::double precision cantidad_origen,
+		       nd.codigo destino_codigo, pde.descripcion destino_producto,
+		       COALESCE(ed.empaque, '') destino_empaque,
+		       (pd.info_adicional::jsonb->>'cantidadDestino')::double precision cantidad_destino,
+		       COALESCE((pd.info_adicional::jsonb->>'factorConversion')::double precision, rc.factor_conversion::double precision) factor,
+		       COALESCE((pd.info_adicional::jsonb->>'precioVentaOrigen')::double precision, pd.precio_venta::double precision) precio_venta_origen,
+		       COALESCE((pd.info_adicional::jsonb->>'precioVentaDestino')::double precision, 0) precio_venta_destino,
+		       COALESCE((pd.info_adicional::jsonb->>'valorVentaOrigen')::double precision, (pd.cantidad * pd.precio_venta)::double precision) valor_venta_origen,
+		       COALESCE((pd.info_adicional::jsonb->>'valorVentaDestino')::double precision, 0) valor_venta_destino,
+		       COALESCE((pd.info_adicional::jsonb->>'existenciaDestinoInicial')::double precision, 0) existencia_destino_inicial,
+		       COALESCE((pd.info_adicional::jsonb->>'existenciaDestinoFinal')::double precision, (pd.info_adicional::jsonb->>'cantidadDestino')::double precision) existencia_destino_final
+		FROM pedidos p
+		JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.guid=?
+		JOIN estatus es ON es.id=p.estatus_id
+		JOIN pedido_detalle pd ON pd.pedido_id=p.id AND pd.deleted_at IS NULL
+		JOIN nivel_empaque no ON no.id=pd.nivel_id
+		JOIN productos po ON po.id=no.producto_id
+		LEFT JOIN empaques eo ON eo.id=no.empaque_id
+		JOIN reglas_conversion_producto rc ON rc.guid=(pd.info_adicional::jsonb->>'reglaGuid')::uuid
+		JOIN nivel_empaque nd ON nd.id=rc.nivel_empaque_destino_id
+		JOIN productos pde ON pde.id=nd.producto_id
+		LEFT JOIN empaques ed ON ed.id=nd.empaque_id
+		LEFT JOIN sucursales su ON su.id=p.sucursal_origen_id
+		LEFT JOIN empresas emp ON emp.id=su.empresa_id
+		WHERE p.guid=? AND p.deleted_at IS NULL
+		LIMIT 1`, models.TipoPedidoConversionGuid, pedidoGuid).Scan(&row).Error; err != nil {
+		return report, err
+	}
+	if row.Folio == 0 {
+		return report, fmt.Errorf("conversión no encontrada")
+	}
+	report = reportmodels.ConversionReport{
+		Folio: fmt.Sprintf("%07d", row.Folio), Fecha: row.Fecha, Estatus: row.Estatus,
+		Negocio: row.Negocio, RazonSocial: row.RazonSocial, RFCNegocio: row.RFCNegocio,
+		Sucursal: row.Sucursal, TelefonoSucursal: row.TelefonoSucursal, CorreoSucursal: row.CorreoSucursal,
+		OrigenCodigo: row.OrigenCodigo, OrigenProducto: row.OrigenProducto, OrigenEmpaque: row.OrigenEmpaque,
+		DestinoCodigo: row.DestinoCodigo, DestinoProducto: row.DestinoProducto, DestinoEmpaque: row.DestinoEmpaque,
+		CantidadOrigen: row.CantidadOrigen, CantidadDestino: row.CantidadDestino, Factor: row.Factor,
+		PrecioVentaOrigen: row.PrecioVentaOrigen, PrecioVentaDestino: row.PrecioVentaDestino,
+		ValorVentaOrigen: row.ValorVentaOrigen, ValorVentaDestino: row.ValorVentaDestino,
+		ExistenciaDestinoInicial: row.ExistenciaDestinoInicial, ExistenciaDestinoFinal: row.ExistenciaDestinoFinal,
+	}
+	return report, nil
+}
+
 func (s *ReceiptService) BuildTransferReport(pedidoGuid string) (reportmodels.TransferReport, error) {
 	var report reportmodels.TransferReport
 	var header struct {

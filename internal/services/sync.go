@@ -90,6 +90,30 @@ func (s *SyncService) SyncEmpaques() ([]any, error) {
 	return result.Data, nil
 }
 
+func (s *SyncService) SyncReglasConversionProducto() ([]any, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/reglas-conversion-producto/get", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error consultando reglas de conversión: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("el catálogo de reglas de conversión respondió %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decodificando reglas de conversión: %w", err)
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("no se pudieron obtener las reglas de conversión: %s", result.Mensaje)
+	}
+	if err := s.repo.SaveReglasConversionProducto(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando reglas de conversión: %w", err)
+	}
+	return result.Data, nil
+}
+
 func (s *SyncService) SyncSatUnidadesMedida() ([]any, error) {
 	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/sat/unidades-medida/get", s.apiBaseURL))
 	if err != nil {

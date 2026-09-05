@@ -291,6 +291,71 @@ export namespace dto {
 	        this.costo = source["costo"];
 	    }
 	}
+	export class ConversionHistorialDto {
+	    pedidoGuid: string;
+	    folio: number;
+	    fecha: string;
+	    estatus: string;
+	    estatusGuid: string;
+	    operacionSucursalId: number;
+	    codigoOrigen: string;
+	    productoOrigen: string;
+	    empaqueOrigen: string;
+	    imagenOrigen: string;
+	    // Go type: decimal
+	    cantidadOrigen: any;
+	    codigoDestino: string;
+	    productoDestino: string;
+	    empaqueDestino: string;
+	    imagenDestino: string;
+	    // Go type: decimal
+	    cantidadDestino: any;
+	    // Go type: decimal
+	    factorConversion: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConversionHistorialDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.folio = source["folio"];
+	        this.fecha = source["fecha"];
+	        this.estatus = source["estatus"];
+	        this.estatusGuid = source["estatusGuid"];
+	        this.operacionSucursalId = source["operacionSucursalId"];
+	        this.codigoOrigen = source["codigoOrigen"];
+	        this.productoOrigen = source["productoOrigen"];
+	        this.empaqueOrigen = source["empaqueOrigen"];
+	        this.imagenOrigen = source["imagenOrigen"];
+	        this.cantidadOrigen = this.convertValues(source["cantidadOrigen"], null);
+	        this.codigoDestino = source["codigoDestino"];
+	        this.productoDestino = source["productoDestino"];
+	        this.empaqueDestino = source["empaqueDestino"];
+	        this.imagenDestino = source["imagenDestino"];
+	        this.cantidadDestino = this.convertValues(source["cantidadDestino"], null);
+	        this.factorConversion = this.convertValues(source["factorConversion"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ConversionProductoDto {
 	    reglaId: number;
 	    reglaGuid: string;
@@ -530,6 +595,7 @@ export namespace dto {
 	export class EjecutarConversionDto {
 	    reglaGuid: string;
 	    cantidad: number;
+	    operacionCajeroId?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new EjecutarConversionDto(source);
@@ -539,6 +605,7 @@ export namespace dto {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.reglaGuid = source["reglaGuid"];
 	        this.cantidad = source["cantidad"];
+	        this.operacionCajeroId = source["operacionCajeroId"];
 	    }
 	}
 	export class EmitirFacturacionRequestDto {
@@ -1135,6 +1202,8 @@ export namespace dto {
 	    existenciaOrigen: any;
 	    // Go type: decimal
 	    existenciaDestino: any;
+	    pedidoGuid: string;
+	    folio: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ResultadoConversionDto(source);
@@ -1146,6 +1215,8 @@ export namespace dto {
 	        this.cantidadDestino = this.convertValues(source["cantidadDestino"], null);
 	        this.existenciaOrigen = this.convertValues(source["existenciaOrigen"], null);
 	        this.existenciaDestino = this.convertValues(source["existenciaDestino"], null);
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.folio = source["folio"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

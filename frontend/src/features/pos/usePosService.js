@@ -52,6 +52,11 @@ import {
     ServiceObtenerFacturaPDF,
     ServiceEnviarFacturaCorreo,
     ServiceOpenInvoiceLocation,
+    ServiceConsultarProductosConvertibles,
+    ServiceEjecutarConversion,
+    ServiceConsultarConversiones,
+    ServiceCancelarConversion,
+    ServiceGenerateConversionReport,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -153,6 +158,11 @@ export function usePosService() {
     const obtenerFacturaPDF = (pedidoGuid) => ServiceObtenerFacturaPDF(pedidoGuid);
     const enviarFacturaCorreo = (datos) => ServiceEnviarFacturaCorreo(datos);
     const abrirUbicacionFactura = (ruta) => ServiceOpenInvoiceLocation(ruta);
+    const consultarProductosConvertibles = (termino = '') => ServiceConsultarProductosConvertibles(termino);
+    const ejecutarConversion = (datos) => ServiceEjecutarConversion(datos);
+    const consultarConversiones = () => ServiceConsultarConversiones();
+    const cancelarConversion = (pedidoGuid) => ServiceCancelarConversion(pedidoGuid);
+    const generarReporteConversion = (pedidoGuid) => ServiceGenerateConversionReport(pedidoGuid);
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
@@ -227,6 +237,11 @@ export function usePosService() {
         obtenerFacturaPDF,
         enviarFacturaCorreo,
         abrirUbicacionFactura,
+        consultarProductosConvertibles,
+        ejecutarConversion,
+        consultarConversiones,
+        cancelarConversion,
+        generarReporteConversion,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

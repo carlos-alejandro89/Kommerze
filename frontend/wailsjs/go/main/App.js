@@ -42,6 +42,10 @@ export function ServiceBuscarProveedores(arg1) {
   return window['go']['main']['App']['ServiceBuscarProveedores'](arg1);
 }
 
+export function ServiceCancelarConversion(arg1) {
+  return window['go']['main']['App']['ServiceCancelarConversion'](arg1);
+}
+
 export function ServiceCancelarVenta(arg1) {
   return window['go']['main']['App']['ServiceCancelarVenta'](arg1);
 }
@@ -68,6 +72,10 @@ export function ServiceConsultaProductos(arg1, arg2) {
 
 export function ServiceConsultaTransacciones(arg1, arg2) {
   return window['go']['main']['App']['ServiceConsultaTransacciones'](arg1, arg2);
+}
+
+export function ServiceConsultarConversiones() {
+  return window['go']['main']['App']['ServiceConsultarConversiones']();
 }
 
 export function ServiceConsultarExistenciaProductos(arg1) {
@@ -124,6 +132,10 @@ export function ServiceEmitirFacturacion(arg1) {
 
 export function ServiceEnviarFacturaCorreo(arg1) {
   return window['go']['main']['App']['ServiceEnviarFacturaCorreo'](arg1);
+}
+
+export function ServiceGenerateConversionReport(arg1) {
+  return window['go']['main']['App']['ServiceGenerateConversionReport'](arg1);
 }
 
 export function ServiceGeneratePurchaseReport(arg1) {
@@ -388,6 +400,10 @@ export function SyncPerfiles() {
 
 export function SyncProductos() {
   return window['go']['main']['App']['SyncProductos']();
+}
+
+export function SyncReglasConversionProducto() {
+  return window['go']['main']['App']['SyncReglasConversionProducto']();
 }
 
 export function SyncRolesFiscales() {

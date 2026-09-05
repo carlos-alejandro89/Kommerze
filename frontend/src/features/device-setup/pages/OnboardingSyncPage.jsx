@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, CloudDownload, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import {
-  SyncLineas, SyncMarcas, SyncEmpaques, SyncSatProductos, SyncSatUnidadesMedida,
+  SyncLineas, SyncMarcas, SyncEmpaques, SyncReglasConversionProducto, SyncSatProductos, SyncSatUnidadesMedida,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago, SyncSatUsosCfdi,
   SyncSatRegimenFiscal, SyncNivelesEmpaque, SyncEmpresas, SyncSucursales,
   SyncPerfiles, SyncUsuarios, SyncTiposPedido, SyncTiposAutorizacion,
@@ -19,6 +19,7 @@ const CATALOGS = [
   ['Tipos de autorización', SyncTiposAutorizacion], ['Estatus', SyncEstatus],
   ['Empresas', SyncEmpresas], ['Usuarios', SyncUsuarios], ['Clientes y datos fiscales', SyncClientes],
   ['Sucursales', SyncSucursales], ['Productos', SyncProductos], ['Niveles de empaque', SyncNivelesEmpaque],
+  ['Reglas de conversión', SyncReglasConversionProducto],
 ];
 
 export function OnboardingSyncPage() {

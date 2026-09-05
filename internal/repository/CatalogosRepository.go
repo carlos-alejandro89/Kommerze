@@ -114,6 +114,109 @@ func (c *CatalogosRepository) SaveEmpaques(data []any) error {
 	return nil
 }
 
+func (c *CatalogosRepository) SaveReglasConversionProducto(data []any) error {
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		var niveles []models.NivelEmpaque
+		if err := tx.Find(&niveles).Error; err != nil {
+			return fmt.Errorf("error consultando niveles de empaque: %w", err)
+		}
+		nivelesPorGuid := make(map[uuid.UUID]uint, len(niveles))
+		for _, nivel := range niveles {
+			nivelesPorGuid[nivel.Guid] = nivel.ID
+		}
+
+		for _, fila := range data {
+			fMap, ok := fila.(map[string]any)
+			if !ok {
+				continue
+			}
+			reglaGuid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["reglaGuid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de regla de conversión inválido: %w", err)
+			}
+			origenGuid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["nivelEmpaqueOrigenGuid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de nivel origen inválido para la regla %s: %w", reglaGuid, err)
+			}
+			destinoGuid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["nivelEmpaqueDestinoGuid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de nivel destino inválido para la regla %s: %w", reglaGuid, err)
+			}
+			origenID, existeOrigen := nivelesPorGuid[origenGuid]
+			destinoID, existeDestino := nivelesPorGuid[destinoGuid]
+			if !existeOrigen || !existeDestino {
+				continue
+			}
+			// Una conversión hacia el mismo nivel no transforma inventario y viola
+			// la regla de dominio. Ignorar datos inválidos del catálogo remoto evita
+			// que una sola fila interrumpa la sincronización completa.
+			if origenID == destinoID {
+				continue
+			}
+
+			factorSugerido, err := decimal.NewFromString(strings.TrimSpace(fmt.Sprintf("%v", fMap["factorSugerido"])))
+			if err != nil || factorSugerido.LessThanOrEqual(decimal.Zero) {
+				return fmt.Errorf("factor sugerido inválido para la regla %s", reglaGuid)
+			}
+			factorConversion, err := decimal.NewFromString(strings.TrimSpace(fmt.Sprintf("%v", fMap["factorConversion"])))
+			if err != nil || factorConversion.LessThanOrEqual(decimal.Zero) {
+				return fmt.Errorf("factor de conversión inválido para la regla %s", reglaGuid)
+			}
+			createdAt := parseCatalogSyncTime(fMap["createdAt"], time.Now().UTC())
+			updatedAt := parseCatalogSyncTime(fMap["updatedAt"], createdAt)
+			configuradoManualmente := fmt.Sprintf("%v", fMap["configuradoManualmente"]) == "true"
+			activo := fmt.Sprintf("%v", fMap["activo"]) == "true"
+
+			regla := models.ReglaConversionProducto{}
+			lookup := tx.Unscoped().Where(
+				"guid = ? OR (nivel_empaque_origen_id = ? AND nivel_empaque_destino_id = ?)",
+				reglaGuid, origenID, destinoID,
+			).First(&regla)
+			if lookup.Error != nil && lookup.Error != gorm.ErrRecordNotFound {
+				return fmt.Errorf("error consultando regla de conversión %s: %w", reglaGuid, lookup.Error)
+			}
+
+			valores := map[string]any{
+				"guid":                     reglaGuid,
+				"nivel_empaque_origen_id":  origenID,
+				"nivel_empaque_destino_id": destinoID,
+				"factor_sugerido":          factorSugerido,
+				"factor_conversion":        factorConversion,
+				"configurado_manualmente":  configuradoManualmente,
+				"activo":                   activo,
+				"created_at":               createdAt,
+				"updated_at":               updatedAt,
+				"deleted_at":               nil,
+			}
+			if lookup.Error == gorm.ErrRecordNotFound {
+				regla = models.ReglaConversionProducto{
+					BaseModel:              models.BaseModel{Guid: reglaGuid, CreatedAt: createdAt, UpdatedAt: updatedAt},
+					NivelEmpaqueOrigenID:   origenID,
+					NivelEmpaqueDestinoID:  destinoID,
+					FactorSugerido:         factorSugerido,
+					FactorConversion:       factorConversion,
+					ConfiguradoManualmente: configuradoManualmente,
+					Activo:                 activo,
+				}
+				if err := tx.Create(&regla).Error; err != nil {
+					return fmt.Errorf("error insertando regla de conversión %s: %w", reglaGuid, err)
+				}
+			} else if err := tx.Unscoped().Model(&regla).Updates(valores).Error; err != nil {
+				return fmt.Errorf("error actualizando regla de conversión %s: %w", reglaGuid, err)
+			}
+		}
+		return nil
+	})
+}
+
+func parseCatalogSyncTime(value any, fallback time.Time) time.Time {
+	raw := strings.TrimSpace(fmt.Sprintf("%v", value))
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil && parsed.Year() > 1 {
+		return parsed.UTC()
+	}
+	return fallback.UTC()
+}
+
 func (c *CatalogosRepository) GetMarcas() (*dto.ResponseDto, error) {
 	var marcas []models.Marca
 	if err := c.db.Find(&marcas).Error; err != nil {

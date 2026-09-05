@@ -26,6 +26,8 @@ export function ServiceBuscarEntidadesFacturacion(arg1:string):Promise<Array<dto
 
 export function ServiceBuscarProveedores(arg1:string):Promise<Array<dto.ProveedorFiscalDto>>;
 
+export function ServiceCancelarConversion(arg1:string):Promise<void>;
+
 export function ServiceCancelarVenta(arg1:string):Promise<dto.ResponseDto>;
 
 export function ServiceCerrarCaja(arg1:dto.CerrarCajaDto):Promise<dto.ResponseDto>;
@@ -39,6 +41,8 @@ export function ServiceConfirmarTransaccion(arg1:any,arg2:Array<dto.PagosAplicad
 export function ServiceConsultaProductos(arg1:string,arg2:boolean):Promise<Array<dto.ProductoDto>>;
 
 export function ServiceConsultaTransacciones(arg1:any,arg2:any):Promise<dto.ResponseDto>;
+
+export function ServiceConsultarConversiones():Promise<Array<dto.ConversionHistorialDto>>;
 
 export function ServiceConsultarExistenciaProductos(arg1:Array<uuid.UUID>):Promise<Array<dto.InventarioDto>>;
 
@@ -67,6 +71,8 @@ export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 export function ServiceEmitirFacturacion(arg1:dto.EmitirFacturacionRequestDto):Promise<dto.FacturacionResultadoDto>;
 
 export function ServiceEnviarFacturaCorreo(arg1:dto.EnviarFacturaEmailRequestDto):Promise<void>;
+
+export function ServiceGenerateConversionReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
 
@@ -199,6 +205,8 @@ export function SyncNivelesEmpaque():Promise<string>;
 export function SyncPerfiles():Promise<string>;
 
 export function SyncProductos():Promise<string>;
+
+export function SyncReglasConversionProducto():Promise<string>;
 
 export function SyncRolesFiscales():Promise<string>;
 

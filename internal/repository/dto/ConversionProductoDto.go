@@ -28,8 +28,9 @@ type ConversionProductoDto struct {
 }
 
 type EjecutarConversionDto struct {
-	ReglaGuid string  `json:"reglaGuid"`
-	Cantidad  float64 `json:"cantidad"`
+	ReglaGuid         string  `json:"reglaGuid"`
+	Cantidad          float64 `json:"cantidad"`
+	OperacionCajeroID *uint   `json:"operacionCajeroId"`
 }
 
 type ResultadoConversionDto struct {
@@ -37,4 +38,26 @@ type ResultadoConversionDto struct {
 	CantidadDestino   decimal.Decimal `json:"cantidadDestino"`
 	ExistenciaOrigen  decimal.Decimal `json:"existenciaOrigen"`
 	ExistenciaDestino decimal.Decimal `json:"existenciaDestino"`
+	PedidoGuid        string          `json:"pedidoGuid"`
+	Folio             int             `json:"folio"`
+}
+
+type ConversionHistorialDto struct {
+	PedidoGuid          string          `json:"pedidoGuid"`
+	Folio               int             `json:"folio"`
+	Fecha               string          `json:"fecha"`
+	Estatus             string          `json:"estatus"`
+	EstatusGuid         string          `json:"estatusGuid"`
+	OperacionSucursalID uint            `json:"operacionSucursalId"`
+	CodigoOrigen        string          `json:"codigoOrigen"`
+	ProductoOrigen      string          `json:"productoOrigen"`
+	EmpaqueOrigen       string          `json:"empaqueOrigen"`
+	ImagenOrigen        string          `json:"imagenOrigen"`
+	CantidadOrigen      decimal.Decimal `json:"cantidadOrigen"`
+	CodigoDestino       string          `json:"codigoDestino"`
+	ProductoDestino     string          `json:"productoDestino"`
+	EmpaqueDestino      string          `json:"empaqueDestino"`
+	ImagenDestino       string          `json:"imagenDestino"`
+	CantidadDestino     decimal.Decimal `json:"cantidadDestino"`
+	FactorConversion    decimal.Decimal `json:"factorConversion"`
 }
