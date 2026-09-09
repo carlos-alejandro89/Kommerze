@@ -26,6 +26,8 @@ export function ServiceBuscarEntidadesFacturacion(arg1:string):Promise<Array<dto
 
 export function ServiceBuscarProveedores(arg1:string):Promise<Array<dto.ProveedorFiscalDto>>;
 
+export function ServiceCancelarCFDIVenta(arg1:dto.CancelarCFDIVentaRequestDto):Promise<dto.ResponseDto>;
+
 export function ServiceCancelarConversion(arg1:string):Promise<void>;
 
 export function ServiceCancelarVenta(arg1:string):Promise<dto.ResponseDto>;
@@ -71,6 +73,8 @@ export function ServiceEmailReceipt(arg1:string,arg2:string):Promise<void>;
 export function ServiceEmitirFacturacion(arg1:dto.EmitirFacturacionRequestDto):Promise<dto.FacturacionResultadoDto>;
 
 export function ServiceEnviarFacturaCorreo(arg1:dto.EnviarFacturaEmailRequestDto):Promise<void>;
+
+export function ServiceGenerarFacturacionGlobal(arg1:number):Promise<dto.ResponseDto>;
 
 export function ServiceGenerateConversionReport(arg1:string):Promise<models.DocumentOutput>;
 
@@ -128,11 +132,15 @@ export function ServiceLoadReceiptLogo():Promise<string>;
 
 export function ServiceLogin(arg1:string,arg2:string):Promise<models.Usuario>;
 
+export function ServiceObtenerAcuseCancelacionPDF(arg1:string):Promise<dto.FacturacionResultadoDto>;
+
 export function ServiceObtenerCajaConfigurada():Promise<models.Caja>;
 
 export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
 
 export function ServiceObtenerFacturaPDF(arg1:string):Promise<dto.FacturacionResultadoDto>;
+
+export function ServiceObtenerMotivosCancelacionCFDI():Promise<Array<dto.SatMotivoCancelacionDto>>;
 
 export function ServiceObtenerOperacionCajeroActiva(arg1:number):Promise<dto.ResponseDto>;
 
@@ -213,6 +221,8 @@ export function SyncRolesFiscales():Promise<string>;
 export function SyncSatFormasPago():Promise<string>;
 
 export function SyncSatMetodosPago():Promise<string>;
+
+export function SyncSatMotivosCancelacion():Promise<string>;
 
 export function SyncSatProductos():Promise<string>;
 

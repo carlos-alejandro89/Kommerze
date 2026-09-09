@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: process.env.VITE_BASE_URL || '/',
   resolve: {
+    dedupe: ['react', 'react-dom', '@react-pdf-viewer/core'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },

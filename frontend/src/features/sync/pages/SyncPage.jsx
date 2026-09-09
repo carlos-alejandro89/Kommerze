@@ -11,6 +11,7 @@ import { useActivation } from '@/providers/ActivationProvider';
 
 import {
   SyncLineas, SyncMarcas, SyncEmpaques, SyncReglasConversionProducto, SyncSatProductos, SyncSatUnidadesMedida,
+  SyncSatMotivosCancelacion,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
@@ -36,6 +37,7 @@ const STAGES = [
       { id: 6,  name: 'SAT Formas Pago',          endpoint: '/catalogos/sat/formas-pago/get',       icon: LayoutGrid, sync: SyncSatFormasPago },
       { id: 7,  name: 'SAT Métodos Pago',         endpoint: '/catalogos/sat/metodos-pago/get',      icon: LayoutGrid, sync: SyncSatMetodosPago },
       { id: 9,  name: 'SAT Usos CFDI',            endpoint: '/catalogos/sat/usos-cfdi/get',         icon: LayoutGrid, sync: SyncSatUsosCfdi },
+      { id: 23, name: 'SAT Motivos de cancelación', endpoint: '/api/sat/motivos-cancelacion',        icon: LayoutGrid, sync: SyncSatMotivosCancelacion },
       { id: 4,  name: 'SAT Claves Productos',     endpoint: '/catalogos/sat/productos/get',         icon: LayoutGrid, sync: SyncSatProductos },
       { id: 1,  name: 'Líneas',                   endpoint: '/catalogos/lineas/get',                icon: Package,    sync: SyncLineas },
       { id: 2,  name: 'Marcas',                   endpoint: '/catalogos/marcas/get',                icon: Users,      sync: SyncMarcas },

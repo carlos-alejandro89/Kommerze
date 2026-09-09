@@ -61,6 +61,20 @@ type EnviarFacturaEmailRequestDto struct {
 	Destinatarios []string `json:"destinatarios"`
 }
 
+type SatMotivoCancelacionDto struct {
+	ID                       uint   `json:"ID"`
+	Guid                     string `json:"Guid"`
+	CveMotivo                string `json:"CveMotivo"`
+	MotivoCancelacion        string `json:"MotivoCancelacion"`
+	RequiereFolioSustitucion bool   `json:"RequiereFolioSustitucion"`
+}
+
+type CancelarCFDIVentaRequestDto struct {
+	PedidoGuid       string `json:"pedidoGuid"`
+	CveMotivo        string `json:"cveMotivo"`
+	FolioSustitucion string `json:"folioSustitucion"`
+}
+
 type FacturacionResultadoDto struct {
 	Success     bool   `json:"success"`
 	Mensaje     string `json:"mensaje"`

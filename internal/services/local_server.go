@@ -131,7 +131,11 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/facturacion/entidades", l.handleBuscarEntidadesFacturacion)
 	mux.HandleFunc("/local/facturacion/emitir", l.handleEmitirFacturacion)
 	mux.HandleFunc("/local/facturacion/pdf", l.handleObtenerFacturaPDF)
+	mux.HandleFunc("/local/facturacion/acuse-cancelacion", l.handleObtenerAcuseCancelacionPDF)
+	mux.HandleFunc("/local/facturacion/global", l.handleGenerarFacturacionGlobal)
 	mux.HandleFunc("/local/facturacion/enviar-correo", l.handleEnviarFacturaCorreo)
+	mux.HandleFunc("/local/facturacion/motivos-cancelacion", l.handleObtenerMotivosCancelacion)
+	mux.HandleFunc("/local/facturacion/cancelar", l.handleCancelarCFDIVenta)
 	mux.HandleFunc("/local/catalogos/marcas", l.handleMarcas)
 	mux.HandleFunc("/local/catalogos/lineas", l.handleLineas)
 	mux.HandleFunc("/local/catalogos/empaques", l.handleEmpaques)
@@ -1127,6 +1131,39 @@ func (l *LocalServerService) handleObtenerFacturaPDF(w http.ResponseWriter, r *h
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
 }
 
+func (l *LocalServerService) handleObtenerAcuseCancelacionPDF(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.facturacion.ObtenerAcuseCancelacionPDF(r.URL.Query().Get("pedidoGuid"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleGenerarFacturacionGlobal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body struct {
+		OperacionID uint `json:"operacionId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.OperacionID == 0 {
+		writeError(w, http.StatusBadRequest, "operacionId requerido")
+		return
+	}
+	result, err := l.facturacion.GenerarFacturacionGlobal(body.OperacionID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
 func (l *LocalServerService) handleEnviarFacturaCorreo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
@@ -1142,4 +1179,35 @@ func (l *LocalServerService) handleEnviarFacturaCorreo(w http.ResponseWriter, r 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Factura enviada correctamente"})
+}
+
+func (l *LocalServerService) handleObtenerMotivosCancelacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	result, err := l.facturacion.ObtenerMotivosCancelacion()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleCancelarCFDIVenta(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var req dto.CancelarCFDIVentaRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Solicitud inválida")
+		return
+	}
+	result, err := l.facturacion.CancelarCFDIVenta(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
 }

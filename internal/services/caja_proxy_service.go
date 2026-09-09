@@ -108,6 +108,28 @@ func (c *CajaProxyService) ObtenerFacturaPDF(pedidoGuid string) (*dto.Facturacio
 	return &result.Data, nil
 }
 
+func (c *CajaProxyService) ObtenerAcuseCancelacionPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	var result struct {
+		Success bool                        `json:"success"`
+		Data    dto.FacturacionResultadoDto `json:"data"`
+	}
+	if err := c.get("/local/facturacion/acuse-cancelacion?pedidoGuid="+url.QueryEscape(pedidoGuid), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (c *CajaProxyService) GenerarFacturacionGlobal(operacionID uint) (*dto.ResponseDto, error) {
+	var result struct {
+		Success bool            `json:"success"`
+		Data    dto.ResponseDto `json:"data"`
+	}
+	if err := c.post("/local/facturacion/global", map[string]any{"operacionId": operacionID}, &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
 func (c *CajaProxyService) BuscarEntidadesReceptoras(termino string) ([]dto.FacturacionEntidadDto, error) {
 	var result struct {
 		Success bool                        `json:"success"`
@@ -122,6 +144,28 @@ func (c *CajaProxyService) BuscarEntidadesReceptoras(termino string) ([]dto.Fact
 func (c *CajaProxyService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	var result map[string]any
 	return c.post("/local/facturacion/enviar-correo", req, &result)
+}
+
+func (c *CajaProxyService) ObtenerMotivosCancelacion() ([]dto.SatMotivoCancelacionDto, error) {
+	var result struct {
+		Success bool                          `json:"success"`
+		Data    []dto.SatMotivoCancelacionDto `json:"data"`
+	}
+	if err := c.get("/local/facturacion/motivos-cancelacion", &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) CancelarCFDIVenta(req dto.CancelarCFDIVentaRequestDto) (*dto.ResponseDto, error) {
+	var result struct {
+		Success bool            `json:"success"`
+		Data    dto.ResponseDto `json:"data"`
+	}
+	if err := c.post("/local/facturacion/cancelar", req, &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
 }
 
 // ── PosService equivalentes ───────────────────────────────────────────────────

@@ -251,6 +251,17 @@ func (a *App) SyncSatUnidadesMedida() (string, error) {
 	return "Sincronizado", nil
 }
 
+func (a *App) SyncSatMotivosCancelacion() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncSatMotivosCancelacion()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
 func (a *App) SyncMarcas() (string, error) {
 	if a.services.Sync == nil {
 		return "", fmt.Errorf("sincronización no disponible en modo Caja")
@@ -960,7 +971,11 @@ func (a *App) facturacionService() interface {
 	BuscarEntidadesReceptoras(string) ([]dto.FacturacionEntidadDto, error)
 	EmitirFactura(dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error)
 	ObtenerFacturaPDF(string) (*dto.FacturacionResultadoDto, error)
+	ObtenerAcuseCancelacionPDF(string) (*dto.FacturacionResultadoDto, error)
+	GenerarFacturacionGlobal(uint) (*dto.ResponseDto, error)
 	EnviarFacturaCorreo(dto.EnviarFacturaEmailRequestDto) error
+	ObtenerMotivosCancelacion() ([]dto.SatMotivoCancelacionDto, error)
+	CancelarCFDIVenta(dto.CancelarCFDIVentaRequestDto) (*dto.ResponseDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -984,8 +999,24 @@ func (a *App) ServiceObtenerFacturaPDF(pedidoGuid string) (*dto.FacturacionResul
 	return a.facturacionService().ObtenerFacturaPDF(pedidoGuid)
 }
 
+func (a *App) ServiceObtenerAcuseCancelacionPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	return a.facturacionService().ObtenerAcuseCancelacionPDF(pedidoGuid)
+}
+
+func (a *App) ServiceGenerarFacturacionGlobal(operacionID uint) (*dto.ResponseDto, error) {
+	return a.facturacionService().GenerarFacturacionGlobal(operacionID)
+}
+
 func (a *App) ServiceEnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	return a.facturacionService().EnviarFacturaCorreo(req)
+}
+
+func (a *App) ServiceObtenerMotivosCancelacionCFDI() ([]dto.SatMotivoCancelacionDto, error) {
+	return a.facturacionService().ObtenerMotivosCancelacion()
+}
+
+func (a *App) ServiceCancelarCFDIVenta(req dto.CancelarCFDIVentaRequestDto) (*dto.ResponseDto, error) {
+	return a.facturacionService().CancelarCFDIVenta(req)
 }
 
 // ServiceOpenInvoiceLocation abre en el administrador de archivos nativo la

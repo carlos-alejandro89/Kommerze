@@ -2,12 +2,15 @@ package services
 
 import (
 	"BitComercio/internal/models"
+	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
 	reportmodels "BitComercio/internal/usecases/reports/models"
 	"BitComercio/internal/usecases/reports/renders"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -55,6 +59,36 @@ type cfdiEmissionResponse struct {
 		CadenaOriginalSAT   string `json:"cadenaOriginalSat"`
 		CFDIXMLBase64       string `json:"cfdiXmlBase64"`
 	} `json:"data"`
+}
+
+type cfdiCancellationResponse struct {
+	Success     bool   `json:"success"`
+	Mensaje     string `json:"mensaje"`
+	HTTPCode    int    `json:"httpCode"`
+	AcuseBase64 string `json:"acuseBase64"`
+	Data        struct {
+		AcuseBase64 string `json:"acuseBase64"`
+	} `json:"data"`
+}
+
+type cancellationReceiptXML struct {
+	Fecha     string `xml:"Fecha,attr"`
+	RFCEmisor string `xml:"RfcEmisor,attr"`
+	Folios    struct {
+		UUID        string `xml:"UUID"`
+		EstatusUUID string `xml:"EstatusUUID"`
+	} `xml:"Folios"`
+	Signature struct {
+		SignatureValue string `xml:"SignatureValue"`
+		SignedInfo     struct {
+			Reference struct {
+				DigestValue string `xml:"DigestValue"`
+			} `xml:"Reference"`
+		} `xml:"SignedInfo"`
+		KeyInfo struct {
+			KeyName string `xml:"KeyName"`
+		} `xml:"KeyInfo"`
+	} `xml:"Signature"`
 }
 
 var invoiceFilePartPattern = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
@@ -118,6 +152,47 @@ func saveInvoicePDF(xmlPath string, pdf []byte) (string, error) {
 		return "", fmt.Errorf("no se pudo guardar el PDF fiscal: %w", err)
 	}
 	return path, nil
+}
+
+func saveCancellationXML(folder, serie string, folio int, invoiceUUID, encoded string) (string, []byte, error) {
+	folder = strings.TrimSpace(folder)
+	if folder == "" {
+		return "", nil, fmt.Errorf("configura la Carpeta de facturas en Configuración > Facturación")
+	}
+	absoluteFolder, err := filepath.Abs(folder)
+	if err != nil {
+		return "", nil, fmt.Errorf("ruta de facturas inválida: %w", err)
+	}
+	xmlBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(encoded))
+	if err != nil || len(xmlBytes) == 0 {
+		return "", nil, fmt.Errorf("el servicio devolvió un acuse XML Base64 inválido")
+	}
+	if err = os.MkdirAll(absoluteFolder, 0755); err != nil {
+		return "", nil, fmt.Errorf("no se pudo preparar la carpeta de facturas: %w", err)
+	}
+	fileName := fmt.Sprintf("CFDICancel_%s_%06d_%s.xml", invoiceFilePartPattern.ReplaceAllString(serie, "_"), folio, invoiceFilePartPattern.ReplaceAllString(invoiceUUID, "_"))
+	path := filepath.Join(absoluteFolder, fileName)
+	if err = os.WriteFile(path, xmlBytes, 0644); err != nil {
+		return "", nil, fmt.Errorf("no se pudo guardar el XML del acuse: %w", err)
+	}
+	return path, xmlBytes, nil
+}
+
+func cancellationReceiptFromXML(contents []byte) (reportmodels.CancellationReceipt, error) {
+	var parsed cancellationReceiptXML
+	if err := xml.Unmarshal(contents, &parsed); err != nil {
+		return reportmodels.CancellationReceipt{}, fmt.Errorf("el acuse de cancelación no contiene un XML válido: %w", err)
+	}
+	date, err := parseStampDate(parsed.Fecha)
+	if err != nil {
+		return reportmodels.CancellationReceipt{}, fmt.Errorf("el acuse contiene una fecha inválida: %w", err)
+	}
+	return reportmodels.CancellationReceipt{
+		Fecha: date, RFCEmisor: parsed.RFCEmisor, UUID: parsed.Folios.UUID,
+		EstatusUUID: parsed.Folios.EstatusUUID, CertificadoSAT: parsed.Signature.KeyInfo.KeyName,
+		DigestValue:    parsed.Signature.SignedInfo.Reference.DigestValue,
+		SignatureValue: parsed.Signature.SignatureValue,
+	}, nil
 }
 
 func joinAddress(parts ...string) string {
@@ -523,6 +598,264 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	return &dto.FacturacionResultadoDto{Success: true, Mensaje: stamped.Mensaje, UUID: stamped.Data.UUID, PDFBase64: base64.StdEncoding.EncodeToString(pdfBytes), PDFFileName: filepath.Base(pdfPath), Data: map[string]any{"uuid": stamped.Data.UUID, "fechaTimbrado": stamped.Data.FechaTimbrado, "archivoXML": xmlPath, "archivoPDF": pdfPath, "correoReceptor": receptor.Correo}}, nil
 }
 
+type globalInvoiceTicket struct {
+	PedidoID uint
+	Folio    int
+	FormaID  uint
+	Clave    string
+	Total    decimal.Decimal
+}
+
+// GenerarFacturacionGlobal emite un CFDI por cada forma de pago soportada con
+// un concepto por ticket no facturado de la jornada.
+func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.ResponseDto, error) {
+	var operacion models.OperacionSucursal
+	if err := s.db.Preload("Sucursal.Empresa.RegimenFiscal").First(&operacion, operacionID).Error; err != nil {
+		return nil, fmt.Errorf("jornada no encontrada: %w", err)
+	}
+	fechaFin := time.Now()
+	if operacion.FechaFin != nil {
+		fechaFin = *operacion.FechaFin
+	}
+	var tickets []globalInvoiceTicket
+	if err := s.db.Raw(`
+		WITH ventas AS (
+			SELECT p.id pedido_id, p.folio,
+			       COALESCE(SUM(
+				   (pd.precio_venta * pd.cantidad) -
+				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			   ), 0) total
+			FROM pedidos p
+			JOIN pedido_detalle pd ON pd.pedido_id=p.id AND pd.deleted_at IS NULL
+			JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.deleted_at IS NULL
+			JOIN estatus e ON e.id=p.estatus_id AND e.deleted_at IS NULL
+			WHERE p.sucursal_origen_id=? AND p.fecha BETWEEN ? AND ?
+			  AND tp.guid::text=? AND LOWER(e.nombre) IN ('completado', 'completada')
+			  AND p.factura_id IS NULL AND p.deleted_at IS NULL
+			GROUP BY p.id, p.folio
+		), predominantes AS (
+			SELECT pg.pedido_id, pg.forma_id,
+			       ROW_NUMBER() OVER (PARTITION BY pg.pedido_id ORDER BY SUM(pg.monto) DESC, pg.forma_id) posicion
+			FROM pagos pg JOIN ventas v ON v.pedido_id=pg.pedido_id
+			WHERE pg.deleted_at IS NULL
+			GROUP BY pg.pedido_id, pg.forma_id
+		)
+		SELECT v.pedido_id, v.folio, pr.forma_id, forma.clave, v.total
+		FROM ventas v
+		JOIN predominantes pr ON pr.pedido_id=v.pedido_id AND pr.posicion=1
+		JOIN sat_formas_pago forma ON forma.id=pr.forma_id AND forma.deleted_at IS NULL
+		WHERE forma.clave IN ('01', '03', '04', '28')
+		ORDER BY forma.clave, v.folio
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin, models.TipoPedidoVentaGuid).Scan(&tickets).Error; err != nil {
+		return nil, fmt.Errorf("no se pudieron preparar las ventas para facturación global: %w", err)
+	}
+
+	porForma := make(map[string][]globalInvoiceTicket)
+	for _, ticket := range tickets {
+		porForma[ticket.Clave] = append(porForma[ticket.Clave], ticket)
+	}
+	porcentajeEfectivo := operacion.Sucursal.ComisionVentas
+	if porcentajeEfectivo.IsNegative() || porcentajeEfectivo.GreaterThan(decimal.NewFromInt(100)) {
+		return nil, fmt.Errorf("ComisionVentas debe encontrarse entre 0 y 100")
+	}
+
+	cfg, err := LoadKommerzConfig()
+	if err != nil {
+		return nil, err
+	}
+	if cfg.FacturacionAPIHost == "" || cfg.FacturacionClientID == "" || cfg.FacturacionClientSecret == "" {
+		return nil, fmt.Errorf("configura Api Host, Client ID y Client Secret en Configuración > Facturación")
+	}
+	if strings.TrimSpace(cfg.FacturacionXMLPath) == "" {
+		return nil, fmt.Errorf("configura la Carpeta de facturas en Configuración > Facturación")
+	}
+	accessToken, err := s.facturacionToken(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	resultados := make([]map[string]any, 0, len(porForma))
+	for _, clave := range []string{"01", "04", "28", "03"} {
+		grupo := porForma[clave]
+		if len(grupo) == 0 {
+			continue
+		}
+		if clave == "01" {
+			for index := range grupo {
+				grupo[index].Total = grupo[index].Total.Mul(porcentajeEfectivo).Div(decimal.NewFromInt(100))
+			}
+		}
+		resultado, emitErr := s.emitirFacturaGlobal(cfg, accessToken, operacion, clave, grupo)
+		if emitErr != nil {
+			return nil, emitErr
+		}
+		resultados = append(resultados, resultado)
+	}
+	return dto.NewResponseDto(true, "Facturación global generada correctamente", resultados, nil), nil
+}
+
+func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken string, operacion models.OperacionSucursal, claveForma string, tickets []globalInvoiceTicket) (map[string]any, error) {
+	var forma models.SATFormaPago
+	if err := s.db.Where("clave = ? AND deleted_at IS NULL", claveForma).First(&forma).Error; err != nil {
+		return nil, fmt.Errorf("forma de pago SAT %s no encontrada", claveForma)
+	}
+	var metodo models.SATMetodoPago
+	if err := s.db.Where("clave = ? AND deleted_at IS NULL", "PUE").First(&metodo).Error; err != nil {
+		return nil, fmt.Errorf("método de pago PUE no encontrado")
+	}
+	var uso models.SATUsoCFDI
+	if err := s.db.Where("clave = ? AND deleted_at IS NULL", "S01").First(&uso).Error; err != nil {
+		return nil, fmt.Errorf("uso CFDI S01 no encontrado")
+	}
+
+	conceptos := make([]map[string]any, 0, len(tickets))
+	items := make([]reportmodels.InvoiceItem, 0, len(tickets))
+	pedidoIDs := make([]uint, 0, len(tickets))
+	subtotal, impuestos := decimal.Zero, decimal.Zero
+	for _, ticket := range tickets {
+		base := ticket.Total.Div(decimal.NewFromFloat(1.16)).Round(6)
+		iva := ticket.Total.Sub(base).Round(6)
+		subtotal = subtotal.Add(base)
+		impuestos = impuestos.Add(iva)
+		identificacion := fmt.Sprintf("%07d", ticket.Folio)
+		conceptos = append(conceptos, map[string]any{
+			"claveProdServ": "01010101", "noIdentificacion": identificacion,
+			"descripcion": "VENTA", "cantidad": 1, "claveUnidad": "H87", "unidad": "PIEZA",
+			"valorUnitario": satNumber(base), "importe": satNumber(base), "objetoImp": "02",
+			"impuestos": []map[string]any{{"importeImpuesto": satNumber(iva), "baseImpuesto": satNumber(base), "impuesto": "002", "tasaOCuota": "0.160000"}},
+		})
+		items = append(items, reportmodels.InvoiceItem{Codigo: identificacion, ClaveSAT: "01010101", Descripcion: "VENTA", Unidad: "PIEZA", Cantidad: 1, PrecioUnitario: satNumber(base), Impuestos: satNumber(iva), Importe: satNumber(base)})
+		pedidoIDs = append(pedidoIDs, ticket.PedidoID)
+	}
+	total := subtotal.Add(impuestos)
+	now := time.Now()
+	fechaCFDI, err := fechaFacturacion(now)
+	if err != nil {
+		return nil, err
+	}
+	serie := strings.TrimSpace(operacion.Sucursal.SerieCFDI)
+	if serie == "" {
+		serie = "A"
+	}
+
+	s.folioMu.Lock()
+	defer s.folioMu.Unlock()
+	var sequence struct {
+		LastValue int  `gorm:"column:last_value"`
+		IsCalled  bool `gorm:"column:is_called"`
+	}
+	if err = s.db.Raw("SELECT last_value, is_called FROM consecutivo_folio_factura").Scan(&sequence).Error; err != nil {
+		return nil, fmt.Errorf("no se pudo generar el folio de la factura global: %w", err)
+	}
+	folio := sequence.LastValue
+	if sequence.IsCalled {
+		folio++
+	}
+	empresa := operacion.Sucursal.Empresa
+	payload := map[string]any{
+		"serie": serie, "folioInterno": fmt.Sprintf("%06d", folio), "fecha": fechaCFDI,
+		"cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion,
+		"cveFormaPago": forma.Clave, "formaPago": forma.Descripcion,
+		"subTotal": satNumber(subtotal), "descuentos": 0, "impuestos": satNumber(impuestos), "total": satNumber(total),
+		"rfcEmisor": empresa.RFC, "emisor": empresa.RazonSocial,
+		"cveRegimenEmisor": empresa.RegimenFiscal.Clave, "regimenEmisor": empresa.RegimenFiscal.Descripcion,
+		"lugarExpedicion": operacion.Sucursal.CodigoPostal,
+		"rfcReceptor":     "XAXX010101000", "receptor": "PUBLICO EN GENERAL",
+		"cveRegimenReceptor": "616", "regimenReceptor": "Sin obligaciones fiscales",
+		"domicilioFiscalReceptor": operacion.Sucursal.CodigoPostal,
+		"cveUsoCFDI":              uso.Clave, "usoCFDI": uso.Descripcion,
+		"conceptos": conceptos, "esGlobal": true,
+		"Meses": fmt.Sprintf("%02d", int(now.Month())), "YYYY": fmt.Sprintf("%04d", now.Year()), "periodicidad": "01",
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	apiReq, err := http.NewRequest(http.MethodPost, strings.TrimRight(cfg.FacturacionAPIHost, "/")+"/api/facturacion/emitir-cfdi?esGlobal=true", bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo preparar la factura global: %w", err)
+	}
+	apiReq.Header.Set("Content-Type", "application/json")
+	apiReq.Header.Set("Authorization", "Bearer "+accessToken)
+	apiResp, err := s.client.Do(apiReq)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo emitir la factura global %s: %w", forma.Descripcion, err)
+	}
+	defer apiResp.Body.Close()
+	apiBody, _ := io.ReadAll(io.LimitReader(apiResp.Body, 8<<20))
+	if apiResp.StatusCode < 200 || apiResp.StatusCode >= 300 {
+		return nil, fmt.Errorf("factura global %s respondió %d: %s", forma.Descripcion, apiResp.StatusCode, string(apiBody))
+	}
+	var stamped cfdiEmissionResponse
+	if err = json.Unmarshal(apiBody, &stamped); err != nil || !stamped.Success {
+		return nil, fmt.Errorf("no se pudo timbrar la factura global %s: %s", forma.Descripcion, stamped.Mensaje)
+	}
+	if stamped.Data.UUID == "" || stamped.Data.CFDIXMLBase64 == "" {
+		return nil, fmt.Errorf("la factura global %s no devolvió UUID o XML", forma.Descripcion)
+	}
+	if err = s.db.Exec("SELECT setval('consecutivo_folio_factura', ?, true)", folio).Error; err != nil {
+		return nil, fmt.Errorf("la factura global fue timbrada, pero no se confirmó el folio %06d: %w", folio, err)
+	}
+	stampDate, err := parseStampDate(stamped.Data.FechaTimbrado)
+	if err != nil {
+		return nil, err
+	}
+	xmlPath, err := saveStampedXML(cfg.FacturacionXMLPath, serie, folio, stamped.Data.UUID, stamped.Data.CFDIXMLBase64)
+	if err != nil {
+		return nil, err
+	}
+	emissionDate, _ := time.Parse(time.RFC3339, fechaCFDI)
+	report := reportmodels.Invoice{
+		Serie: serie, Folio: fmt.Sprintf("%06d", folio), UUID: stamped.Data.UUID,
+		FechaEmision: emissionDate, FechaTimbrado: stampDate,
+		NombreComercial: empresa.NombreComercial, Emisor: empresa.RazonSocial, RFCEmisor: empresa.RFC,
+		RegimenEmisor:   empresa.RegimenFiscal.Clave + " - " + empresa.RegimenFiscal.Descripcion,
+		LugarExpedicion: operacion.Sucursal.CodigoPostal, Sucursal: operacion.Sucursal.NombreSucursal,
+		Direccion: joinAddress(operacion.Sucursal.Calle, operacion.Sucursal.Exterior, operacion.Sucursal.Interior, operacion.Sucursal.Colonia, operacion.Sucursal.Ciudad, operacion.Sucursal.Estado, "C.P. "+operacion.Sucursal.CodigoPostal),
+		Telefono:  operacion.Sucursal.Telefono, Correo: operacion.Sucursal.Correo,
+		Receptor: "PUBLICO EN GENERAL", RFCReceptor: "XAXX010101000",
+		RegimenReceptor: "616 - Sin obligaciones fiscales", DomicilioReceptor: operacion.Sucursal.CodigoPostal,
+		UsoCFDI: uso.Clave + " - " + uso.Descripcion, MetodoPago: metodo.Clave + " - " + metodo.Descripcion,
+		FormaPago:         forma.Clave + " - " + forma.Descripcion,
+		CertificadoEmisor: stamped.Data.NoCertificadoEmisor, CertificadoSAT: stamped.Data.NoCertificadoSAT,
+		SelloEmisor: stamped.Data.SelloEmisor, SelloSAT: stamped.Data.SelloSAT, CadenaOriginalSAT: stamped.Data.CadenaOriginalSAT,
+		Items: items, Subtotal: satNumber(subtotal), Impuestos: satNumber(impuestos), Total: satNumber(total),
+	}
+	pdfBytes, err := renders.RenderInvoicePDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("factura global timbrada, pero no se pudo generar el PDF: %w", err)
+	}
+	pdfPath, err := saveInvoicePDF(xmlPath, pdfBytes)
+	if err != nil {
+		return nil, err
+	}
+	factura := models.Factura{
+		Serie: serie, Folio: folio, UsoCFDIID: &uso.ID, MetodoPagoID: &metodo.ID, FormaPagoID: &forma.ID,
+		UUID: stamped.Data.UUID, NumeroCertificadoEmisor: stamped.Data.NoCertificadoEmisor,
+		NumeroCertificadoSAT: stamped.Data.NoCertificadoSAT, SelloEmisor: stamped.Data.SelloEmisor,
+		SelloSAT: stamped.Data.SelloSAT, CadenaOriginalSAT: stamped.Data.CadenaOriginalSAT,
+		FechaFactura: stampDate, EsGlobal: true, Subtotal: subtotal, Impuestos: impuestos,
+		Descuento: decimal.Zero, Total: total, Estatus: "vigente", ArchivoXML: xmlPath, ArchivoPDF: pdfPath,
+	}
+	if err = s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&factura).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.Pedido{}).Where("id IN ? AND factura_id IS NULL", pedidoIDs).Update("factura_id", factura.ID).Error
+	}); err != nil {
+		return nil, fmt.Errorf("factura global timbrada, pero no se pudo registrar localmente: %w", err)
+	}
+	return map[string]any{
+		"claveFormaPago": claveForma,
+		"uuid":           factura.UUID,
+		"total":          satNumber(total),
+		"archivoXML":     xmlPath,
+		"archivoPDF":     pdfPath,
+		"pdfBase64":      base64.StdEncoding.EncodeToString(pdfBytes),
+		"pdfFileName":    filepath.Base(pdfPath),
+	}, nil
+}
+
 func (s *FacturacionService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {
 	var pedido models.Pedido
 	if err := s.db.Preload("Factura.Receptor").Where("guid = ?", req.PedidoGuid).First(&pedido).Error; err != nil {
@@ -536,6 +869,204 @@ func (s *FacturacionService) EnviarFacturaCorreo(req dto.EnviarFacturaEmailReque
 		return err
 	}
 	return EmailInvoiceFiles(pedido.Factura, pedido.Folio, req.Destinatarios, cfg.Receipt)
+}
+
+func (s *FacturacionService) ObtenerMotivosCancelacion() ([]dto.SatMotivoCancelacionDto, error) {
+	var motivos []dto.SatMotivoCancelacionDto
+	err := s.db.Model(&models.SatMotivosCancelacion{}).
+		Select("id, guid, cve_motivo, motivo_cancelacion, requiere_folio_sustitucion").
+		Where("deleted_at IS NULL").
+		Order("cve_motivo").Scan(&motivos).Error
+	return motivos, err
+}
+
+// CancelarCFDIVenta cancela primero el comprobante ante el servicio fiscal y
+// solamente después cancela la venta local y reintegra sus existencias.
+func (s *FacturacionService) CancelarCFDIVenta(req dto.CancelarCFDIVentaRequestDto) (*dto.ResponseDto, error) {
+	req.PedidoGuid = strings.TrimSpace(req.PedidoGuid)
+	req.CveMotivo = strings.TrimSpace(req.CveMotivo)
+	req.FolioSustitucion = strings.TrimSpace(req.FolioSustitucion)
+	if req.PedidoGuid == "" || req.CveMotivo == "" {
+		return nil, fmt.Errorf("la venta y el motivo de cancelación son requeridos")
+	}
+
+	var motivo models.SatMotivosCancelacion
+	if err := s.db.Where("cve_motivo = ? AND deleted_at IS NULL", req.CveMotivo).First(&motivo).Error; err != nil {
+		return nil, fmt.Errorf("motivo de cancelación SAT inválido")
+	}
+	if motivo.RequiereFolioSustitucion && req.FolioSustitucion == "" {
+		return nil, fmt.Errorf("el motivo seleccionado requiere el folio fiscal de sustitución")
+	}
+
+	var pedido models.Pedido
+	if err := s.db.Preload("Estatus").Preload("TipoPedido").Preload("Factura").
+		Preload("SucursalOrigen.Empresa").
+		Where("pedidos.guid = ? AND pedidos.deleted_at IS NULL", req.PedidoGuid).
+		First(&pedido).Error; err != nil {
+		return nil, fmt.Errorf("venta facturada no encontrada: %w", err)
+	}
+	if pedido.TipoPedido.Guid.String() != models.TipoPedidoVentaGuid {
+		return nil, fmt.Errorf("únicamente se pueden cancelar CFDI de ventas")
+	}
+	if pedidoCancelado(&pedido) {
+		return nil, fmt.Errorf("la venta ya se encuentra cancelada")
+	}
+	if pedido.FacturaID == nil || strings.TrimSpace(pedido.Factura.UUID) == "" {
+		return nil, fmt.Errorf("la venta no tiene un CFDI timbrado")
+	}
+
+	facturaYaCancelada := strings.EqualFold(strings.TrimSpace(pedido.Factura.Estatus), "cancelado")
+	if !facturaYaCancelada {
+		cfg, err := LoadKommerzConfig()
+		if err != nil {
+			return nil, err
+		}
+		if cfg.FacturacionAPIHost == "" || cfg.FacturacionClientID == "" || cfg.FacturacionClientSecret == "" {
+			return nil, fmt.Errorf("configura Api Host, Client ID y Client Secret en Configuración > Facturación")
+		}
+		accessToken, err := s.facturacionToken(cfg)
+		if err != nil {
+			return nil, err
+		}
+		rfcEmisor := strings.TrimSpace(pedido.SucursalOrigen.Empresa.RFC)
+		if rfcEmisor == "" {
+			return nil, fmt.Errorf("la empresa emisora no tiene un RFC configurado")
+		}
+		payload := map[string]any{
+			"RFC":    rfcEmisor,
+			"UUID":   pedido.Factura.UUID,
+			"Motivo": req.CveMotivo,
+		}
+		if req.CveMotivo == "01" {
+			if req.FolioSustitucion == "" {
+				return nil, fmt.Errorf("el motivo 01 requiere el folio fiscal de sustitución")
+			}
+			payload["FolioSustitucion"] = req.FolioSustitucion
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		apiReq, err := http.NewRequest(http.MethodPost, strings.TrimRight(cfg.FacturacionAPIHost, "/")+"/api/facturacion/cancelar-cfdi", bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo preparar la cancelación del CFDI: %w", err)
+		}
+		apiReq.Header.Set("Content-Type", "application/json")
+		apiReq.Header.Set("Authorization", "Bearer "+accessToken)
+		apiResp, err := s.client.Do(apiReq)
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo cancelar el CFDI: %w", err)
+		}
+		defer apiResp.Body.Close()
+		apiBody, _ := io.ReadAll(io.LimitReader(apiResp.Body, 8<<20))
+		if apiResp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("cancelación CFDI respondió %d: %s", apiResp.StatusCode, string(apiBody))
+		}
+		var cancelled cfdiCancellationResponse
+		if err = json.Unmarshal(apiBody, &cancelled); err != nil {
+			return nil, fmt.Errorf("respuesta de cancelación inválida: %w", err)
+		}
+		if !cancelled.Success {
+			return nil, fmt.Errorf("el CFDI no fue cancelado: %s", cancelled.Mensaje)
+		}
+		acuseBase64 := strings.TrimSpace(cancelled.Data.AcuseBase64)
+		if acuseBase64 == "" {
+			acuseBase64 = strings.TrimSpace(cancelled.AcuseBase64)
+		}
+		if acuseBase64 == "" {
+			return nil, fmt.Errorf("el CFDI fue cancelado, pero el servicio no devolvió el acuse")
+		}
+
+		xmlPath, xmlBytes, saveErr := saveCancellationXML(cfg.FacturacionXMLPath, pedido.Factura.Serie, pedido.Factura.Folio, pedido.Factura.UUID, acuseBase64)
+		if saveErr != nil {
+			return nil, fmt.Errorf("el CFDI fue cancelado, pero no se pudo guardar el acuse: %w", saveErr)
+		}
+		receipt, parseErr := cancellationReceiptFromXML(xmlBytes)
+		if parseErr != nil {
+			return nil, fmt.Errorf("el CFDI fue cancelado y el XML se guardó en %s, pero no se pudo generar su PDF: %w", xmlPath, parseErr)
+		}
+		receipt.Negocio = pedido.SucursalOrigen.Empresa.NombreComercial
+		receipt.RazonSocial = pedido.SucursalOrigen.Empresa.RazonSocial
+		receipt.Sucursal = pedido.SucursalOrigen.NombreSucursal
+		receipt.Telefono = pedido.SucursalOrigen.Telefono
+		receipt.Correo = pedido.SucursalOrigen.Correo
+		pdfBytes, renderErr := renders.RenderCancellationReceiptPDF(receipt)
+		if renderErr != nil {
+			return nil, fmt.Errorf("el CFDI fue cancelado y el XML se guardó en %s, pero no se pudo generar su PDF: %w", xmlPath, renderErr)
+		}
+		pdfPath, savePDFErr := saveInvoicePDF(xmlPath, pdfBytes)
+		if savePDFErr != nil {
+			return nil, fmt.Errorf("el CFDI fue cancelado y el XML se guardó en %s, pero no se pudo guardar su PDF: %w", xmlPath, savePDFErr)
+		}
+
+		now := time.Now()
+		if err = s.db.Model(&models.Factura{}).Where("id = ?", *pedido.FacturaID).Updates(map[string]any{
+			"estatus": "cancelado", "motivo_cancelacion": req.CveMotivo,
+			"folio_sustitucion": req.FolioSustitucion, "fecha_cancelacion": &now,
+			"archivo_xml_cancelacion": xmlPath, "archivo_pdf_cancelacion": pdfPath,
+		}).Error; err != nil {
+			return nil, fmt.Errorf("el CFDI fue cancelado, pero no se pudo actualizar localmente: %w", err)
+		}
+		pedido.Factura.ArchivoXMLCancelacion = xmlPath
+		pedido.Factura.ArchivoPDFCancelacion = pdfPath
+	}
+
+	pos := repository.NewPosRepository(s.db, context.Background(), "", nil)
+	result, err := pos.CancelarVenta(req.PedidoGuid)
+	if err != nil {
+		return result, fmt.Errorf("el CFDI fue cancelado, pero no se pudo cancelar la venta: %w", err)
+	}
+	result.Message = "CFDI y venta cancelados; las existencias fueron reintegradas"
+	if path := strings.TrimSpace(pedido.Factura.ArchivoPDFCancelacion); path != "" {
+		if pdfBytes, readErr := os.ReadFile(path); readErr == nil {
+			result.Data = &dto.FacturacionResultadoDto{
+				Success: true, UUID: pedido.Factura.UUID,
+				PDFBase64: base64.StdEncoding.EncodeToString(pdfBytes), PDFFileName: filepath.Base(path),
+				Data: map[string]any{"archivoPDF": path, "archivoXML": pedido.Factura.ArchivoXMLCancelacion},
+			}
+		}
+	}
+	return result, nil
+}
+
+func (s *FacturacionService) ObtenerAcuseCancelacionPDF(pedidoGuid string) (*dto.FacturacionResultadoDto, error) {
+	var pedido models.Pedido
+	if err := s.db.Preload("Factura").Preload("SucursalOrigen.Empresa").Where("pedidos.guid = ? AND pedidos.deleted_at IS NULL", strings.TrimSpace(pedidoGuid)).First(&pedido).Error; err != nil {
+		return nil, fmt.Errorf("venta cancelada no encontrada: %w", err)
+	}
+	if pedido.FacturaID == nil || !strings.EqualFold(strings.TrimSpace(pedido.Factura.Estatus), "cancelado") {
+		return nil, fmt.Errorf("la venta no tiene un CFDI cancelado")
+	}
+	xmlPath := strings.TrimSpace(pedido.Factura.ArchivoXMLCancelacion)
+	xmlBytes, err := os.ReadFile(xmlPath)
+	if err != nil || len(xmlBytes) == 0 {
+		return nil, fmt.Errorf("no se pudo leer el XML del acuse")
+	}
+	receipt, err := cancellationReceiptFromXML(xmlBytes)
+	if err != nil {
+		return nil, err
+	}
+	receipt.Negocio = pedido.SucursalOrigen.Empresa.NombreComercial
+	receipt.RazonSocial = pedido.SucursalOrigen.Empresa.RazonSocial
+	receipt.Sucursal = pedido.SucursalOrigen.NombreSucursal
+	receipt.Telefono = pedido.SucursalOrigen.Telefono
+	receipt.Correo = pedido.SucursalOrigen.Correo
+	pdfBytes, err := renders.RenderCancellationReceiptPDF(receipt)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el PDF del acuse: %w", err)
+	}
+	path, err := saveInvoicePDF(xmlPath, pdfBytes)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.db.Model(&models.Factura{}).Where("id = ?", *pedido.FacturaID).Update("archivo_pdf_cancelacion", path).Error; err != nil {
+		return nil, fmt.Errorf("el PDF del acuse fue generado, pero no se pudo registrar su ruta: %w", err)
+	}
+	return &dto.FacturacionResultadoDto{
+		Success: true, UUID: pedido.Factura.UUID,
+		PDFBase64: base64.StdEncoding.EncodeToString(pdfBytes), PDFFileName: filepath.Base(path),
+		Data: map[string]any{"archivoPDF": path, "archivoXML": pedido.Factura.ArchivoXMLCancelacion},
+	}, nil
 }
 
 // ObtenerFacturaPDF devuelve la representación impresa del CFDI. Si el archivo

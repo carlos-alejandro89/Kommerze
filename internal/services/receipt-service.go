@@ -3,6 +3,7 @@ package services
 import (
 	"BitComercio/internal/models"
 	reportmodels "BitComercio/internal/usecases/reports/models"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -30,6 +31,7 @@ func (s *ReceiptService) BuildConversionReport(pedidoGuid string) (reportmodels.
 		CantidadOrigen, CantidadDestino, Factor                                    float64
 		PrecioVentaOrigen, PrecioVentaDestino, ValorVentaOrigen, ValorVentaDestino float64
 		ExistenciaDestinoInicial, ExistenciaDestinoFinal                           float64
+		InfoAdicional                                                              string
 	}
 	if err := s.db.Raw(`
 		SELECT p.folio, p.fecha, es.nombre estatus,
@@ -40,16 +42,9 @@ func (s *ReceiptService) BuildConversionReport(pedidoGuid string) (reportmodels.
 		       no.codigo origen_codigo, po.descripcion origen_producto,
 		       COALESCE(eo.empaque, '') origen_empaque,
 		       pd.cantidad::double precision cantidad_origen,
-		       nd.codigo destino_codigo, pde.descripcion destino_producto,
-		       COALESCE(ed.empaque, '') destino_empaque,
-		       (pd.info_adicional::jsonb->>'cantidadDestino')::double precision cantidad_destino,
-		       COALESCE((pd.info_adicional::jsonb->>'factorConversion')::double precision, rc.factor_conversion::double precision) factor,
-		       COALESCE((pd.info_adicional::jsonb->>'precioVentaOrigen')::double precision, pd.precio_venta::double precision) precio_venta_origen,
-		       COALESCE((pd.info_adicional::jsonb->>'precioVentaDestino')::double precision, 0) precio_venta_destino,
-		       COALESCE((pd.info_adicional::jsonb->>'valorVentaOrigen')::double precision, (pd.cantidad * pd.precio_venta)::double precision) valor_venta_origen,
-		       COALESCE((pd.info_adicional::jsonb->>'valorVentaDestino')::double precision, 0) valor_venta_destino,
-		       COALESCE((pd.info_adicional::jsonb->>'existenciaDestinoInicial')::double precision, 0) existencia_destino_inicial,
-		       COALESCE((pd.info_adicional::jsonb->>'existenciaDestinoFinal')::double precision, (pd.info_adicional::jsonb->>'cantidadDestino')::double precision) existencia_destino_final
+		       pd.precio_venta::double precision precio_venta_origen,
+		       (pd.cantidad * pd.precio_venta)::double precision valor_venta_origen,
+		       pd.info_adicional
 		FROM pedidos p
 		JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.guid=?
 		JOIN estatus es ON es.id=p.estatus_id
@@ -57,10 +52,6 @@ func (s *ReceiptService) BuildConversionReport(pedidoGuid string) (reportmodels.
 		JOIN nivel_empaque no ON no.id=pd.nivel_id
 		JOIN productos po ON po.id=no.producto_id
 		LEFT JOIN empaques eo ON eo.id=no.empaque_id
-		JOIN reglas_conversion_producto rc ON rc.guid=(pd.info_adicional::jsonb->>'reglaGuid')::uuid
-		JOIN nivel_empaque nd ON nd.id=rc.nivel_empaque_destino_id
-		JOIN productos pde ON pde.id=nd.producto_id
-		LEFT JOIN empaques ed ON ed.id=nd.empaque_id
 		LEFT JOIN sucursales su ON su.id=p.sucursal_origen_id
 		LEFT JOIN empresas emp ON emp.id=su.empresa_id
 		WHERE p.guid=? AND p.deleted_at IS NULL
@@ -70,6 +61,31 @@ func (s *ReceiptService) BuildConversionReport(pedidoGuid string) (reportmodels.
 	if row.Folio == 0 {
 		return report, fmt.Errorf("conversión no encontrada")
 	}
+	var metadata conversionMetadata
+	if err := json.Unmarshal([]byte(strings.TrimSpace(row.InfoAdicional)), &metadata); err != nil || strings.TrimSpace(metadata.ReglaGuid) == "" {
+		return report, fmt.Errorf("la conversión no contiene metadatos válidos")
+	}
+	var destination struct {
+		Codigo, Producto, Empaque string
+	}
+	if err := s.db.Raw(`
+		SELECT nd.codigo, pde.descripcion producto, COALESCE(ed.empaque, '') empaque
+		FROM reglas_conversion_producto rc
+		JOIN nivel_empaque nd ON nd.id=rc.nivel_empaque_destino_id
+		JOIN productos pde ON pde.id=nd.producto_id
+		LEFT JOIN empaques ed ON ed.id=nd.empaque_id
+		WHERE rc.guid=?`, metadata.ReglaGuid).Scan(&destination).Error; err != nil {
+		return report, err
+	}
+	row.DestinoCodigo, row.DestinoProducto, row.DestinoEmpaque = destination.Codigo, destination.Producto, destination.Empaque
+	row.CantidadDestino = metadata.CantidadDestino.InexactFloat64()
+	row.Factor = metadata.FactorConversion.InexactFloat64()
+	row.PrecioVentaOrigen = metadata.PrecioVentaOrigen.InexactFloat64()
+	row.PrecioVentaDestino = metadata.PrecioVentaDestino.InexactFloat64()
+	row.ValorVentaOrigen = metadata.ValorVentaOrigen.InexactFloat64()
+	row.ValorVentaDestino = metadata.ValorVentaDestino.InexactFloat64()
+	row.ExistenciaDestinoInicial = metadata.ExistenciaDestinoInicial.InexactFloat64()
+	row.ExistenciaDestinoFinal = metadata.ExistenciaDestinoFinal.InexactFloat64()
 	report = reportmodels.ConversionReport{
 		Folio: fmt.Sprintf("%07d", row.Folio), Fecha: row.Fecha, Estatus: row.Estatus,
 		Negocio: row.Negocio, RazonSocial: row.RazonSocial, RFCNegocio: row.RFCNegocio,

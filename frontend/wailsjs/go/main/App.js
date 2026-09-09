@@ -42,6 +42,10 @@ export function ServiceBuscarProveedores(arg1) {
   return window['go']['main']['App']['ServiceBuscarProveedores'](arg1);
 }
 
+export function ServiceCancelarCFDIVenta(arg1) {
+  return window['go']['main']['App']['ServiceCancelarCFDIVenta'](arg1);
+}
+
 export function ServiceCancelarConversion(arg1) {
   return window['go']['main']['App']['ServiceCancelarConversion'](arg1);
 }
@@ -132,6 +136,10 @@ export function ServiceEmitirFacturacion(arg1) {
 
 export function ServiceEnviarFacturaCorreo(arg1) {
   return window['go']['main']['App']['ServiceEnviarFacturaCorreo'](arg1);
+}
+
+export function ServiceGenerarFacturacionGlobal(arg1) {
+  return window['go']['main']['App']['ServiceGenerarFacturacionGlobal'](arg1);
 }
 
 export function ServiceGenerateConversionReport(arg1) {
@@ -246,6 +254,10 @@ export function ServiceLogin(arg1, arg2) {
   return window['go']['main']['App']['ServiceLogin'](arg1, arg2);
 }
 
+export function ServiceObtenerAcuseCancelacionPDF(arg1) {
+  return window['go']['main']['App']['ServiceObtenerAcuseCancelacionPDF'](arg1);
+}
+
 export function ServiceObtenerCajaConfigurada() {
   return window['go']['main']['App']['ServiceObtenerCajaConfigurada']();
 }
@@ -256,6 +268,10 @@ export function ServiceObtenerCliente(arg1) {
 
 export function ServiceObtenerFacturaPDF(arg1) {
   return window['go']['main']['App']['ServiceObtenerFacturaPDF'](arg1);
+}
+
+export function ServiceObtenerMotivosCancelacionCFDI() {
+  return window['go']['main']['App']['ServiceObtenerMotivosCancelacionCFDI']();
 }
 
 export function ServiceObtenerOperacionCajeroActiva(arg1) {
@@ -416,6 +432,10 @@ export function SyncSatFormasPago() {
 
 export function SyncSatMetodosPago() {
   return window['go']['main']['App']['SyncSatMetodosPago']();
+}
+
+export function SyncSatMotivosCancelacion() {
+  return window['go']['main']['App']['SyncSatMotivosCancelacion']();
 }
 
 export function SyncSatProductos() {

@@ -132,6 +132,10 @@ func (o *OperacionesSucursalRepository) ObtenerOperacionSucursalActiva(sucursalI
 	operacion.CFDICheques = acum.CFDICheques
 	operacion.CFDITransferencia = acum.CFDITransferencia
 	operacion.CFDIOtros = acum.CFDIOtros
+	operacion.FacturacionPendienteEfectivo = acum.FacturacionPendienteEfectivo
+	operacion.FacturacionPendienteCredito = acum.FacturacionPendienteCredito
+	operacion.FacturacionPendienteDebito = acum.FacturacionPendienteDebito
+	operacion.FacturacionPendienteTransferencia = acum.FacturacionPendienteTransferencia
 	operacion.BajasMercancia = acum.BajasMercancia
 	operacion.AjusteInventario = acum.AjusteInventario
 	operacion.ValorFinalInventario = acum.ValorFinalInventario
@@ -270,25 +274,29 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 
 // acumuladosDia contiene los totales calculados desde pedidos/pagos del período.
 type acumuladosDia struct {
-	ValorBrutoVentas        decimal.Decimal
-	ValorVentas             decimal.Decimal
-	ValorCompras            decimal.Decimal
-	BajasMercancia          decimal.Decimal
-	DescuentosAplicados     decimal.Decimal
-	TransferenciasEntrantes decimal.Decimal
-	TransferenciasSalientes decimal.Decimal
-	AjusteInventario        decimal.Decimal
-	ValorFinalInventario    decimal.Decimal
-	IngresoEfectivo         decimal.Decimal
-	IngresoTarjetas         decimal.Decimal
-	IngresoCheques          decimal.Decimal
-	IngresoTransferencia    decimal.Decimal
-	IngresoOtros            decimal.Decimal
-	CFDIEfectivo            decimal.Decimal
-	CFDITarjetas            decimal.Decimal
-	CFDICheques             decimal.Decimal
-	CFDITransferencia       decimal.Decimal
-	CFDIOtros               decimal.Decimal
+	ValorBrutoVentas                  decimal.Decimal
+	ValorVentas                       decimal.Decimal
+	ValorCompras                      decimal.Decimal
+	BajasMercancia                    decimal.Decimal
+	DescuentosAplicados               decimal.Decimal
+	TransferenciasEntrantes           decimal.Decimal
+	TransferenciasSalientes           decimal.Decimal
+	AjusteInventario                  decimal.Decimal
+	ValorFinalInventario              decimal.Decimal
+	IngresoEfectivo                   decimal.Decimal
+	IngresoTarjetas                   decimal.Decimal
+	IngresoCheques                    decimal.Decimal
+	IngresoTransferencia              decimal.Decimal
+	IngresoOtros                      decimal.Decimal
+	CFDIEfectivo                      decimal.Decimal
+	CFDITarjetas                      decimal.Decimal
+	CFDICheques                       decimal.Decimal
+	CFDITransferencia                 decimal.Decimal
+	CFDIOtros                         decimal.Decimal
+	FacturacionPendienteEfectivo      decimal.Decimal
+	FacturacionPendienteCredito       decimal.Decimal
+	FacturacionPendienteDebito        decimal.Decimal
+	FacturacionPendienteTransferencia decimal.Decimal
 }
 
 // CalcularAcumuladosDia agrega ventas y pagos del período de la operación.
@@ -464,6 +472,69 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		default:
 			result.CFDIOtros = result.CFDIOtros.Add(f.Total)
 		}
+	}
+
+	// Ventas aún no facturadas, agrupadas por la forma de pago predominante de
+	// cada pedido. En multipago se toma la forma con mayor importe acumulado.
+	var pendientes []pagoRow
+	o.db.Raw(`
+		WITH ventas_pendientes AS (
+			SELECT p.id pedido_id,
+			       COALESCE(SUM(
+				   (pd.precio_venta * pd.cantidad) -
+				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			   ), 0) total
+			FROM pedidos p
+			JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+			JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.deleted_at IS NULL
+			JOIN estatus e ON e.id = p.estatus_id AND e.deleted_at IS NULL
+			WHERE p.sucursal_origen_id = ?
+			  AND p.fecha BETWEEN ? AND ?
+			  AND tp.guid::text = ?
+			  AND LOWER(e.nombre) IN ('completado', 'completada')
+			  AND p.factura_id IS NULL
+			  AND p.deleted_at IS NULL
+			GROUP BY p.id
+		), pagos_agrupados AS (
+			SELECT pg.pedido_id, pg.forma_id,
+			       ROW_NUMBER() OVER (
+				   PARTITION BY pg.pedido_id
+				   ORDER BY SUM(pg.monto) DESC, pg.forma_id ASC
+			   ) posicion
+			FROM pagos pg
+			JOIN ventas_pendientes vp ON vp.pedido_id = pg.pedido_id
+			WHERE pg.deleted_at IS NULL
+			GROUP BY pg.pedido_id, pg.forma_id
+		)
+		SELECT forma.clave, COALESCE(SUM(vp.total), 0) total
+		FROM ventas_pendientes vp
+		JOIN pagos_agrupados pa ON pa.pedido_id = vp.pedido_id AND pa.posicion = 1
+		JOIN sat_formas_pago forma ON forma.id = pa.forma_id AND forma.deleted_at IS NULL
+		GROUP BY forma.clave
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin, models.TipoPedidoVentaGuid).Scan(&pendientes)
+
+	for _, pendiente := range pendientes {
+		switch pendiente.Clave {
+		case "01":
+			result.FacturacionPendienteEfectivo = pendiente.Total
+		case "04":
+			result.FacturacionPendienteCredito = pendiente.Total
+		case "28":
+			result.FacturacionPendienteDebito = pendiente.Total
+		case "03":
+			result.FacturacionPendienteTransferencia = pendiente.Total
+		}
+	}
+
+	// ComisionVentas expresa el porcentaje del efectivo que se factura. Por
+	// ejemplo, 60 conserva el 60% de la suma y descuenta el 40% restante.
+	var sucursal models.Sucursal
+	if o.db.Select("comision_ventas").First(&sucursal, operacion.SucursalID).Error == nil &&
+		sucursal.ComisionVentas.GreaterThanOrEqual(decimal.Zero) &&
+		sucursal.ComisionVentas.LessThanOrEqual(decimal.NewFromInt(100)) {
+		result.FacturacionPendienteEfectivo = result.FacturacionPendienteEfectivo.
+			Mul(sucursal.ComisionVentas).
+			Div(decimal.NewFromInt(100))
 	}
 
 	return result

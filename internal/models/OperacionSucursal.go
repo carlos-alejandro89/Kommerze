@@ -53,6 +53,13 @@ type OperacionSucursal struct {
 	CFDITransferencia decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 	CFDIOtros         decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
+	// Importes de ventas pendientes de facturar para preparar el cierre. Se
+	// calculan en vivo y no forman parte de los acumulados persistidos.
+	FacturacionPendienteEfectivo      decimal.Decimal `gorm:"-"`
+	FacturacionPendienteCredito       decimal.Decimal `gorm:"-"`
+	FacturacionPendienteDebito        decimal.Decimal `gorm:"-"`
+	FacturacionPendienteTransferencia decimal.Decimal `gorm:"-"`
+
 	BajasMercancia decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
 	// ☁ Sincronización con la nube (nil = pendiente de sync)

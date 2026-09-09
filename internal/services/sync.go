@@ -23,6 +23,7 @@ type SyncService struct {
 	repoPrecios *repository.ListaPreciosRepository
 	apiBaseURL  string
 	client      *CloudHttpClient
+	facturacion *FacturacionService
 }
 
 func NewSyncService(
@@ -30,14 +31,58 @@ func NewSyncService(
 	repo *repository.CatalogosRepository,
 	repoPrecios *repository.ListaPreciosRepository,
 	apiBaseURL string,
-	client *CloudHttpClient) *SyncService {
+	client *CloudHttpClient,
+	facturacion *FacturacionService) *SyncService {
 	return &SyncService{
 		db:          db,
 		repo:        repo,
 		repoPrecios: repoPrecios,
 		apiBaseURL:  apiBaseURL,
 		client:      client,
+		facturacion: facturacion,
 	}
+}
+
+func (s *SyncService) SyncSatMotivosCancelacion() ([]any, error) {
+	if s.facturacion == nil {
+		return nil, fmt.Errorf("servicio de facturación no disponible")
+	}
+	cfg, err := LoadKommerzConfig()
+	if err != nil {
+		return nil, err
+	}
+	if cfg.FacturacionAPIHost == "" || cfg.FacturacionClientID == "" || cfg.FacturacionClientSecret == "" {
+		return nil, fmt.Errorf("configura Api Host, Client ID y Client Secret en Configuración > Facturación")
+	}
+	token, err := s.facturacion.facturacionToken(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error autenticando el catálogo de motivos de cancelación SAT: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/sat/motivos-cancelacion", cfg.FacturacionAPIHost), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparando catálogo de motivos de cancelación SAT: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := s.facturacion.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error consultando motivos de cancelación SAT: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("el catálogo de motivos de cancelación SAT respondió %d", resp.StatusCode)
+	}
+
+	var result ApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decodificando motivos de cancelación SAT: %w", err)
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("no se pudieron obtener los motivos de cancelación SAT: %s", result.Mensaje)
+	}
+	if err := s.repo.SaveSatMotivosCancelacion(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando motivos de cancelación SAT: %w", err)
+	}
+	return result.Data, nil
 }
 
 func (s *SyncService) SyncLinea() ([]any, error) {

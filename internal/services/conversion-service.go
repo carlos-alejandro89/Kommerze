@@ -160,16 +160,15 @@ func (s *ConversionService) EjecutarConversion(datos dto.EjecutarConversionDto) 
 }
 
 func (s *ConversionService) ConsultarConversiones() ([]dto.ConversionHistorialDto, error) {
-	var items []dto.ConversionHistorialDto
+	var rows []struct {
+		dto.ConversionHistorialDto
+		InfoAdicional string `gorm:"column:info_adicional"`
+	}
 	err := s.db.Raw(`
 		SELECT p.guid::text pedido_guid, p.folio, p.fecha::text fecha,
 		       es.nombre estatus, es.guid::text estatus_guid, oc.operacion_sucursal_id,
 		       no.codigo codigo_origen, po.descripcion producto_origen, eo.empaque empaque_origen,
-		       no.img_referencia imagen_origen, pd.cantidad cantidad_origen,
-		       nd.codigo codigo_destino, pdest.descripcion producto_destino, ed.empaque empaque_destino,
-		       nd.img_referencia imagen_destino,
-		       (pd.info_adicional::jsonb->>'cantidadDestino')::numeric cantidad_destino,
-		       rc.factor_conversion
+		       no.img_referencia imagen_origen, pd.cantidad cantidad_origen, pd.info_adicional
 		FROM pedidos p
 		JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.guid=?
 		JOIN estatus es ON es.id=p.estatus_id
@@ -177,14 +176,38 @@ func (s *ConversionService) ConsultarConversiones() ([]dto.ConversionHistorialDt
 		JOIN nivel_empaque no ON no.id=pd.nivel_id
 		JOIN productos po ON po.id=no.producto_id
 		LEFT JOIN empaques eo ON eo.id=no.empaque_id
-		JOIN reglas_conversion_producto rc ON rc.guid=(pd.info_adicional::jsonb->>'reglaGuid')::uuid
-		JOIN nivel_empaque nd ON nd.id=rc.nivel_empaque_destino_id
-		JOIN productos pdest ON pdest.id=nd.producto_id
-		LEFT JOIN empaques ed ON ed.id=nd.empaque_id
 		LEFT JOIN operacion_cajero oc ON oc.id=p.operacion_cajero_id
 		WHERE p.deleted_at IS NULL
-		ORDER BY p.fecha DESC, p.folio DESC`, models.TipoPedidoConversionGuid).Scan(&items).Error
-	return items, err
+		ORDER BY p.fecha DESC, p.folio DESC`, models.TipoPedidoConversionGuid).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	items := make([]dto.ConversionHistorialDto, 0, len(rows))
+	for _, row := range rows {
+		var metadata conversionMetadata
+		if json.Unmarshal([]byte(strings.TrimSpace(row.InfoAdicional)), &metadata) != nil || strings.TrimSpace(metadata.ReglaGuid) == "" {
+			continue
+		}
+		var destination struct {
+			Codigo, Producto, Empaque, Imagen string
+		}
+		if err = s.db.Raw(`
+			SELECT nd.codigo, pdest.descripcion producto, COALESCE(ed.empaque, '') empaque,
+			       COALESCE(nd.img_referencia, '') imagen
+			FROM reglas_conversion_producto rc
+			JOIN nivel_empaque nd ON nd.id=rc.nivel_empaque_destino_id
+			JOIN productos pdest ON pdest.id=nd.producto_id
+			LEFT JOIN empaques ed ON ed.id=nd.empaque_id
+			WHERE rc.guid=?`, metadata.ReglaGuid).Scan(&destination).Error; err != nil {
+			return nil, err
+		}
+		item := row.ConversionHistorialDto
+		item.CodigoDestino, item.ProductoDestino = destination.Codigo, destination.Producto
+		item.EmpaqueDestino, item.ImagenDestino = destination.Empaque, destination.Imagen
+		item.CantidadDestino, item.FactorConversion = metadata.CantidadDestino, metadata.FactorConversion
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func (s *ConversionService) CancelarConversion(pedidoGuid string) error {

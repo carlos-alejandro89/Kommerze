@@ -98,6 +98,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 				coalesce(f.serie, '') as factura_serie,
 				coalesce(f.folio, 0) as factura_folio,
 				coalesce(ef.rfc, '') as receptor_rfc,
+				(coalesce(f.archivo_xml_cancelacion, '') <> '' or coalesce(f.archivo_pdf_cancelacion, '') <> '') as acuse_disponible,
 				sum((pd.cantidad * pd.precio_venta) - ((pd.cantidad * pd.precio_venta) * coalesce(pd.descuento, 0) / 100)) as monto_transaccion
 				from pedidos p
 				join tipos_pedido tp on p.tipo_pedido_id = tp.id
@@ -123,7 +124,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 
 	query += ` group by p.id, p.guid, p.folio, p.fecha, p.es_credito, c.razon_social, c.correo, c.telefono,
 				tp.nombre, tp.id, tp.guid, e.nombre, p.estatus_autorizacion, s.serie_cfdi,
-				f.uuid, f.serie, f.folio, ef.rfc
+				f.uuid, f.serie, f.folio, f.archivo_xml_cancelacion, f.archivo_pdf_cancelacion, ef.rfc
 				order by p.fecha desc, p.folio desc`
 
 	err := r.db.Raw(query, args...).Scan(&transacciones).Error
@@ -147,7 +148,7 @@ func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, erro
 	err = r.db.Transaction(func(tx *gorm.DB) error {
 		var pedido models.Pedido
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Preload("TipoPedido").Preload("Estatus").
+			Preload("TipoPedido").Preload("Estatus").Preload("Factura").
 			Where("guid = ? AND deleted_at IS NULL", guid).First(&pedido).Error; err != nil {
 			return fmt.Errorf("venta no encontrada: %w", err)
 		}
@@ -157,7 +158,7 @@ func (r *PosRepository) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, erro
 		if strings.EqualFold(pedido.Estatus.Nombre, "Cancelado") || strings.EqualFold(pedido.Estatus.Nombre, "Cancelada") {
 			return fmt.Errorf("la venta ya se encuentra cancelada")
 		}
-		if pedido.FacturaID != nil {
+		if pedido.FacturaID != nil && !strings.EqualFold(strings.TrimSpace(pedido.Factura.Estatus), "cancelado") {
 			return fmt.Errorf("la venta ya está facturada; primero deberá cancelarse su CFDI")
 		}
 		var detalles []models.PedidoDetalle

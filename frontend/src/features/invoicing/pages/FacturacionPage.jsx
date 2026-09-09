@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PdfViewer } from "@/components/common/pdf-viewer";
 import {
   Dialog,
   DialogContent,
@@ -70,23 +71,46 @@ const FiscalEntityOption = ({ item, selected, onSelect }) => (
     className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${selected ? "border-primary/35 bg-primary/[.06]" : "border-border/65 bg-background/65 hover:border-blue-300 hover:bg-blue-50/55 dark:hover:border-blue-400/20 dark:hover:bg-blue-500/[.07]"}`}
   >
     <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">
-      {String(item.RazonSocial || "EF").split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}
+      {String(item.RazonSocial || "EF")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()}
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-semibold">{item.RazonSocial || "Entidad fiscal sin nombre"}</span>
+      <span className="block truncate text-sm font-semibold">
+        {item.RazonSocial || "Entidad fiscal sin nombre"}
+      </span>
       <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-        <span className="font-semibold text-foreground/75">RFC: {item.RFC || "—"}</span>
+        <span className="font-semibold text-foreground/75">
+          RFC: {item.RFC || "—"}
+        </span>
         <span>C.P. {item.CodigoPostal || "—"}</span>
-        {item.RegimenClave && <span>{item.RegimenClave} · {item.Regimen}</span>}
+        {item.RegimenClave && (
+          <span>
+            {item.RegimenClave} · {item.Regimen}
+          </span>
+        )}
       </span>
     </span>
-    <span className={`rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-600 transition dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300 ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+    <span
+      className={`rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-bold text-blue-600 transition dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300 ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+    >
       {selected ? "Seleccionada" : "Seleccionar"}
     </span>
   </button>
 );
 
-function FacturacionSuccess({ result, sale, entity, navigate, service, historicalView = false }) {
+function FacturacionSuccess({
+  result,
+  sale,
+  entity,
+  navigate,
+  service,
+  historicalView = false,
+}) {
   const uuid = result?.uuid || result?.data?.uuid || "";
   const xmlPath = result?.data?.archivoXML || "";
   const invoicePath = result?.data?.archivoPDF || xmlPath;
@@ -109,11 +133,28 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
   const [newEmail, setNewEmail] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReasons, setCancelReasons] = useState([]);
+  const [cancelReason, setCancelReason] = useState("");
+  const [replacementUUID, setReplacementUUID] = useState("");
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancellationReceipt, setCancellationReceipt] = useState({
+    open: false,
+    url: "",
+    fileName: "",
+  });
+  const invoiceCancelled =
+    String(result?.data?.estatus || "").toLowerCase() === "cancelado";
   useEffect(
     () => () => {
       if (pdfURL) URL.revokeObjectURL(pdfURL);
     },
     [pdfURL],
+  );
+  useEffect(
+    () => () => {
+      if (cancellationReceipt.url) URL.revokeObjectURL(cancellationReceipt.url);
+    },
+    [cancellationReceipt.url],
   );
   const copy = async (value, message) => {
     if (!value) return;
@@ -126,6 +167,62 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
       await service.abrirUbicacionFactura(invoicePath);
     } catch (error) {
       toast.error(String(error));
+    }
+  };
+  const selectedCancelReason = cancelReasons.find(
+    (item) => item.CveMotivo === cancelReason,
+  );
+  const openCancellation = async () => {
+    setCancelOpen(true);
+    setCancelReason("");
+    setReplacementUUID("");
+    setCancelLoading(true);
+    try {
+      const reasons = await service.obtenerMotivosCancelacionCFDI();
+      setCancelReasons(Array.isArray(reasons) ? reasons : []);
+    } catch (error) {
+      setCancelReasons([]);
+      toast.error(String(error));
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+  const cancelInvoiceAndSale = async () => {
+    setCancelLoading(true);
+    try {
+      const cancellation = await service.cancelarCFDIVenta({
+        pedidoGuid: sale.PedidoGuid,
+        cveMotivo: cancelReason,
+        folioSustitucion: replacementUUID.trim(),
+      });
+      if (!cancellation?.success)
+        throw new Error(
+          cancellation?.message || "No fue posible cancelar la factura",
+        );
+      setCancelOpen(false);
+      const receipt = cancellation?.data;
+      if (!receipt?.pdfBase64)
+        throw new Error(
+          "La cancelación fue confirmada, pero no se recibió el PDF del acuse",
+        );
+      const bytes = Uint8Array.from(atob(receipt.pdfBase64), (char) =>
+        char.charCodeAt(0),
+      );
+      const receiptURL = URL.createObjectURL(
+        new Blob([bytes], { type: "application/pdf" }),
+      );
+      setCancellationReceipt({
+        open: true,
+        url: receiptURL,
+        fileName: receipt.pdfFileName || "AcuseCancelacion.pdf",
+      });
+      toast.success(
+        "CFDI y venta cancelados; las existencias fueron reintegradas",
+      );
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setCancelLoading(false);
     }
   };
   const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -175,292 +272,386 @@ function FacturacionSuccess({ result, sale, entity, navigate, service, historica
     }
   };
   return (
-    <div className="min-h-[calc(100vh-56px)] bg-bg-subtle pb-10">
-      <header className="relative overflow-hidden bg-gradient-to-r from-[#001b4d] via-[#003b8f] to-[#0869e8] px-6 py-9 text-white shadow-[0_20px_60px_-38px_rgba(0,35,102,.85)]">
-        <div className="absolute -right-16 -top-28 size-72 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative mx-auto flex max-w-[1450px] flex-col items-center text-center">
-          <div className="mb-3 grid size-14 place-items-center rounded-full border border-white/25 bg-white/15 shadow-inner">
-            <CheckCircle2 className="size-7" />
+    <>
+      <div className="min-h-[calc(100vh-56px)] bg-bg-subtle pb-10">
+        <header className="relative overflow-hidden bg-gradient-to-r from-[#001b4d] via-[#003b8f] to-[#0869e8] px-6 py-9 text-white shadow-[0_20px_60px_-38px_rgba(0,35,102,.85)]">
+          <div className="absolute -right-16 -top-28 size-72 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative mx-auto flex max-w-[1450px] flex-col items-center text-center">
+            <div className="mb-3 grid size-14 place-items-center rounded-full border border-white/25 bg-white/15 shadow-inner">
+              <CheckCircle2 className="size-7" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {historicalView
+                ? "Factura timbrada"
+                : "¡Factura timbrada con éxito!"}
+            </h1>
+            <button
+              type="button"
+              onClick={() => copy(uuid, "Folio fiscal copiado")}
+              className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-black/10 px-4 py-1.5 text-xs text-blue-50 transition hover:bg-black/20"
+            >
+              <span className="truncate">Folio fiscal: {uuid}</span>
+              <ClipboardCopy className="size-3.5 shrink-0" />
+            </button>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {historicalView ? "Factura timbrada" : "¡Factura timbrada con éxito!"}
-          </h1>
-          <button
-            type="button"
-            onClick={() => copy(uuid, "Folio fiscal copiado")}
-            className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-black/10 px-4 py-1.5 text-xs text-blue-50 transition hover:bg-black/20"
-          >
-            <span className="truncate">Folio fiscal: {uuid}</span>
-            <ClipboardCopy className="size-3.5 shrink-0" />
-          </button>
-        </div>
-      </header>
-      <main className="mx-auto grid max-w-[1450px] gap-6 px-6 py-7 lg:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="space-y-5">
-          <section className="rounded-2xl border border-white/80 bg-white/75 p-5 shadow-[0_16px_45px_-35px_rgba(20,54,110,.55)] backdrop-blur dark:border-white/10 dark:bg-white/[.05]">
-            <h2 className="mb-4 text-sm font-bold">Acciones disponibles</h2>
-            <div className="space-y-2.5">
-              <Button
-                className="h-11 w-full justify-start rounded-xl bg-primary text-white"
-                onClick={() => setEmailOpen(true)}
-              >
-                <Mail className="size-4" />
-                Enviar por correo
-              </Button>
-              <Button
-                variant="outline"
-                className="h-11 w-full justify-start rounded-xl"
-                onClick={openInvoiceLocation}
-                disabled={!invoicePath}
-              >
-                <FolderOpen className="size-4" />
-                Abrir ubicación de archivos
-              </Button>
-              <Button
-                variant="outline"
-                className="h-11 w-full justify-start rounded-xl"
-                onClick={() => copy(uuid, "Folio fiscal copiado")}
-              >
-                <ClipboardCopy className="size-4" />
-                Copiar folio fiscal
-              </Button>
-              <Button
-                variant="outline"
-                className="h-11 w-full justify-start rounded-xl"
-                onClick={() => navigate("/history")}
-              >
-                <History className="size-4" />
-                Volver al historial
-              </Button>
-              {historicalView && (
+        </header>
+        <main className="mx-auto grid max-w-[1450px] gap-6 px-6 py-7 lg:grid-cols-[310px_minmax(0,1fr)]">
+          <aside className="space-y-5">
+            <section className="rounded-2xl border border-white/80 bg-white/75 p-5 shadow-[0_16px_45px_-35px_rgba(20,54,110,.55)] backdrop-blur dark:border-white/10 dark:bg-white/[.05]">
+              <h2 className="mb-4 text-sm font-bold">Acciones disponibles</h2>
+              <div className="space-y-2.5">
+                <Button
+                  className="h-11 w-full justify-start rounded-xl bg-primary text-white"
+                  onClick={() => setEmailOpen(true)}
+                >
+                  <Mail className="size-4" />
+                  Enviar por correo
+                </Button>
                 <Button
                   variant="outline"
-                  className="h-11 w-full justify-start rounded-xl border-red-500/25 text-red-600 hover:bg-red-500/[.06] hover:text-red-700 dark:text-red-400"
-                  onClick={() => setCancelOpen(true)}
+                  className="h-11 w-full justify-start rounded-xl"
+                  onClick={openInvoiceLocation}
+                  disabled={!invoicePath}
                 >
-                  <Ban className="size-4" />
-                  Cancelar CFDI
+                  <FolderOpen className="size-4" />
+                  Abrir ubicación de archivos
                 </Button>
-              )}
-            </div>
-          </section>
-          <section className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[.055] p-5">
-            <div className="flex gap-3">
-              <BadgeCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
-              <div>
-                <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
-                  CFDI registrado
-                </h3>
-                <p className="mt-1 text-xs leading-5 text-emerald-800/75 dark:text-emerald-300/70">
-                  El XML timbrado fue decodificado, almacenado y vinculado con
-                  la venta local.
-                </p>
+                <Button
+                  variant="outline"
+                  className="h-11 w-full justify-start rounded-xl"
+                  onClick={() => copy(uuid, "Folio fiscal copiado")}
+                >
+                  <ClipboardCopy className="size-4" />
+                  Copiar folio fiscal
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 w-full justify-start rounded-xl"
+                  onClick={() => navigate("/history")}
+                >
+                  <History className="size-4" />
+                  Volver al historial
+                </Button>
+                {historicalView && !invoiceCancelled && (
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-start rounded-xl border-red-500/25 text-red-600 hover:bg-red-500/[.06] hover:text-red-700 dark:text-red-400"
+                    onClick={openCancellation}
+                  >
+                    <Ban className="size-4" />
+                    Cancelar CFDI y venta
+                  </Button>
+                )}
               </div>
-            </div>
-          </section>
-        </aside>
-        <section className="overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-[0_24px_70px_-45px_rgba(20,54,110,.58)] backdrop-blur dark:border-white/10 dark:bg-white/[.045]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-primary/[.035] px-6 py-4">
-            <div className="flex items-center gap-2 text-sm font-bold">
-              <Eye className="size-4 text-primary" />
-              Vista previa del CFDI
-            </div>
-            <span className="rounded-lg border bg-white/70 px-3 py-1 text-xs font-semibold text-muted-foreground dark:bg-white/5">
-              {result?.pdfFileName ||
-                `${sale.Serie}-${String(sale.Folio).padStart(6, "0")}.pdf`}
-            </span>
-          </div>
-          {pdfURL ? (
-            <iframe
-              title="Vista previa del CFDI"
-              src={`${pdfURL}#toolbar=1&navpanes=0&view=FitH`}
-              className="h-[900px] w-full bg-[#e9edf3]"
-            />
-          ) : (
-            <div className="grid h-[600px] place-items-center text-sm text-muted-foreground">
-              No se pudo preparar la vista previa del PDF.
-            </div>
-          )}
-        </section>
-      </main>
-      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-        <DialogContent className="max-w-xl rounded-2xl p-0">
-          <DialogHeader className="border-b px-6 pb-5 pt-6">
-            <div className="mb-3 grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Mail className="size-5" />
-            </div>
-            <DialogTitle>Enviar factura por correo</DialogTitle>
-            <DialogDescription>
-              Se adjuntarán el PDF y el XML timbrado. Puedes agregar más
-              destinatarios antes de enviar.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-5 px-6 py-1">
-            {fiscalEmail ? (
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Correo fiscal registrado
-                </p>
-                <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-primary/[.04] px-4 py-3 text-sm">
-                  <span className="truncate font-medium">{fiscalEmail}</span>
-                  <BadgeCheck className="size-4 shrink-0 text-primary" />
+            </section>
+            <section className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[.055] p-5">
+              <div className="flex gap-3">
+                <BadgeCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                    CFDI registrado
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-emerald-800/75 dark:text-emerald-300/70">
+                    El XML timbrado fue decodificado, almacenado y vinculado con
+                    la venta local.
+                  </p>
                 </div>
               </div>
+            </section>
+          </aside>
+          <section className="overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-[0_24px_70px_-45px_rgba(20,54,110,.58)] backdrop-blur dark:border-white/10 dark:bg-white/[.045]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-primary/[.035] px-6 py-4">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <Eye className="size-4 text-primary" />
+                Vista previa del CFDI
+              </div>
+              <span className="rounded-lg border bg-white/70 px-3 py-1 text-xs font-semibold text-muted-foreground dark:bg-white/5">
+                {result?.pdfFileName ||
+                  `${sale.Serie}-${String(sale.Folio).padStart(6, "0")}.pdf`}
+              </span>
+            </div>
+            {pdfURL ? (
+              <iframe
+                title="Vista previa del CFDI"
+                src={`${pdfURL}#toolbar=1&navpanes=0&view=FitH`}
+                className="h-[900px] w-full bg-[#e9edf3]"
+              />
             ) : (
-              <div className="rounded-xl border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-800">
-                La entidad fiscal no tiene un correo registrado. Agrega un
-                destinatario para continuar.
+              <div className="grid h-[600px] place-items-center text-sm text-muted-foreground">
+                No se pudo preparar la vista previa del PDF.
               </div>
             )}
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Destinatarios adicionales
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(event) => setNewEmail(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addEmail();
-                    }
-                  }}
-                  placeholder="correo@empresa.com"
-                  className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="size-11 rounded-xl p-0"
-                  onClick={addEmail}
-                >
-                  <Plus className="size-4" />
-                  <span className="sr-only">Agregar destinatario</span>
-                </Button>
+          </section>
+        </main>
+        <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+          <DialogContent className="max-w-xl rounded-2xl p-0">
+            <DialogHeader className="border-b px-6 pb-5 pt-6">
+              <div className="mb-3 grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Mail className="size-5" />
               </div>
-              {extraEmails.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {extraEmails.map((email) => (
-                    <span
-                      key={email}
-                      className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-medium"
-                    >
-                      {email}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExtraEmails((current) =>
-                            current.filter((item) => item !== email),
-                          )
-                        }
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
+              <DialogTitle>Enviar factura por correo</DialogTitle>
+              <DialogDescription>
+                Se adjuntarán el PDF y el XML timbrado. Puedes agregar más
+                destinatarios antes de enviar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-5 px-6 py-1">
+              {fiscalEmail ? (
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Correo fiscal registrado
+                  </p>
+                  <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-primary/[.04] px-4 py-3 text-sm">
+                    <span className="truncate font-medium">{fiscalEmail}</span>
+                    <BadgeCheck className="size-4 shrink-0 text-primary" />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-800">
+                  La entidad fiscal no tiene un correo registrado. Agrega un
+                  destinatario para continuar.
                 </div>
               )}
-            </div>
-            <div className="overflow-hidden rounded-xl border border-border/50 bg-background/35">
-              <div className="flex items-center justify-between border-b border-border/45 px-4 py-2">
-                <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[.04em] text-muted-foreground">
-                  <Paperclip className="size-3.5 text-primary/65" />
-                  Archivos adjuntos
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Destinatarios adicionales
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(event) => setNewEmail(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addEmail();
+                      }
+                    }}
+                    placeholder="correo@empresa.com"
+                    className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="size-11 rounded-xl p-0"
+                    onClick={addEmail}
+                  >
+                    <Plus className="size-4" />
+                    <span className="sr-only">Agregar destinatario</span>
+                  </Button>
                 </div>
-                <span className="rounded-full border border-primary/10 bg-primary/[.045] px-2 py-0.5 text-[9px] font-semibold text-primary">
-                  2 archivos
-                </span>
+                {extraEmails.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {extraEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-medium"
+                      >
+                        {email}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExtraEmails((current) =>
+                              current.filter((item) => item !== email),
+                            )
+                          }
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="divide-y divide-border/40">
-                <div className="flex min-w-0 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/20">
-                  <div className="grid size-8 shrink-0 place-items-center rounded-lg border border-red-500/10 bg-red-500/[.055] text-red-500">
-                    <FileText className="size-3.5" />
+              <div className="overflow-hidden rounded-xl border border-border/50 bg-background/35">
+                <div className="flex items-center justify-between border-b border-border/45 px-4 py-2">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[.04em] text-muted-foreground">
+                    <Paperclip className="size-3.5 text-primary/65" />
+                    Archivos adjuntos
                   </div>
-                  <div className="min-w-0">
-                    <p
-                      className="truncate text-xs font-medium text-foreground"
-                      title={pdfFileName}
-                    >
-                      {pdfFileName}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/75">
-                      Representación impresa del CFDI
-                    </p>
-                  </div>
-                  <span className="ml-auto shrink-0 text-[9px] font-semibold text-red-500/75">
-                    PDF
+                  <span className="rounded-full border border-primary/10 bg-primary/[.045] px-2 py-0.5 text-[9px] font-semibold text-primary">
+                    2 archivos
                   </span>
                 </div>
-                <div className="flex min-w-0 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/20">
-                  <div className="grid size-8 shrink-0 place-items-center rounded-lg border border-blue-500/10 bg-blue-500/[.055] text-blue-600 dark:text-blue-400">
-                    <FileCode2 className="size-3.5" />
+                <div className="divide-y divide-border/40">
+                  <div className="flex min-w-0 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/20">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-lg border border-red-500/10 bg-red-500/[.055] text-red-500">
+                      <FileText className="size-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className="truncate text-xs font-medium text-foreground"
+                        title={pdfFileName}
+                      >
+                        {pdfFileName}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground/75">
+                        Representación impresa del CFDI
+                      </p>
+                    </div>
+                    <span className="ml-auto shrink-0 text-[9px] font-semibold text-red-500/75">
+                      PDF
+                    </span>
                   </div>
-                  <div className="min-w-0">
-                    <p
-                      className="truncate text-xs font-medium text-foreground"
-                      title={xmlFileName}
-                    >
-                      {xmlFileName}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/75">
-                      Comprobante fiscal timbrado
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/20">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-lg border border-blue-500/10 bg-blue-500/[.055] text-blue-600 dark:text-blue-400">
+                      <FileCode2 className="size-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className="truncate text-xs font-medium text-foreground"
+                        title={xmlFileName}
+                      >
+                        {xmlFileName}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground/75">
+                        Comprobante fiscal timbrado
+                      </p>
+                    </div>
+                    <span className="ml-auto shrink-0 text-[9px] font-semibold text-blue-600/75 dark:text-blue-400">
+                      XML
+                    </span>
                   </div>
-                  <span className="ml-auto shrink-0 text-[9px] font-semibold text-blue-600/75 dark:text-blue-400">
-                    XML
-                  </span>
                 </div>
               </div>
             </div>
-          </div>
-          <DialogFooter className="border-t px-6 pb-6">
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => setEmailOpen(false)}
-              disabled={emailSending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="rounded-xl"
-              onClick={sendEmail}
-              disabled={
-                emailSending ||
-                (!fiscalEmail && !extraEmails.length && !newEmail.trim())
-              }
-            >
-              <Send className="size-4" />
-              {emailSending ? "Enviando…" : "Enviar factura"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
-          <DialogHeader>
-            <div className="mb-3 grid size-11 place-items-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
-              <AlertTriangle className="size-5" />
+            <DialogFooter className="border-t px-6 pb-6">
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setEmailOpen(false)}
+                disabled={emailSending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="rounded-xl"
+                onClick={sendEmail}
+                disabled={
+                  emailSending ||
+                  (!fiscalEmail && !extraEmails.length && !newEmail.trim())
+                }
+              >
+                <Send className="size-4" />
+                {emailSending ? "Enviando…" : "Enviar factura"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <DialogContent className="max-w-lg rounded-2xl">
+            <DialogHeader>
+              <div className="mb-3 grid size-11 place-items-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
+                <AlertTriangle className="size-5" />
+              </div>
+              <DialogTitle>Cancelar venta facturada</DialogTitle>
+              <DialogDescription>
+                Al cancelar la venta también se cancelará su CFDI. Selecciona el
+                motivo oficial del SAT y, cuando corresponda, indica el UUID que
+                sustituye al comprobante.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {cancelLoading && !cancelReasons.length ? (
+                <div className="flex items-center justify-center gap-2 rounded-xl border py-7 text-xs text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> Consultando
+                  catálogo…
+                </div>
+              ) : cancelReasons.length ? (
+                <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                  {cancelReasons.map((reason) => (
+                    <button
+                      key={reason.Guid || reason.CveMotivo}
+                      type="button"
+                      onClick={() => setCancelReason(reason.CveMotivo)}
+                      className={`w-full rounded-xl border px-4 py-3 text-left transition ${cancelReason === reason.CveMotivo ? "border-primary/40 bg-primary/[.06] ring-2 ring-primary/10" : "border-border/70 hover:bg-muted/40"}`}
+                    >
+                      <span className="text-xs font-semibold">
+                        {reason.CveMotivo} · {reason.MotivoCancelacion}
+                      </span>
+                      {reason.RequiereFolioSustitucion && (
+                        <span className="mt-1 block text-[10px] text-amber-600">
+                          Requiere folio fiscal de sustitución
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[.055] p-3 text-xs leading-5 text-amber-800 dark:text-amber-300">
+                  No hay motivos de cancelación configurados. Sincroniza este
+                  catálogo antes de continuar.
+                </div>
+              )}
+              {selectedCancelReason?.RequiereFolioSustitucion && (
+                <label className="block space-y-2 text-xs font-semibold">
+                  <span>Folio fiscal de sustitución</span>
+                  <input
+                    value={replacementUUID}
+                    onChange={(event) => setReplacementUUID(event.target.value)}
+                    placeholder="UUID del CFDI sustituto"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm font-normal outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+                  />
+                </label>
+              )}
             </div>
-            <DialogTitle>Cancelar CFDI</DialogTitle>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setCancelOpen(false)}
+                disabled={cancelLoading}
+              >
+                Conservar venta
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-xl"
+                onClick={cancelInvoiceAndSale}
+                disabled={
+                  cancelLoading ||
+                  !cancelReason ||
+                  (selectedCancelReason?.RequiereFolioSustitucion &&
+                    !replacementUUID.trim())
+                }
+              >
+                {cancelLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Ban className="size-4" />
+                )}
+                Cancelar CFDI y venta
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <Dialog
+        open={cancellationReceipt.open}
+        onOpenChange={(open) => {
+          setCancellationReceipt((current) => ({ ...current, open }));
+          if (!open) navigate("/history");
+        }}
+      >
+        <DialogContent className="flex h-[94vh] w-[min(1180px,97vw)] max-w-none flex-col overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-border px-6 py-4 text-left">
+            <DialogTitle>Acuse de cancelación</DialogTitle>
             <DialogDescription>
-              La cancelación fiscal requiere seleccionar un motivo SAT y, cuando corresponda, indicar el UUID que sustituye al comprobante.
+              La cancelación fue confirmada. El XML y este PDF quedaron
+              guardados junto al CFDI.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[.055] p-3 text-xs leading-5 text-amber-800 dark:text-amber-300">
-            El acceso quedó preparado. Para ejecutar la cancelación necesitamos definir el endpoint y el formato solicitado por el servicio de facturación.
-          </div>
-          <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setCancelOpen(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
+          {cancellationReceipt.url && (
+            <iframe
+              title={cancellationReceipt.fileName}
+              src={cancellationReceipt.url}
+              className="min-h-0 w-full flex-1 bg-zinc-100"
+            />
+          )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
@@ -500,8 +691,8 @@ export function FacturacionPage() {
           entidadFiscalID: String(result.Entidades?.[0]?.ID || ""),
           usoCFDIID: String(
             (result.UsosCFDI || []).find((x) => x.Clave === "G03")?.ID ||
-              result.UsosCFDI?.[0]?.ID ||
-              "",
+            result.UsosCFDI?.[0]?.ID ||
+            "",
           ),
           formaPagoID: String(
             result.FormaPagoPredominanteID || result.FormasPago?.[0]?.ID || "",
@@ -513,7 +704,8 @@ export function FacturacionPage() {
         if (historicalView) {
           const invoice = await service.obtenerFacturaPDF(pedidoGuid);
           setDone(invoice);
-          if (invoice?.data?.regenerado) toast.success("El PDF fiscal fue regenerado correctamente");
+          if (invoice?.data?.regenerado)
+            toast.success("El PDF fiscal fue regenerado correctamente");
         }
       } catch (e) {
         toast.error(String(e));
@@ -527,17 +719,25 @@ export function FacturacionPage() {
     if (!entityDialogOpen) return undefined;
     let active = true;
     setSearchingEntities(true);
-    const timer = window.setTimeout(async () => {
-      try {
-        const results = await service.buscarEntidadesFacturacion(entityQuery.trim());
-        if (active) setEntityResults(results || []);
-      } catch (error) {
-        if (active) setEntityResults([]);
-        console.error("No se pudieron consultar las entidades fiscales:", error);
-      } finally {
-        if (active) setSearchingEntities(false);
-      }
-    }, entityQuery.trim() ? 280 : 0);
+    const timer = window.setTimeout(
+      async () => {
+        try {
+          const results = await service.buscarEntidadesFacturacion(
+            entityQuery.trim(),
+          );
+          if (active) setEntityResults(results || []);
+        } catch (error) {
+          if (active) setEntityResults([]);
+          console.error(
+            "No se pudieron consultar las entidades fiscales:",
+            error,
+          );
+        } finally {
+          if (active) setSearchingEntities(false);
+        }
+      },
+      entityQuery.trim() ? 280 : 0,
+    );
     return () => {
       active = false;
       window.clearTimeout(timer);
@@ -545,13 +745,18 @@ export function FacturacionPage() {
   }, [entityDialogOpen, entityQuery]);
   const selectBillingEntity = (selectedEntity) => {
     setSelectedEntity(selectedEntity);
-    setForm((current) => ({ ...current, entidadFiscalID: String(selectedEntity.ID) }));
+    setForm((current) => ({
+      ...current,
+      entidadFiscalID: String(selectedEntity.ID),
+    }));
     setEntityDialogOpen(false);
     setEntityQuery("");
   };
   const entity = selectedEntity;
   const additionalEntities = useMemo(() => {
-    const linkedIDs = new Set((data?.Entidades || []).map((item) => String(item.ID)));
+    const linkedIDs = new Set(
+      (data?.Entidades || []).map((item) => String(item.ID)),
+    );
     return entityResults.filter((item) => !linkedIDs.has(String(item.ID)));
   }, [data?.Entidades, entityResults]);
   const submit = async () => {
@@ -785,7 +990,9 @@ export function FacturacionPage() {
             </div>
             <div className="space-y-5 p-6">
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-foreground">Entidad fiscal receptora</p>
+                <p className="text-xs font-semibold text-foreground">
+                  Entidad fiscal receptora
+                </p>
                 <button
                   type="button"
                   onClick={() => setEntityDialogOpen(true)}
@@ -805,7 +1012,9 @@ export function FacturacionPage() {
                       {entity?.RazonSocial || "Seleccionar entidad fiscal"}
                     </span>
                     <span className="mt-1 block text-[10px] text-muted-foreground">
-                      {entity ? `RFC: ${entity.RFC} · C.P. ${entity.CodigoPostal}` : "Busca por razón social, RFC o código postal"}
+                      {entity
+                        ? `RFC: ${entity.RFC} · C.P. ${entity.CodigoPostal}`
+                        : "Busca por razón social, RFC o código postal"}
                     </span>
                   </span>
                   <Search className="size-4 shrink-0 text-primary" />
@@ -813,7 +1022,8 @@ export function FacturacionPage() {
               </div>
               {!entity && (
                 <div className="rounded-xl border border-amber-400/40 bg-amber-500/[.07] p-4 text-xs leading-5 text-amber-800 dark:text-amber-300">
-                  Selecciona una entidad fiscal receptora para continuar con la factura.
+                  Selecciona una entidad fiscal receptora para continuar con la
+                  factura.
                 </div>
               )}
               <div className="h-px bg-border/65" />
@@ -878,7 +1088,8 @@ export function FacturacionPage() {
           <DialogHeader className="border-b border-border/70 px-6 py-5 text-left">
             <DialogTitle>Seleccionar entidad fiscal</DialogTitle>
             <DialogDescription>
-              Elige una entidad vinculada al cliente de la venta o busca cualquier otra entidad receptora registrada.
+              Elige una entidad vinculada al cliente de la venta o busca
+              cualquier otra entidad receptora registrada.
             </DialogDescription>
           </DialogHeader>
           <div className="px-6 pt-4">
@@ -891,31 +1102,54 @@ export function FacturacionPage() {
                 placeholder="Razón social, RFC, régimen o código postal…"
                 className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#7790b6]"
               />
-              {searchingEntities && <Loader2 className="size-4 animate-spin text-blue-600" />}
+              {searchingEntities && (
+                <Loader2 className="size-4 animate-spin text-blue-600" />
+              )}
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {searchingEntities && !entityResults.length ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/70" />
+                  <div
+                    key={index}
+                    className="h-16 animate-pulse rounded-xl bg-muted/70"
+                  />
                 ))}
               </div>
-            ) : (data.Entidades?.length || additionalEntities.length) ? (
+            ) : data.Entidades?.length || additionalEntities.length ? (
               <div className="space-y-5">
                 {data.Entidades?.length > 0 && (
                   <section>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Ligadas al cliente de la venta</p>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                      Ligadas al cliente de la venta
+                    </p>
                     <div className="space-y-2">
-                      {data.Entidades.map((item) => <FiscalEntityOption key={item.Guid || item.ID} item={item} selected={String(item.ID) === form.entidadFiscalID} onSelect={selectBillingEntity} />)}
+                      {data.Entidades.map((item) => (
+                        <FiscalEntityOption
+                          key={item.Guid || item.ID}
+                          item={item}
+                          selected={String(item.ID) === form.entidadFiscalID}
+                          onSelect={selectBillingEntity}
+                        />
+                      ))}
                     </div>
                   </section>
                 )}
                 {additionalEntities.length > 0 && (
                   <section>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Otras entidades fiscales receptoras</p>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                      Otras entidades fiscales receptoras
+                    </p>
                     <div className="space-y-2">
-                      {additionalEntities.map((item) => <FiscalEntityOption key={item.Guid || item.ID} item={item} selected={String(item.ID) === form.entidadFiscalID} onSelect={selectBillingEntity} />)}
+                      {additionalEntities.map((item) => (
+                        <FiscalEntityOption
+                          key={item.Guid || item.ID}
+                          item={item}
+                          selected={String(item.ID) === form.entidadFiscalID}
+                          onSelect={selectBillingEntity}
+                        />
+                      ))}
                     </div>
                   </section>
                 )}
@@ -923,13 +1157,20 @@ export function FacturacionPage() {
             ) : (
               <div className="flex flex-col items-center justify-center py-14 text-center">
                 <Search className="size-9 text-muted-foreground/35" />
-                <p className="mt-3 text-sm font-semibold">Sin entidades fiscales encontradas</p>
-                <p className="mt-1 max-w-sm text-xs text-muted-foreground">Prueba con otro dato o registra primero la entidad fiscal desde Clientes.</p>
+                <p className="mt-3 text-sm font-semibold">
+                  Sin entidades fiscales encontradas
+                </p>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  Prueba con otro dato o registra primero la entidad fiscal
+                  desde Clientes.
+                </p>
               </div>
             )}
           </div>
           <div className="border-t border-border/70 bg-muted/20 px-6 py-3 text-[10px] text-muted-foreground">
-            {searchingEntities ? "Consultando entidades fiscales…" : `${(data.Entidades?.length || 0) + additionalEntities.length} entidad${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "es"} disponible${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "s"}`}
+            {searchingEntities
+              ? "Consultando entidades fiscales…"
+              : `${(data.Entidades?.length || 0) + additionalEntities.length} entidad${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "es"} disponible${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "s"}`}
           </div>
         </DialogContent>
       </Dialog>

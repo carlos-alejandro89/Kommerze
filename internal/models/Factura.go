@@ -48,9 +48,13 @@ type Factura struct {
 	Total     decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
 
 	// Estado
-	Estatus string `gorm:"size:30;default:'vigente';index"`
+	Estatus           string     `gorm:"size:30;default:'vigente';index"`
+	MotivoCancelacion string     `gorm:"size:2"`
+	FolioSustitucion  string     `gorm:"size:36"`
+	FechaCancelacion  *time.Time `gorm:"type:timestamptz"`
 
 	ArchivoXML            string `gorm:"type:text"`
 	ArchivoPDF            string `gorm:"type:text"`
 	ArchivoXMLCancelacion string `gorm:"type:text"`
+	ArchivoPDFCancelacion string `gorm:"type:text"`
 }

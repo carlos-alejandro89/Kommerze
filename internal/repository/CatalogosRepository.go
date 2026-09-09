@@ -60,6 +60,50 @@ func (c *CatalogosRepository) SaveSatUnidadesMedida(data []any) error {
 	})
 }
 
+func (c *CatalogosRepository) SaveSatMotivosCancelacion(data []any) error {
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		// Elimina únicamente residuos creados por el mapeo anterior, que convertía
+		// una propiedad inexistente en la cadena literal "<nil>".
+		if err := tx.Unscoped().Where("TRIM(cve_motivo) = '' OR cve_motivo = ?", "<nil>").
+			Delete(&models.SatMotivosCancelacion{}).Error; err != nil {
+			return fmt.Errorf("error limpiando motivos de cancelación SAT inválidos: %w", err)
+		}
+
+		for _, fila := range data {
+			fMap, ok := fila.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			guid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["guid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de motivo de cancelación SAT inválido: %w", err)
+			}
+			clave := strings.TrimSpace(fmt.Sprintf("%v", fMap["clave"]))
+			if clave == "" || clave == "<nil>" {
+				return fmt.Errorf("el motivo de cancelación SAT %s no contiene clave", guid)
+			}
+			nombre := strings.TrimSpace(fmt.Sprintf("%v", fMap["nombre"]))
+			if nombre == "" || nombre == "<nil>" {
+				return fmt.Errorf("el motivo de cancelación SAT %s no contiene nombre", clave)
+			}
+			motivo := models.SatMotivosCancelacion{
+				BaseModel:                models.BaseModel{Guid: guid},
+				CveMotivo:                clave,
+				MotivoCancelacion:        nombre,
+				RequiereFolioSustitucion: fmt.Sprintf("%v", fMap["requiereFolioSustitucion"]) == "true",
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "cve_motivo"}},
+				DoUpdates: clause.AssignmentColumns([]string{"guid", "motivo_cancelacion", "requiere_folio_sustitucion", "updated_at", "deleted_at"}),
+			}).Create(&motivo).Error; err != nil {
+				return fmt.Errorf("error insertando motivo de cancelación SAT: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 func (c *CatalogosRepository) GetEmpaques() (*dto.ResponseDto, error) {
 	var empaques []models.Empaque
 	if err := c.db.Find(&empaques).Error; err != nil {

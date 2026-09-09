@@ -50,7 +50,10 @@ import {
     ServicePrepararFacturacion,
     ServiceEmitirFacturacion,
     ServiceObtenerFacturaPDF,
+    ServiceObtenerAcuseCancelacionPDF,
     ServiceEnviarFacturaCorreo,
+    ServiceObtenerMotivosCancelacionCFDI,
+    ServiceCancelarCFDIVenta,
     ServiceOpenInvoiceLocation,
     ServiceConsultarProductosConvertibles,
     ServiceEjecutarConversion,
@@ -156,7 +159,12 @@ export function usePosService() {
     const prepararFacturacion = (pedidoGuid) => ServicePrepararFacturacion(pedidoGuid);
     const emitirFacturacion = (datos) => ServiceEmitirFacturacion(datos);
     const obtenerFacturaPDF = (pedidoGuid) => ServiceObtenerFacturaPDF(pedidoGuid);
+    const obtenerAcuseCancelacionPDF = (pedidoGuid) => ServiceObtenerAcuseCancelacionPDF(pedidoGuid);
+    const generarFacturacionGlobal = (operacionID) =>
+        window.go.main.App.ServiceGenerarFacturacionGlobal(operacionID);
     const enviarFacturaCorreo = (datos) => ServiceEnviarFacturaCorreo(datos);
+    const obtenerMotivosCancelacionCFDI = () => ServiceObtenerMotivosCancelacionCFDI();
+    const cancelarCFDIVenta = (datos) => ServiceCancelarCFDIVenta(datos);
     const abrirUbicacionFactura = (ruta) => ServiceOpenInvoiceLocation(ruta);
     const consultarProductosConvertibles = (termino = '') => ServiceConsultarProductosConvertibles(termino);
     const ejecutarConversion = (datos) => ServiceEjecutarConversion(datos);
@@ -235,7 +243,11 @@ export function usePosService() {
         prepararFacturacion,
         emitirFacturacion,
         obtenerFacturaPDF,
+        obtenerAcuseCancelacionPDF,
+        generarFacturacionGlobal,
         enviarFacturaCorreo,
+        obtenerMotivosCancelacionCFDI,
+        cancelarCFDIVenta,
         abrirUbicacionFactura,
         consultarProductosConvertibles,
         ejecutarConversion,

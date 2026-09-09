@@ -21,4 +21,5 @@ type TransaccionDto struct {
 	FacturaSerie        string
 	FacturaFolio        int
 	ReceptorRFC         string
+	AcuseDisponible     bool
 }

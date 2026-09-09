@@ -104,7 +104,7 @@ func NewServices(db *gorm.DB, ctx context.Context, cfg *KommerzConfig) *Services
 	}
 
 	// Tarea periódica de sincronización de operaciones con la nube
-	syncSvc := NewSyncService(db, repo, repoPrecios, apiURL, cloudClient)
+	syncSvc := NewSyncService(db, repo, repoPrecios, apiURL, cloudClient, facturacion)
 	StartSyncOperacionesTicker(db, syncSvc)
 	StartSyncPedidosTicker(pos)
 

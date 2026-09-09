@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, CloudDownload, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import {
   SyncLineas, SyncMarcas, SyncEmpaques, SyncReglasConversionProducto, SyncSatProductos, SyncSatUnidadesMedida,
+  SyncSatMotivosCancelacion,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago, SyncSatUsosCfdi,
   SyncSatRegimenFiscal, SyncNivelesEmpaque, SyncEmpresas, SyncSucursales,
   SyncPerfiles, SyncUsuarios, SyncTiposPedido, SyncTiposAutorizacion,
@@ -13,6 +14,7 @@ import {
 const CATALOGS = [
   ['Regímenes fiscales', SyncSatRegimenFiscal], ['Formas de pago', SyncSatFormasPago],
   ['Métodos de pago', SyncSatMetodosPago], ['Usos CFDI', SyncSatUsosCfdi],
+  ['Motivos de cancelación SAT', SyncSatMotivosCancelacion],
   ['Claves SAT de productos', SyncSatProductos], ['Líneas', SyncLineas], ['Marcas', SyncMarcas],
   ['Unidades de medida SAT', SyncSatUnidadesMedida], ['Empaques', SyncEmpaques],
   ['Perfiles', SyncPerfiles], ['Roles fiscales', SyncRolesFiscales], ['Tipos de pedido', SyncTiposPedido],

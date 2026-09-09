@@ -8,6 +8,8 @@ import {
   LayoutList, BadgeCheck, BadgeX, Loader2,
   ReceiptText, Printer, Mail, FileDown, Ban, FileCheck2,
   SlidersHorizontal, CalendarDays,
+  AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -163,7 +165,10 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
   const navigate = useNavigate();
-  const { consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo } = usePosService();
+  const {
+    consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo,
+    obtenerMotivosCancelacionCFDI, cancelarCFDIVenta, obtenerAcuseCancelacionPDF,
+  } = usePosService();
 
   const [transacciones, setTransacciones] = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -177,6 +182,10 @@ export function HistoryPage() {
   const [modalVenta, setModalVenta]         = useState(null); // row | null
   const [modalVer, setModalVer]             = useState(null); // row | null
   const [ventaCancelar, setVentaCancelar]   = useState(null);
+  const [motivosCancelacion, setMotivosCancelacion] = useState([]);
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [folioSustitucion, setFolioSustitucion] = useState('');
+  const [cargandoMotivos, setCargandoMotivos] = useState(false);
   const [ventaEmail, setVentaEmail]         = useState(null);
   const [correoDestino, setCorreoDestino]   = useState('');
   const [procesandoAccion, setProcesandoAccion] = useState(false);
@@ -387,6 +396,16 @@ export function HistoryPage() {
     });
   };
 
+  const abrirPDFResultadoFiscal = (result, fallbackName) => {
+    if (!result?.pdfBase64) throw new Error('El documento fiscal no contiene información');
+    const bytes = Uint8Array.from(atob(result.pdfBase64), char => char.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    setDocumentViewer(current => {
+      if (current.url) URL.revokeObjectURL(current.url);
+      return { open: true, url, fileName: result.pdfFileName || fallbackName };
+    });
+  };
+
   const handleVerDocumento = async (row) => {
     setProcesandoAccion(true);
     try {
@@ -404,6 +423,15 @@ export function HistoryPage() {
     }
   };
 
+  const handleVerAcuse = async (row) => {
+    setProcesandoAccion(true);
+    try {
+      abrirPDFResultadoFiscal(await obtenerAcuseCancelacionPDF(requirePedidoGuid(row)), 'AcuseCancelacion.pdf');
+    } catch (err) {
+      toast.error('No se pudo abrir el acuse: ' + String(err));
+    } finally { setProcesandoAccion(false); }
+  };
+
   const handleImprimir = async (row) => {
     setProcesandoAccion(true);
     try {
@@ -419,15 +447,46 @@ export function HistoryPage() {
     if (!ventaCancelar) return;
     setProcesandoAccion(true);
     try {
-      const result = await cancelarVenta(requirePedidoGuid(ventaCancelar));
+      const result = ventaCancelar.Facturada
+        ? await cancelarCFDIVenta({
+          pedidoGuid: requirePedidoGuid(ventaCancelar),
+          cveMotivo: motivoCancelacion,
+          folioSustitucion: folioSustitucion.trim(),
+        })
+        : await cancelarVenta(requirePedidoGuid(ventaCancelar));
       if (!result?.success) throw new Error(result?.message || 'No fue posible cancelar la venta');
-      toast.success('Venta cancelada y existencias reintegradas');
+	  if (ventaCancelar.Facturada && result?.data?.pdfBase64) {
+		abrirPDFResultadoFiscal(result.data, 'AcuseCancelacion.pdf');
+	  }
+      toast.success(ventaCancelar.Facturada
+        ? 'CFDI y venta cancelados; las existencias fueron reintegradas'
+        : 'Venta cancelada y existencias reintegradas');
       setVentaCancelar(null);
       await cargar();
     } catch (err) {
       toast.error(String(err));
     } finally { setProcesandoAccion(false); }
   };
+
+  const abrirCancelacion = async (row) => {
+    setActionMenuOpen(null);
+    setVentaCancelar(row);
+    setMotivoCancelacion('');
+    setFolioSustitucion('');
+    if (!row.Facturada) return;
+    setCargandoMotivos(true);
+    try {
+      const data = await obtenerMotivosCancelacionCFDI();
+      setMotivosCancelacion(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setMotivosCancelacion([]);
+      toast.error('No se pudieron consultar los motivos de cancelación: ' + String(err));
+    } finally {
+      setCargandoMotivos(false);
+    }
+  };
+
+  const motivoSeleccionado = motivosCancelacion.find(item => item.CveMotivo === motivoCancelacion);
 
   const abrirEnvio = (row) => {
     setVentaEmail(row);
@@ -767,11 +826,14 @@ export function HistoryPage() {
                                   {!esCotizacion && t.Facturada && (
                                     <RowActionButton label="Ver factura" icon={FileCheck2} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerFactura(t); }} tone="text-teal-600 hover:bg-teal-500/10 dark:text-teal-400" />
                                   )}
+								  {!esCotizacion && esCancelada && (t.AcuseDisponible || t.acuseDisponible) && (
+									<RowActionButton label="Ver acuse" icon={ShieldCheck} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerAcuse(t); }} tone="text-amber-600 hover:bg-amber-500/10 dark:text-amber-400" />
+								  )}
 								  {!esCotizacion && !t.Facturada && !esCancelada && (
                                     <RowActionButton label="Facturar venta" icon={ReceiptText} onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })} tone="text-sky-600 hover:bg-sky-500/10 dark:text-sky-400" />
                                   )}
-                                  {!esCotizacion && !esCancelada && !t.Facturada && (
-                                    <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => { setActionMenuOpen(null); setVentaCancelar(t); }} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
+								  {!esCotizacion && !esCancelada && (
+                                    <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => abrirCancelacion(t)} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                                   )}
                                 {esCotizacion && (
                                   <CotizacionAcciones
@@ -996,7 +1058,7 @@ export function HistoryPage() {
         />
       )}
       <DialogAlert
-        open={Boolean(ventaCancelar)}
+        open={Boolean(ventaCancelar && !ventaCancelar.Facturada)}
         onOpenChange={(open) => !open && setVentaCancelar(null)}
         title="Cancelar venta"
         description={`¿Confirmas cancelar la venta #${String(ventaCancelar?.Folio || '').padStart(4, '0')}? Los productos vendidos regresarán al inventario. Esta acción no puede deshacerse.`}
@@ -1004,6 +1066,80 @@ export function HistoryPage() {
         onCancel={() => setVentaCancelar(null)}
         type="warning"
       />
+      <Dialog open={Boolean(ventaCancelar?.Facturada)} onOpenChange={(open) => !open && setVentaCancelar(null)}>
+        <DialogContent className="overflow-hidden rounded-2xl p-0 sm:max-w-xl">
+          <DialogHeader className="border-b border-border/70 bg-red-500/[.04] px-6 py-5 text-left">
+            <div className="mb-2 flex size-11 items-center justify-center rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400">
+              <AlertTriangle className="size-5" />
+            </div>
+            <DialogTitle>Cancelar venta facturada</DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              Al cancelar esta venta también se solicitará la cancelación de su CFDI {getInvoiceFolio(ventaCancelar) || ''}. Después se reintegrarán los productos al inventario. Esta acción no puede deshacerse.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 px-6 py-5">
+            <div>
+              <p className="text-xs font-semibold text-foreground">Motivo oficial del SAT</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Selecciona la causa que corresponde a esta cancelación.</p>
+            </div>
+            {cargandoMotivos ? (
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-border/70 py-8 text-xs text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Consultando catálogo…
+              </div>
+            ) : motivosCancelacion.length ? (
+              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {motivosCancelacion.map(motivo => {
+                  const selected = motivo.CveMotivo === motivoCancelacion;
+                  return (
+                    <button
+                      key={motivo.Guid || motivo.CveMotivo}
+                      type="button"
+                      onClick={() => setMotivoCancelacion(motivo.CveMotivo)}
+                      className={cn(
+                        'flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition',
+                        selected ? 'border-primary/40 bg-primary/[.06] ring-2 ring-primary/10' : 'border-border/70 hover:border-primary/25 hover:bg-muted/40',
+                      )}
+                    >
+                      <span className={cn('mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border', selected ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
+                        {selected && <span className="size-1.5 rounded-full bg-primary-foreground" />}
+                      </span>
+                      <span>
+                        <span className="block text-xs font-semibold text-foreground">{motivo.CveMotivo} · {motivo.MotivoCancelacion}</span>
+                        {motivo.RequiereFolioSustitucion && <span className="mt-1 block text-[10px] text-amber-600 dark:text-amber-400">Requiere folio fiscal de sustitución</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[.06] px-4 py-3 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                No hay motivos de cancelación configurados. Sincroniza este catálogo antes de continuar.
+              </div>
+            )}
+
+            {motivoSeleccionado?.RequiereFolioSustitucion && (
+              <div className="space-y-2">
+                <label htmlFor="folio-sustitucion" className="text-xs font-semibold text-foreground">Folio fiscal de sustitución</label>
+                <input id="folio-sustitucion" value={folioSustitucion} onChange={event => setFolioSustitucion(event.target.value)} placeholder="UUID del CFDI que sustituye al comprobante" className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-border/70 bg-muted/20 px-6 py-4">
+            <Button type="button" variant="outline" onClick={() => setVentaCancelar(null)}>Conservar venta</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={procesandoAccion || cargandoMotivos || !motivoCancelacion || (motivoSeleccionado?.RequiereFolioSustitucion && !folioSustitucion.trim())}
+              onClick={confirmarCancelacion}
+            >
+              {procesandoAccion ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />}
+              Cancelar CFDI y venta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={Boolean(ventaEmail)} onOpenChange={(open) => !open && setVentaEmail(null)}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>

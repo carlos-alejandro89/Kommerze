@@ -18,6 +18,7 @@ func MigrateTables(db *gorm.DB) error {
 		&models.SATUsoCFDI{},
 		&models.SATProducto{},
 		&models.SatUnidadesMedida{},
+		&models.SatMotivosCancelacion{},
 	); err != nil {
 		return err
 	}

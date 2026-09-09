@@ -20,6 +20,22 @@ export namespace dto {
 	        this.FondoCajaApertura = source["FondoCajaApertura"];
 	    }
 	}
+	export class CancelarCFDIVentaRequestDto {
+	    pedidoGuid: string;
+	    cveMotivo: string;
+	    folioSustitucion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CancelarCFDIVentaRequestDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pedidoGuid = source["pedidoGuid"];
+	        this.cveMotivo = source["cveMotivo"];
+	        this.folioSustitucion = source["folioSustitucion"];
+	    }
+	}
 	export class CerrarCajaDto {
 	    OperacionCajeroID: number;
 	    FondoCajaCierre: number;
@@ -1236,6 +1252,26 @@ export namespace dto {
 		    }
 		    return a;
 		}
+	}
+	export class SatMotivoCancelacionDto {
+	    ID: number;
+	    Guid: string;
+	    CveMotivo: string;
+	    MotivoCancelacion: string;
+	    RequiereFolioSustitucion: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SatMotivoCancelacionDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.CveMotivo = source["CveMotivo"];
+	        this.MotivoCancelacion = source["MotivoCancelacion"];
+	        this.RequiereFolioSustitucion = source["RequiereFolioSustitucion"];
+	    }
 	}
 	export class SolicitudProductoItemDto {
 	    nivelGuid: string;
