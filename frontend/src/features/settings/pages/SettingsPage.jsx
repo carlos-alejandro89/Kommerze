@@ -333,27 +333,29 @@ export function SettingsPage() {
       {/* ── Page Header ───────────────────────────────────────────────────── */}
       <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
         <div className="mx-auto max-w-[1320px]">
-          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center justify-between border-b border-border/60 pb-2">
+          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
             <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
             <span>/</span>
             <span className="text-foreground">Configuración</span>
           </nav>
 
-          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Settings className="size-6" strokeWidth={1.8} />
+          <header className="contents [&>div:first-child]:hidden">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Settings className="size-4.5" strokeWidth={1.8} />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground">Configuración</h1>
-                <p className="mt-0.5 text-xs text-muted-foreground">Configura el dispositivo, tickets y servicios de Kommerze.</p>
+                <h1 className="text-base font-bold tracking-[-0.02em] text-foreground">Configuración</h1>
+                <p className="text-[11px] text-muted-foreground">Configura el dispositivo, tickets y servicios de Kommerze.</p>
               </div>
             </div>
-            <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+            <button type="button" onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted">
               <ArrowLeft className="size-4" />
               Volver al inicio
             </button>
           </header>
+          </div>
 
           {/* ── Tabs ──────────────────────────────────────────────────────── */}
           <div className="mt-4 flex justify-end rounded-2xl border border-white/70 bg-white/55 p-2.5 shadow-[0_12px_34px_-29px_rgba(30,64,120,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.035]">

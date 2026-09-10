@@ -513,23 +513,23 @@ export function HistoryPage() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
 
         {/* Header */}
-        <div className="shrink-0">
-          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 pb-2">
+          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
             <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
             <span>/</span>
             <span className="text-foreground">Historial de ventas</span>
           </nav>
-          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <ReceiptText className="size-6" strokeWidth={1.8} />
+          <header className="contents [&>div:first-child]:hidden">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <ReceiptText className="size-4.5" strokeWidth={1.8} />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-[-0.025em] text-foreground">Historial de ventas</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Consulta y seguimiento de ventas y cotizaciones.</p>
+                <h2 className="text-base font-bold tracking-[-0.02em] text-foreground">Historial de ventas</h2>
+                <p className="text-[11px] text-muted-foreground">Consulta y seguimiento de ventas y cotizaciones.</p>
               </div>
             </div>
-            <button type="button" onClick={() => navigate('/home')} className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 text-xs font-semibold text-foreground transition hover:bg-muted">
+            <button type="button" onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted">
               <ArrowLeft className="size-4" />
               Volver al inicio
             </button>

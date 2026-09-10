@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Clock, Sun, Moon, LogOut, User, ChevronDown } from 'lucide-react';
+import { Clock, Sun, Moon, LogOut, User, ChevronDown, Users, ReceiptText, Truck, Handshake, Settings, ClipboardCheck, Building2, ShoppingCart, Repeat2 } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
@@ -9,6 +9,18 @@ import { cn } from '@/lib/utils';
 import { WebSocketStatusIndicator } from '@/components/WebSocketStatusIndicator';
 
 const THEME_KEY = 'kommerze-theme';
+
+const MODULE_CONTEXTS = [
+  { path: '/purchases/history', title: 'Historial de compras', subtitle: 'Compras manuales y documentos cargados mediante XML', icon: ShoppingCart, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/sucursal/cortes', title: 'Cierre de jornada', subtitle: 'Control y consolidación de la operación diaria', icon: Building2, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/conversions', title: 'Conversiones', subtitle: 'Movimientos entre presentaciones y equivalencias', icon: Repeat2, tone: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
+  { path: '/suppliers', title: 'Proveedores', subtitle: 'Entidades y datos fiscales de proveedores', icon: Handshake, tone: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  { path: '/transfers', title: 'Transferencias', subtitle: 'Envío y recepción de productos entre sucursales', icon: Truck, tone: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
+  { path: '/history', title: 'Historial de ventas', subtitle: 'Consulta y seguimiento de ventas y cotizaciones', icon: ReceiptText, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/clients', title: 'Clientes', subtitle: 'Información y condiciones comerciales de clientes', icon: Users, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/auditoria', title: 'Auditoría', subtitle: 'Conteo y conciliación del inventario', icon: ClipboardCheck, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/settings', title: 'Configuración', subtitle: 'Dispositivo, tickets y servicios de Kommerze', icon: Settings, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+];
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
@@ -72,6 +84,8 @@ export function AppHeader({ showPageTitle = true }) {
     .filter(n => location.pathname.startsWith(n.path))
     .sort((a, b) => b.path.length - a.path.length)[0];
   const pageTitle = currentNav?.title ?? '';
+  const moduleContext = MODULE_CONTEXTS.find(item => location.pathname.startsWith(item.path));
+  const ModuleIcon = moduleContext?.icon;
 
   // Datos de contexto
   const storeName    = store?.Nombre ?? license?.sucursal?.nombreSucursal ?? 'Kommerze';
@@ -98,19 +112,26 @@ export function AppHeader({ showPageTitle = true }) {
     <header className="relative flex h-14 shrink-0 items-center justify-between px-4 border-b border-border bg-surface">
 
       {/* ── Izquierda: marca y acceso al inicio ───────── */}
-      <button
-        type="button"
-        onClick={() => navigate('/home')}
-        className="group flex shrink-0 items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
-        aria-label="Ir al inicio"
-      >
-        <img src="/media/app_icon.png" alt="" className="size-8 rounded-[9px] object-cover shadow-sm transition-transform group-hover:scale-[1.03]" />
-        <span className="hidden text-sm font-bold tracking-[-0.025em] text-foreground sm:block">Kommerze</span>
-      </button>
+      {moduleContext ? (
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+          <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', moduleContext.tone)}>
+            <ModuleIcon className="size-4" strokeWidth={1.9} />
+          </div>
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-[13px] font-bold leading-4 tracking-[-0.02em] text-foreground">{moduleContext.title}</p>
+            <p className="max-w-[300px] truncate text-[9px] leading-3 text-muted-foreground">{moduleContext.subtitle}</p>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => navigate('/home')} className="group flex shrink-0 items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35" aria-label="Ir al inicio">
+          <img src="/media/app_icon.png" alt="" className="size-8 rounded-[9px] object-cover shadow-sm transition-transform group-hover:scale-[1.03]" />
+          <span className="hidden text-sm font-bold tracking-[-0.025em] text-foreground sm:block">Kommerze</span>
+        </button>
+      )}
 
       {/* ── Centro: Título + Sucursal/Terminal ─────────── */}
       <div className="absolute inset-x-0 flex flex-col items-center pointer-events-none">
-        {showPageTitle && pageTitle && (
+        {showPageTitle && pageTitle && !moduleContext && (
           <h1 className="text-[13px] font-semibold text-foreground leading-tight">
             {pageTitle}
           </h1>

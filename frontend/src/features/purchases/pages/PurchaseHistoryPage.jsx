@@ -167,11 +167,11 @@ export function PurchaseHistoryPage() {
   return (
     <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden bg-[radial-gradient(circle_at_55%_0%,rgba(92,155,255,.14),transparent_42%),#f7faff] text-foreground dark:bg-[radial-gradient(circle_at_55%_0%,rgba(30,89,180,.18),transparent_42%),#07111f]">
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
-        <div className="shrink-0">
-          <nav className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground"><button onClick={() => navigate('/home')} className="hover:text-primary">Home</button><span>/</span><span className="text-foreground">Historial de compras</span></nav>
-          <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-[0_14px_38px_-31px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
-            <div className="flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600"><ShoppingCart className="size-6" /></div><div><h1 className="text-xl font-bold tracking-[-.025em]">Historial de compras</h1><p className="mt-0.5 text-xs text-muted-foreground">Consulta compras manuales y documentos cargados mediante XML.</p></div></div>
-            <div className="flex items-center gap-2"><Button variant="outline" onClick={() => navigate('/home')}><ArrowLeft className="size-4" />Volver</Button><Button onClick={() => navigate('/purchases')}><Plus className="size-4" />Nueva compra</Button></div>
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 pb-2">
+          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><button onClick={() => navigate('/home')} className="hover:text-primary">Home</button><span>/</span><span className="text-foreground">Historial de compras</span></nav>
+          <header className="contents [&>div:first-child]:hidden">
+            <div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600"><ShoppingCart className="size-4.5" /></div><div><h1 className="text-base font-bold tracking-[-.02em]">Historial de compras</h1><p className="text-[11px] text-muted-foreground">Consulta compras manuales y documentos cargados mediante XML.</p></div></div>
+            <div className="flex items-center gap-2"><Button className="h-8 text-[11px]" variant="outline" onClick={() => navigate('/home')}><ArrowLeft className="size-3.5" />Volver</Button><Button className="h-8 text-[11px]" onClick={() => navigate('/purchases')}><Plus className="size-3.5" />Nueva compra</Button></div>
           </header>
         </div>
 
