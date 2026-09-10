@@ -617,6 +617,13 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 	if operacion.FechaFin != nil {
 		fechaFin = *operacion.FechaFin
 	}
+	pendientes, err := s.transferenciasPendientesJornada(operacion)
+	if err != nil {
+		return nil, err
+	}
+	if pendientes > 0 {
+		return nil, fmt.Errorf("no se puede cerrar la jornada: hay %d transferencia(s) pendiente(s) de respuesta", pendientes)
+	}
 	var tickets []globalInvoiceTicket
 	if err := s.db.Raw(`
 		WITH ventas AS (
@@ -659,19 +666,23 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 		return nil, fmt.Errorf("ComisionVentas debe encontrarse entre 0 y 100")
 	}
 
-	cfg, err := LoadKommerzConfig()
-	if err != nil {
-		return nil, err
-	}
-	if cfg.FacturacionAPIHost == "" || cfg.FacturacionClientID == "" || cfg.FacturacionClientSecret == "" {
-		return nil, fmt.Errorf("configura Api Host, Client ID y Client Secret en Configuración > Facturación")
-	}
-	if strings.TrimSpace(cfg.FacturacionXMLPath) == "" {
-		return nil, fmt.Errorf("configura la Carpeta de facturas en Configuración > Facturación")
-	}
-	accessToken, err := s.facturacionToken(cfg)
-	if err != nil {
-		return nil, err
+	var cfg *KommerzConfig
+	var accessToken string
+	if len(porForma) > 0 {
+		cfg, err = LoadKommerzConfig()
+		if err != nil {
+			return nil, err
+		}
+		if cfg.FacturacionAPIHost == "" || cfg.FacturacionClientID == "" || cfg.FacturacionClientSecret == "" {
+			return nil, fmt.Errorf("configura Api Host, Client ID y Client Secret en Configuración > Facturación")
+		}
+		if strings.TrimSpace(cfg.FacturacionXMLPath) == "" {
+			return nil, fmt.Errorf("configura la Carpeta de facturas en Configuración > Facturación")
+		}
+		accessToken, err = s.facturacionToken(cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resultados := make([]map[string]any, 0, len(porForma))
@@ -691,7 +702,108 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 		}
 		resultados = append(resultados, resultado)
 	}
+	reportes, err := s.generarReportesJornada(operacion, fechaFin)
+	if err != nil {
+		return nil, err
+	}
+	resultados = append(resultados, reportes...)
 	return dto.NewResponseDto(true, "Facturación global generada correctamente", resultados, nil), nil
+}
+
+func (s *FacturacionService) transferenciasPendientesJornada(operacion models.OperacionSucursal) (int64, error) {
+	var total int64
+	err := s.db.Raw(`
+		SELECT COUNT(*)
+		FROM traspasos t
+		JOIN estatus e ON e.id = t.estatus_id AND e.deleted_at IS NULL
+		WHERE (t.sucursal_origen_id = ? OR t.sucursal_destino_id = ?)
+		  AND e.guid::text = ?
+		  AND t.deleted_at IS NULL
+	`, operacion.SucursalID, operacion.SucursalID,
+		"86968037-975a-43ce-880c-043003010104").Scan(&total).Error
+	if err != nil {
+		return 0, fmt.Errorf("no se pudo validar el estado de las transferencias: %w", err)
+	}
+	return total, nil
+}
+
+func (s *FacturacionService) generarReportesJornada(operacion models.OperacionSucursal, fechaFin time.Time) ([]map[string]any, error) {
+	header := reportmodels.ClosingReportHeader{
+		Negocio: operacion.Sucursal.Empresa.NombreComercial, RazonSocial: operacion.Sucursal.Empresa.RazonSocial,
+		RFC: operacion.Sucursal.Empresa.RFC, Sucursal: operacion.Sucursal.NombreSucursal,
+		FechaInicio: operacion.FechaInicio, FechaFin: fechaFin,
+	}
+	var descuentos reportmodels.DiscountReport
+	descuentos.Header = header
+	if err := s.db.Raw(`
+		SELECT LPAD(p.folio::text, 7, '0') folio, p.fecha,
+		       COALESCE(c.razon_social, 'PÚBLICO EN GENERAL') cliente,
+		       SUM(pd.precio_venta * pd.cantidad)::double precision total_bruto,
+		       SUM((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)::double precision descuento,
+		       SUM((pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100))::double precision total_neto
+		FROM pedidos p
+		JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+		JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.guid::text = ? AND tp.deleted_at IS NULL
+		JOIN estatus e ON e.id = p.estatus_id AND LOWER(e.nombre) IN ('completado', 'completada') AND e.deleted_at IS NULL
+		LEFT JOIN clientes c ON c.id = p.cliente_id AND c.deleted_at IS NULL
+		WHERE p.sucursal_origen_id = ? AND p.fecha BETWEEN ? AND ? AND p.deleted_at IS NULL
+		GROUP BY p.id, p.folio, p.fecha, c.razon_social
+		HAVING SUM((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100) > 0
+		ORDER BY p.fecha, p.folio
+	`, models.TipoPedidoVentaGuid, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&descuentos.Rows).Error; err != nil {
+		return nil, fmt.Errorf("no se pudo preparar el reporte de descuentos: %w", err)
+	}
+	for _, row := range descuentos.Rows {
+		descuentos.TotalBruto += row.TotalBruto
+		descuentos.Descuento += row.Descuento
+		descuentos.TotalNeto += row.TotalNeto
+	}
+
+	resultados := make([]map[string]any, 0, 3)
+	if len(descuentos.Rows) > 0 {
+		pdf, err := renders.RenderDiscountReportPDF(descuentos)
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo generar el reporte de descuentos: %w", err)
+		}
+		resultados = append(resultados, map[string]any{"documentKey": "descuentos", "pdfBase64": base64.StdEncoding.EncodeToString(pdf), "pdfFileName": "reporte-descuentos.pdf"})
+	}
+
+	type direction struct{ key, label, condition string }
+	for _, item := range []direction{
+		{key: "transferenciasEntrada", label: "entrada", condition: "t.sucursal_destino_id = ?"},
+		{key: "transferenciasSalida", label: "salida", condition: "t.sucursal_origen_id = ?"},
+	} {
+		reporte := reportmodels.TransferSummaryReport{Header: header, Direction: item.label}
+		query := fmt.Sprintf(`
+			SELECT LPAD(p.folio::text, 7, '0') folio, so.nombre_sucursal sucursal_origen,
+			       sd.nombre_sucursal sucursal_destino, t.fecha_envio, t.fecha_recepcion,
+			       SUM(pd.precio_venta * pd.cantidad)::double precision valor_total
+			FROM traspasos t
+			JOIN pedidos p ON p.id = t.pedido_id AND p.deleted_at IS NULL
+			JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+			JOIN sucursales so ON so.id = t.sucursal_origen_id
+			JOIN sucursales sd ON sd.id = t.sucursal_destino_id
+			JOIN estatus e ON e.id = t.estatus_id AND e.guid::text = ? AND e.deleted_at IS NULL
+			WHERE %s AND COALESCE(t.fecha_recepcion, t.fecha_envio) BETWEEN ? AND ? AND t.deleted_at IS NULL
+			GROUP BY t.id, p.folio, so.nombre_sucursal, sd.nombre_sucursal, t.fecha_envio, t.fecha_recepcion
+			ORDER BY t.fecha_envio, p.folio
+		`, item.condition)
+		if err := s.db.Raw(query, "86968037-975a-43ce-880c-043003010105", operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&reporte.Rows).Error; err != nil {
+			return nil, fmt.Errorf("no se pudo preparar el reporte de transferencias de %s: %w", item.label, err)
+		}
+		for _, row := range reporte.Rows {
+			reporte.ValorTotal += row.ValorTotal
+		}
+		if len(reporte.Rows) == 0 {
+			continue
+		}
+		pdf, err := renders.RenderTransferSummaryPDF(reporte)
+		if err != nil {
+			return nil, fmt.Errorf("no se pudo generar el reporte de transferencias de %s: %w", item.label, err)
+		}
+		resultados = append(resultados, map[string]any{"documentKey": item.key, "pdfBase64": base64.StdEncoding.EncodeToString(pdf), "pdfFileName": "reporte-" + item.key + ".pdf"})
+	}
+	return resultados, nil
 }
 
 func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken string, operacion models.OperacionSucursal, claveForma string, tickets []globalInvoiceTicket) (map[string]any, error) {

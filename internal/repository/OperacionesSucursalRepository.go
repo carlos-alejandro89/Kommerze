@@ -565,6 +565,23 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 		return dto.NewResponseDto(false, mensaje, map[string]any{"cajasAbiertas": cajasAbiertas}, nil)
 	}
 
+	var transferenciasPendientes int64
+	if err := o.db.Raw(`
+		SELECT COUNT(*)
+		FROM traspasos t
+		JOIN estatus e ON e.id = t.estatus_id AND e.deleted_at IS NULL
+		WHERE (t.sucursal_origen_id = ? OR t.sucursal_destino_id = ?)
+		  AND e.guid::text = ?
+		  AND t.deleted_at IS NULL
+	`, operacion.SucursalID, operacion.SucursalID,
+		"86968037-975a-43ce-880c-043003010104").Scan(&transferenciasPendientes).Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo validar el estado de las transferencias", nil, []string{err.Error()})
+	}
+	if transferenciasPendientes > 0 {
+		mensaje := fmt.Sprintf("No se puede cerrar la jornada: hay %d transferencia(s) pendiente(s) de respuesta", transferenciasPendientes)
+		return dto.NewResponseDto(false, mensaje, map[string]any{"transferenciasPendientes": transferenciasPendientes}, nil)
+	}
+
 	// Calcular acumulados automáticamente
 	acum := o.CalcularAcumuladosDia(operacion)
 

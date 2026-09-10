@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { SpecialZoomLevel, Viewer, Worker } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
@@ -17,8 +16,10 @@ export function PdfViewer({
   fileName = "documento.pdf",
   className = "",
 }: PdfViewerProps) {
-  // Instanciación dentro del componente pero memorizada correctamente
-  const defaultLayoutPluginInstance = useMemo(() => defaultLayoutPlugin(), []);
+  // defaultLayoutPlugin utiliza hooks internamente y debe ejecutarse en cada
+  // render, siempre en el mismo orden. Envolverlo en useMemo rompe las reglas
+  // de hooks después del primer render del visor.
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   if (!fileUrl) return null;
 

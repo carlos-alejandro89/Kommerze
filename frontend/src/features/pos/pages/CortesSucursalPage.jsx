@@ -95,6 +95,36 @@ export function CortesSucursalPage() {
   const [facturasGlobales, setFacturasGlobales] = useState({});
   const [facturaGlobalVisible, setFacturaGlobalVisible] = useState(null);
 
+  const cerrarDocumentoCierre = () => {
+    if (facturaGlobalVisible?.pdfUrl) {
+      URL.revokeObjectURL(facturaGlobalVisible.pdfUrl);
+    }
+    setFacturaGlobalVisible(null);
+  };
+
+  const abrirDocumentoCierre = (documento) => {
+    try {
+      const contenido = String(documento?.pdfBase64 || "")
+        .replace(/^data:application\/pdf;base64,/, "")
+        .replace(/\s/g, "");
+      if (!contenido) throw new Error("El documento no contiene datos PDF");
+      const binario = atob(contenido);
+      const bytes = new Uint8Array(binario.length);
+      for (let index = 0; index < binario.length; index += 1) {
+        bytes[index] = binario.charCodeAt(index);
+      }
+      const pdfUrl = URL.createObjectURL(
+        new Blob([bytes], { type: "application/pdf" }),
+      );
+      if (facturaGlobalVisible?.pdfUrl) {
+        URL.revokeObjectURL(facturaGlobalVisible.pdfUrl);
+      }
+      setFacturaGlobalVisible({ ...documento, pdfUrl });
+    } catch (error) {
+      toast.error(`No se pudo abrir el PDF: ${String(error)}`);
+    }
+  };
+
   const fetchDatos = useCallback(async () => {
     if (!sucursalID) return; // Esperar a que store esté cargado
     setLoading(true);
@@ -266,7 +296,10 @@ export function CortesSucursalPage() {
         : [];
       setFacturasGlobales(
         Object.fromEntries(
-          facturas.map((factura) => [factura.claveFormaPago, factura]),
+          facturas.map((documento) => [
+            documento.claveFormaPago || documento.documentKey,
+            documento,
+          ]),
         ),
       );
       const res = await ServiceCerrarOperacionSucursal({
@@ -447,6 +480,13 @@ export function CortesSucursalPage() {
       tone: "cyan",
     },
     {
+      documentKey: "descuentos",
+      amount: Number(
+        cierreSnapshot?.descuentos ??
+          opSucursal?.DescuentosAplicados ??
+          opSucursal?.descuentosAplicados ??
+          0,
+      ),
       title: "Reporte de descuentos",
       description:
         "Genera el reporte de descuentos aplicados durante la jornada.",
@@ -459,6 +499,13 @@ export function CortesSucursalPage() {
       tone: "amber",
     },
     {
+      documentKey: "transferenciasEntrada",
+      amount: Number(
+        cierreSnapshot?.transferenciasEntrada ??
+          opSucursal?.TransferenciasEntrantes ??
+          opSucursal?.transferenciasEntrantes ??
+          0,
+      ),
       title: "Transferencias de entrada",
       description:
         "Reporte de transferencias de mercancía recibidas durante la jornada.",
@@ -471,6 +518,13 @@ export function CortesSucursalPage() {
       tone: "blue",
     },
     {
+      documentKey: "transferenciasSalida",
+      amount: Number(
+        cierreSnapshot?.transferenciasSalida ??
+          opSucursal?.TransferenciasSalientes ??
+          opSucursal?.transferenciasSalientes ??
+          0,
+      ),
       title: "Transferencias de salida",
       description:
         "Reporte de transferencias de mercancía enviadas durante la jornada.",
@@ -1177,11 +1231,13 @@ export function CortesSucursalPage() {
                     generating={submitting}
                     completed={cierreCompletado}
                     document={
-                      reporte.invoiceKey
-                        ? facturasGlobales[reporte.invoiceKey]
+                      reporte.invoiceKey || reporte.documentKey
+                        ? facturasGlobales[
+                            reporte.invoiceKey || reporte.documentKey
+                          ]
                         : null
                     }
-                    onOpenDocument={setFacturaGlobalVisible}
+                    onOpenDocument={abrirDocumentoCierre}
                   />
                 ))}
               </div>
@@ -1253,21 +1309,17 @@ export function CortesSucursalPage() {
 
       <Dialog
         open={Boolean(facturaGlobalVisible)}
-        onOpenChange={(open) => !open && setFacturaGlobalVisible(null)}
+        onOpenChange={(open) => !open && cerrarDocumentoCierre()}
       >
         <DialogContent className="h-[92vh] w-[min(1180px,96vw)] max-w-none overflow-hidden p-0">
           <DialogHeader className="border-b border-border px-6 py-4 text-left">
-            <DialogTitle>Factura global</DialogTitle>
+            <DialogTitle>Documento de cierre</DialogTitle>
             <DialogDescription>
               {facturaGlobalVisible?.pdfFileName || "CFDI global"}
             </DialogDescription>
           </DialogHeader>
           <PdfViewer
-            fileUrl={
-              facturaGlobalVisible?.pdfBase64
-                ? `data:application/pdf;base64,${facturaGlobalVisible.pdfBase64}`
-                : ""
-            }
+            fileUrl={facturaGlobalVisible?.pdfUrl || ""}
             fileName={facturaGlobalVisible?.pdfFileName}
             className="h-[calc(92vh-82px)] rounded-none border-0"
           />
@@ -1342,7 +1394,7 @@ function CloseReportCard({
   completed,
   highlighted,
   invoiceKey,
-  amount,
+  documentKey,
   document,
   onOpenDocument,
 }) {
@@ -1354,8 +1406,9 @@ function CloseReportCard({
     rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
     cyan: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   };
-  const withoutTransactions = Boolean(invoiceKey) && Number(amount || 0) <= 0;
-  const generated = Boolean(invoiceKey) ? Boolean(document) : completed;
+  const generatedDocument = Boolean(invoiceKey || documentKey);
+  const withoutTransactions = generatedDocument && completed && !document;
+  const generated = generatedDocument ? Boolean(document) : completed;
   return (
     <div
       className={cn(
@@ -1438,7 +1491,7 @@ function CloseReportCard({
         >
           <ExternalLink className="size-4" strokeWidth={1.8} />
         </button>
-      ) : !invoiceKey ? (
+      ) : !generatedDocument ? (
         <span
           className="flex h-10 w-9 shrink-0 items-center justify-center border-l border-border/60 pl-3 text-indigo-600 opacity-40 dark:text-indigo-400"
           title="Abrir reporte (próximamente)"
