@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
+  ArrowDownLeft,
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Boxes,
   CheckCircle2,
   Eye,
@@ -11,12 +13,15 @@ import {
   MapPin,
   Package,
   PackageCheck,
+  Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
+import { TRANSACTION_TYPES } from '@/features/pos/transaction-types';
 import { useActivation } from '@/providers/ActivationProvider';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import {
@@ -294,6 +299,7 @@ export function TransfersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
@@ -361,17 +367,25 @@ export function TransfersPage() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter(item => [
+    return items.filter(item => {
+      const status = String(item.estatus || '').toLowerCase();
+      const matchesStatus = statusFilter === 'all'
+        || (statusFilter === 'transit' && !isDefinitiveTransfer(item))
+        || (statusFilter === 'received' && isReceived(item))
+        || (statusFilter === 'rejected' && /rechazad/.test(status))
+        || (statusFilter === 'canceled' && /cancelad/.test(status));
+      const matchesSearch = !query || [
       item.folio,
       formatTransferFolio(item.folio),
       item.sucursalOrigen,
       item.sucursalDestino,
       item.estatus,
-    ].some(value => String(value || '').toLowerCase().includes(query)));
-  }, [items, search]);
+      ].some(value => String(value || '').toLowerCase().includes(query));
+      return matchesStatus && matchesSearch;
+    });
+  }, [items, search, statusFilter]);
 
-  useEffect(() => setPage(1), [search]);
+  useEffect(() => setPage(1), [search, statusFilter]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -385,52 +399,49 @@ export function TransfersPage() {
     { label: 'Unidades en tránsito', value: unitsInTransit, detail: 'Productos por recibir', icon: Boxes, tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
     { label: 'Total registros', value: items.length, detail: 'Histórico de transferencias', icon: MapPin, tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   ];
+  const statusTabs = [
+    { id: 'all', label: 'Todas', count: items.length, icon: Boxes, tone: 'text-blue-600 dark:text-blue-400', active: 'border-blue-200 bg-blue-500/10 text-blue-700 dark:border-blue-500/25 dark:text-blue-300' },
+    { id: 'transit', label: 'En tránsito', count: items.filter(item => !isDefinitiveTransfer(item)).length, icon: Truck, tone: 'text-blue-600 dark:text-blue-400', active: 'border-blue-200 bg-blue-500/10 text-blue-700 dark:border-blue-500/25 dark:text-blue-300' },
+    { id: 'received', label: 'Recibidas', count: items.filter(isReceived).length, icon: PackageCheck, tone: 'text-emerald-600 dark:text-emerald-400', active: 'border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/25 dark:text-emerald-300' },
+    { id: 'rejected', label: 'Rechazadas', count: items.filter(item => /rechazad/i.test(item.estatus || '')).length, icon: AlertCircle, tone: 'text-red-500 dark:text-red-400', active: 'border-red-200 bg-red-500/10 text-red-700 dark:border-red-500/25 dark:text-red-300' },
+    { id: 'canceled', label: 'Canceladas', count: items.filter(item => /cancelad/i.test(item.estatus || '')).length, icon: AlertCircle, tone: 'text-slate-500 dark:text-slate-400', active: 'border-slate-300 bg-slate-500/10 text-slate-700 dark:border-slate-500/30 dark:text-slate-300' },
+  ];
+
+  const startTransfer = () => {
+    localStorage.removeItem('operationType');
+    localStorage.setItem('operationTypeGuid', TRANSACTION_TYPES.TRASPASO.guid);
+    navigate('/pos', { state: { operationTypeGuid: TRANSACTION_TYPES.TRASPASO.guid } });
+  };
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in">
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 pb-2">
-          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-            <button onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
-            <span>/</span>
-            <span className="text-foreground">Transferencias</span>
-          </nav>
-          <header className="contents [&>div:first-child]:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                <Truck className="size-4.5" strokeWidth={1.8} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold tracking-[-0.02em] text-foreground">Transferencias</h2>
-                <p className="text-[11px] text-muted-foreground">Seguimiento a envío y recepción de productos.</p>
-              </div>
-            </div>
-            <button onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted">
-              <ArrowLeft className="size-4" /> Volver al inicio
-            </button>
-          </header>
-        </div>
-
-        <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
-          {cards.map(card => (
-            <div key={card.label} className="flex min-h-[92px] items-center gap-3.5 rounded-2xl border border-white/70 bg-white/65 p-4 shadow-[0_12px_32px_-27px_rgba(30,64,120,.42)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.045]">
-              <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', card.tone)}><card.icon className="size-5" /></div>
-              <div><p className="text-[11px] font-semibold text-muted-foreground">{card.label}</p><p className="mt-0.5 text-xl font-bold text-foreground">{loading ? '—' : card.value}</p><p className="text-[10px] text-muted-foreground/75">{card.detail}</p></div>
-            </div>
-          ))}
-        </div>
-
-        <div className="relative z-10 -mb-4 flex shrink-0 items-center gap-2 rounded-t-2xl border border-b-0 border-white/70 bg-white/70 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por folio, sucursal o estatus…" className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-3 text-sm outline-none transition placeholder:text-muted-foreground/75 focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {statusTabs.map(tab => {
+              const Icon = tab.icon;
+              const active = statusFilter === tab.id;
+              return <button key={tab.id} type="button" onClick={() => setStatusFilter(tab.id)} className={cn('flex h-10 items-center gap-2 rounded-xl border px-3.5 text-xs font-semibold transition', active ? `${tab.active} shadow-sm` : 'border-border/70 bg-background/65 text-muted-foreground hover:bg-muted/55 hover:text-foreground')}><Icon className={cn('size-4', !active && tab.tone)} /><span>{tab.label}</span><span className={cn('flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-white/70 text-current dark:bg-white/10' : 'bg-muted text-muted-foreground')}>{tab.count}</span></button>;
+            })}
           </div>
-          <button onClick={load} disabled={loading} title="Actualizar transferencias" className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40">
-            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+          <button type="button" onClick={startTransfer} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-4 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105">
+            <Plus className="size-4" /> Nueva transferencia
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-b-2xl border border-t border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border/70 px-4 py-3">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por folio, sucursal o estatus…" className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-3 text-sm outline-none transition placeholder:text-muted-foreground/75 focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+            </div>
+            <button type="button" title="Filtro" aria-label="Filtro" className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary">
+              <SlidersHorizontal className="size-4" />
+            </button>
+            <button onClick={load} disabled={loading} title="Actualizar transferencias" className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40">
+              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            </button>
+          </div>
           {error ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center"><AlertCircle className="size-7 text-red-500" /><p className="font-semibold">No se pudieron cargar las transferencias</p><p className="max-w-md text-xs text-muted-foreground">{error}</p><button onClick={load} className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Reintentar</button></div>
           ) : loading ? (
@@ -440,7 +451,7 @@ export function TransfersPage() {
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="sticky top-0 border-b border-border/70 bg-slate-50/95 backdrop-blur dark:bg-white/[.055]">
-                    {['Folio', 'Sucursal destino', 'Fecha de envío', 'Fecha de recepción', 'Productos', 'Estatus', 'Acciones'].map(label => <th key={label} className="whitespace-nowrap px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</th>)}
+                    {['Folio', 'Movimiento', 'Ruta (sucursal origen → destino)', 'Fechas', 'Productos', 'Estatus', 'Acciones'].map(label => <th key={label} className="whitespace-nowrap px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</th>)}
                   </tr></thead>
                   <tbody className="divide-y divide-border/65">
                     {pageItems.length === 0 && <tr><td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">{search ? 'Sin resultados para la búsqueda.' : 'No hay transferencias registradas.'}</td></tr>}
@@ -449,14 +460,14 @@ export function TransfersPage() {
                       const receivedDate = formatDate(item.fechaRecepcion);
                       const incoming = String(item.sucursalDestinoGuid || '').toLowerCase() === String(currentBranchGuid).toLowerCase();
                       return (
-                        <tr key={item.traspasoGuid} className="transition hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
-                          <td className="whitespace-nowrap px-5 py-3.5"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">{formatTransferFolio(item.folio)}</button><span className={cn('ml-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide', incoming ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600')}>{incoming ? 'Entrante' : 'Salida'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.sucursalOrigen}</p></td>
-                          <td className="px-5 py-3.5 font-medium text-foreground">{item.sucursalDestino}</td>
-                          <td className="whitespace-nowrap px-5 py-3.5"><p className="text-xs font-medium">{sent.date}</p><p className="text-xs text-muted-foreground">{sent.time}</p></td>
-                          <td className="whitespace-nowrap px-5 py-3.5"><p className={cn('text-xs font-medium', !item.fechaRecepcion && 'text-amber-600 dark:text-amber-400')}>{receivedDate.date}</p>{receivedDate.time && <p className="text-xs text-muted-foreground">{receivedDate.time}</p>}</td>
-                          <td className="px-5 py-3.5"><p className="font-semibold">{item.totalProductos || 0}</p><p className="text-[10px] text-muted-foreground">{item.unidadesTotales || 0} unidades</p></td>
-                          <td className="px-5 py-3.5"><StatusBadge item={item} /></td>
-                          <td className="relative w-[58px] px-2 py-3.5">
+                        <tr key={item.traspasoGuid} className={cn('border-l-[3px] border-l-transparent transition hover:bg-blue-50/40 dark:hover:bg-white/[.035]', !isDefinitiveTransfer(item) && 'border-l-amber-400 bg-amber-500/[.035]', /rechazad/i.test(item.estatus || '') && 'border-l-red-400 bg-red-500/[.025]')}>
+                          <td className="whitespace-nowrap px-5 py-3"><button onClick={() => setSelected(item)} className="font-mono text-xs font-bold text-primary hover:underline">{formatTransferFolio(item.folio)}</button><p className="mt-1 text-[10px] text-muted-foreground">{sent.date} · {sent.time}</p></td>
+                          <td className="whitespace-nowrap px-5 py-3"><span className={cn('inline-flex items-center gap-2 text-xs font-bold', incoming ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400')}>{incoming ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}{incoming ? 'Entrante' : 'Salida'}</span></td>
+                          <td className="min-w-[300px] px-5 py-3"><div className="grid grid-cols-[1fr_22px_1fr] items-center gap-2"><div className="min-w-0"><p className="flex items-center gap-1.5 truncate text-xs font-semibold"><MapPin className="size-3.5 shrink-0 text-primary" />{item.sucursalOrigen}</p><p className="mt-0.5 pl-5 text-[10px] text-muted-foreground">Sucursal origen</p></div><ArrowRight className="size-4 text-muted-foreground" /><div className="min-w-0"><p className="flex items-center gap-1.5 truncate text-xs font-semibold"><MapPin className="size-3.5 shrink-0 text-primary" />{item.sucursalDestino}</p><p className="mt-0.5 pl-5 text-[10px] text-muted-foreground">Sucursal destino</p></div></div></td>
+                          <td className="min-w-[280px] px-5 py-3"><div className="grid grid-cols-2 gap-4"><div><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Envío</p><p className="mt-0.5 whitespace-nowrap text-[11px] font-medium">{sent.date} · {sent.time}</p></div><div><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Recepción</p><p className={cn('mt-0.5 whitespace-nowrap text-[11px] font-medium', !item.fechaRecepcion && 'text-amber-600 dark:text-amber-400')}>{item.fechaRecepcion ? `${receivedDate.date} · ${receivedDate.time}` : 'Esperando recepción'}</p></div></div></td>
+                          <td className="whitespace-nowrap px-5 py-3"><div className="flex items-center gap-2.5"><Package className="size-4 text-muted-foreground" /><div><p className="text-xs font-semibold">{item.unidadesTotales || 0} uds.</p><p className="text-[10px] text-muted-foreground">{item.totalProductos || 0} producto{Number(item.totalProductos || 0) === 1 ? '' : 's'}</p></div></div></td>
+                          <td className="px-5 py-3"><StatusBadge item={item} /></td>
+                          <td className="relative w-[58px] px-2 py-3">
                             <RowActionsMenu
                               open={actionMenuOpen === item.traspasoGuid}
                               disabled={processingAction}
@@ -484,6 +495,15 @@ export function TransfersPage() {
               </footer>
             </>
           )}
+        </div>
+
+        <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_12px_32px_-27px_rgba(30,64,120,.42)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.045] xl:grid-cols-4">
+          {cards.map((card, index) => (
+            <div key={card.label} className={cn('flex min-h-[70px] items-center gap-3 px-5 py-3', index > 0 && 'border-l border-border/60')}>
+              <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', card.tone)}><card.icon className="size-4.5" /></div>
+              <div className="min-w-0"><p className="text-base font-bold leading-5 text-foreground">{loading ? '—' : card.value}</p><p className="text-[10px] font-semibold text-muted-foreground">{card.label}</p><p className="truncate text-[9px] text-muted-foreground/70">{card.detail}</p></div>
+            </div>
+          ))}
         </div>
       </div>
       <TransferDetail item={selected} onClose={() => setSelected(null)} currentBranchGuid={currentBranchGuid} onResolve={resolveTransfer} />

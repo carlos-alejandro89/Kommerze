@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"gorm.io/gorm"
 )
@@ -18,12 +19,13 @@ type ApiResponse struct {
 }
 
 type SyncService struct {
-	db          *gorm.DB
-	repo        *repository.CatalogosRepository
-	repoPrecios *repository.ListaPreciosRepository
-	apiBaseURL  string
-	client      *CloudHttpClient
-	facturacion *FacturacionService
+	db           *gorm.DB
+	repo         *repository.CatalogosRepository
+	repoPrecios  *repository.ListaPreciosRepository
+	apiBaseURL   string
+	client       *CloudHttpClient
+	facturacion  *FacturacionService
+	operationsMu sync.Mutex
 }
 
 func NewSyncService(

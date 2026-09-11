@@ -113,7 +113,11 @@ export function AppHeader({ showPageTitle = true }) {
 
       {/* ── Izquierda: marca y acceso al inicio ───────── */}
       {moduleContext ? (
-        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+        <div className="flex min-w-0 shrink-0 items-center gap-3">
+          <button type="button" onClick={() => navigate('/home')} className="group flex size-9 shrink-0 items-center justify-center rounded-xl transition hover:bg-muted/60" aria-label="Ir al inicio">
+            <img src="/media/app_icon.png" alt="" className="size-8 rounded-[9px] object-cover shadow-sm transition-transform group-hover:scale-[1.03]" />
+          </button>
+          <span className="hidden h-7 w-px bg-border/80 sm:block" aria-hidden="true" />
           <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', moduleContext.tone)}>
             <ModuleIcon className="size-4" strokeWidth={1.9} />
           </div>

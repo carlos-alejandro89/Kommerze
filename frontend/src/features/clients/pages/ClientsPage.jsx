@@ -89,72 +89,45 @@ export function ClientsPage() {
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden">
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 pb-2">
-          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-            <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
-            <span>/</span>
-            <span className="text-foreground">Clientes</span>
-          </nav>
-          <header className="contents [&>div:first-child]:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Users className="size-4.5" strokeWidth={1.8} />
-              </div>
-              <div>
-                <h1 className="text-base font-bold tracking-[-0.02em] text-foreground">Clientes</h1>
-                <p className="text-[11px] text-muted-foreground">Gestiona la información y condiciones comerciales de tus clientes.</p>
-              </div>
-            </div>
-            <button type="button" onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted">
-              <ArrowLeft className="size-4" />
-              Volver al inicio
-            </button>
-          </header>
+        <div className="flex shrink-0 justify-end">
+          <button type="button" onClick={() => navigate('/clients/new')} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-4 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105">
+            <UserPlus className="size-4" /> Nuevo cliente
+          </button>
         </div>
-
-        <section className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
+        <section className="order-last grid shrink-0 grid-cols-2 overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04] xl:grid-cols-4">
           {summaries.map(summary => (
-            <div key={summary.label} className="flex min-h-[92px] items-center gap-3.5 rounded-2xl border border-white/70 bg-white/65 p-4 shadow-[0_12px_32px_-27px_rgba(30,64,120,.42)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.045]">
-              <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', summary.bg)}>
-                <summary.icon className={cn('size-5', summary.color)} strokeWidth={1.9} />
+            <div key={summary.label} className="flex min-h-[70px] items-center gap-3 border-l border-border/60 px-5 py-3 first:border-l-0">
+              <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', summary.bg)}>
+                <summary.icon className={cn('size-[18px]', summary.color)} strokeWidth={1.9} />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-muted-foreground">{summary.label}</p>
                 {loading
-                  ? <div className="mt-1 h-6 w-20 animate-pulse rounded-md bg-muted" />
-                  : <p className="mt-0.5 truncate text-xl font-bold tracking-[-0.025em] text-foreground">{summary.value}</p>}
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/75">{summary.detail}</p>
+                  ? <div className="h-5 w-16 animate-pulse rounded-md bg-muted" />
+                  : <p className="truncate text-base font-bold tracking-[-0.02em] text-foreground">{summary.value}</p>}
+                <p className="truncate text-[10px] font-semibold text-muted-foreground">{summary.label}</p>
+                <p className="truncate text-[9px] text-muted-foreground/70">{summary.detail}</p>
               </div>
             </div>
           ))}
         </section>
 
-        <section className="relative z-10 -mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-t-2xl border border-b-0 border-white/70 bg-white/70 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#6481ad]" />
-              <input
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder="Buscar por nombre, RFC, teléfono o correo…"
-                className="h-10 w-full rounded-xl border border-[#dce7f6] bg-white/85 pl-10 pr-3 text-sm font-medium text-[#1b3154] outline-none transition placeholder:text-[#7790b6] focus:border-blue-300/80 focus:ring-2 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+        <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-b border-border/70 px-4 py-3">
+            <div className="flex w-full min-w-0 items-center justify-end gap-2">
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#6481ad]" />
+                <input
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                  placeholder="Buscar por nombre, RFC, teléfono o correo…"
+                  className="h-10 w-full rounded-xl border border-[#dce7f6] bg-white/85 pl-10 pr-3 text-sm font-medium text-[#1b3154] outline-none transition placeholder:text-[#7790b6] focus:border-blue-300/80 focus:ring-2 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/[.065] dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </div>
+              <button type="button" onClick={loadClients} disabled={loading} className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40" title="Actualizar clientes">
+                <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+              </button>
             </div>
-            <button type="button" onClick={loadClients} disabled={loading} className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40" title="Actualizar clientes">
-              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/clients/new')}
-            className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-4 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105"
-          >
-            <UserPlus className="size-4" />
-            Nuevo cliente
-          </button>
-        </section>
-
-        <section className="flex flex-1 flex-col overflow-hidden rounded-b-2xl border border-t border-white/70 bg-white/70 shadow-[0_18px_45px_-35px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
           {error ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
               <div className="flex size-12 items-center justify-center rounded-xl bg-red-500/10"><AlertCircle className="size-6 text-red-500" /></div>

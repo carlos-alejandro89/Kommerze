@@ -72,7 +72,8 @@ const fmtDate = (d) =>
 
 export function CortesSucursalPage() {
   const navigate = useNavigate();
-  const { generarFacturacionGlobal } = usePosService();
+  const { generarFacturacionGlobal, obtenerFacturasGlobalesOperacion } =
+    usePosService();
   const { user } = useAuth();
   const { store, isInitialized } = useActivation();
 
@@ -204,7 +205,19 @@ export function CortesSucursalPage() {
       return Number(estatusID) === 1 && !fechaFin;
     });
     setCierreCompletado(false);
-    setFacturasGlobales({});
+    const operacionID = opSucursal?.ID || opSucursal?.id;
+    try {
+      const existentes = await obtenerFacturasGlobalesOperacion(operacionID);
+      const documentos = Array.isArray(existentes?.data) ? existentes.data : [];
+      setFacturasGlobales(
+        Object.fromEntries(
+          documentos.map((documento) => [documento.claveFormaPago, documento]),
+        ),
+      );
+    } catch (error) {
+      console.error("No se pudieron recuperar las facturas globales", error);
+      setFacturasGlobales({});
+    }
     setCierreSnapshot({
       sucursal:
         store?.NombreSucursal ||
@@ -537,9 +550,10 @@ export function CortesSucursalPage() {
       tone: "rose",
     },
     {
+      documentKey: "resumenFinanciero",
       title: "Resumen financiero",
       description: "Resumen general de la operación y los acumulados del día.",
-      value: fmt(cierreSnapshot?.totalIngresos ?? totalIngresos),
+      value: null,
       icon: FileBarChart,
       tone: "cyan",
       highlighted: true,
@@ -559,37 +573,7 @@ export function CortesSucursalPage() {
       {/* ── Page Header + Tabs ──────────────────────────────────────────── */}
       <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
         <div className="mx-auto max-w-[1320px]">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-          <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-            <button
-              type="button"
-              onClick={() => navigate("/home")}
-              className="transition hover:text-primary"
-            >
-              Home
-            </button>
-            <span>/</span>
-            <span className="text-foreground">{tituloJornada}</span>
-          </nav>
-
-          {/* Título + badge estado */}
-          <header className="contents [&>div:first-child]:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Building2 className="size-4.5" strokeWidth={1.8} />
-              </div>
-              <div>
-                <h1 className="text-base font-bold tracking-[-0.02em] text-foreground">
-                  {tituloJornada}
-                </h1>
-                <p className="text-[11px] text-muted-foreground">
-                  {jornadaActiva
-                    ? "Control y seguimiento de la operación diaria de la sucursal."
-                    : "Inicia la operación diaria para habilitar las cajas de la sucursal."}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
+          <div className="flex justify-end">
               <div
                 className={cn(
                   "hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold sm:flex",
@@ -606,15 +590,6 @@ export function CortesSucursalPage() {
                 />
                 {jornadaActiva ? "Jornada activa" : "Sin jornada activa"}
               </div>
-              <button
-                type="button"
-                onClick={() => navigate("/home")}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted"
-              >
-                <ArrowLeft className="size-4" /> Volver al inicio
-              </button>
-            </div>
-          </header>
           </div>
 
           {/* Tabs */}
@@ -1442,14 +1417,16 @@ function CloseReportCard({
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2 border-l border-border/60 pl-4">
-        <span
-          className={cn(
-            "text-sm font-bold tabular-nums text-foreground",
-            highlighted && "text-base font-extrabold",
-          )}
-        >
-          {value}
-        </span>
+        {value != null && value !== "" && (
+          <span
+            className={cn(
+              "text-sm font-bold tabular-nums text-foreground",
+              highlighted && "text-base font-extrabold",
+            )}
+          >
+            {value}
+          </span>
+        )}
         <span
           className={cn(
             "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold",

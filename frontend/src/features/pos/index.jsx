@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Search,
     Trash2,
@@ -47,6 +48,7 @@ function mapProductoToCartItem(producto) {
 }
 
 export default function POSPage() {
+    const location = useLocation();
     const { cart, addItem, changeQuantity, updateQuantity, removeItem, clearCart, subtotal, descuento, total } = useCartState();
     const posService = usePosService();
 
@@ -78,10 +80,11 @@ export default function POSPage() {
     // ── Inicialización ────────────────────────────────────────────────────────
     React.useEffect(() => {
         localStorage.removeItem('operationType');
-        localStorage.setItem('operationTypeGuid', TRANSACTION_TYPES.VENTA.guid);
+        const requestedOperation = location.state?.operationTypeGuid;
+        localStorage.setItem('operationTypeGuid', requestedOperation || TRANSACTION_TYPES.VENTA.guid);
         // Auto-foco en el campo de búsqueda
         searchInputRef.current?.focus();
-    }, []);
+    }, [location.state?.operationTypeGuid]);
 
     // ── Agregar producto al carrito ───────────────────────────────────────────
     const addProductToCart = React.useCallback((producto) => {

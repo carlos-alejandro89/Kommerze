@@ -152,6 +152,7 @@ export function usePosService() {
     const crearSolicitudProductos = (solicitud) => ServiceCrearSolicitudProductos(solicitud);
     const crearCompra = (datos) => ServiceCrearCompra(datos);
     const consultarHistorialCompras = () => ServiceConsultarHistorialCompras();
+	const cancelarCompra = (pedidoGuid) => window.go.main.App.ServiceCancelarCompra(pedidoGuid);
 
     const imprimirRecibo = (pedidoGuid) => ServicePrintReceipt(pedidoGuid);
     const enviarRecibo = (pedidoGuid, correo) => ServiceEmailReceipt(pedidoGuid, correo);
@@ -162,6 +163,8 @@ export function usePosService() {
     const obtenerAcuseCancelacionPDF = (pedidoGuid) => ServiceObtenerAcuseCancelacionPDF(pedidoGuid);
     const generarFacturacionGlobal = (operacionID) =>
         window.go.main.App.ServiceGenerarFacturacionGlobal(operacionID);
+    const obtenerFacturasGlobalesOperacion = (operacionID) =>
+        window.go.main.App.ServiceObtenerFacturasGlobalesOperacion(operacionID);
     const enviarFacturaCorreo = (datos) => ServiceEnviarFacturaCorreo(datos);
     const obtenerMotivosCancelacionCFDI = () => ServiceObtenerMotivosCancelacionCFDI();
     const cancelarCFDIVenta = (datos) => ServiceCancelarCFDIVenta(datos);
@@ -231,6 +234,7 @@ export function usePosService() {
         crearSolicitudProductos,
         crearCompra,
         consultarHistorialCompras,
+		cancelarCompra,
         consultarTransacciones,
         consultarTransferencias,
         resolverTransferencia,
@@ -245,6 +249,7 @@ export function usePosService() {
         obtenerFacturaPDF,
         obtenerAcuseCancelacionPDF,
         generarFacturacionGlobal,
+        obtenerFacturasGlobalesOperacion,
         enviarFacturaCorreo,
         obtenerMotivosCancelacionCFDI,
         cancelarCFDIVenta,

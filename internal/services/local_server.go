@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -67,8 +68,24 @@ type LocalServerService struct {
 	conversiones        *ConversionService
 	operacionesSucursal *OperacionesSucursalService
 	operacionesCaja     *OperacionesCajaService
+	syncService         *SyncService
 	hub                 *wsHub
 	server              *http.Server
+}
+
+func (l *LocalServerService) SetSyncService(syncService *SyncService) {
+	l.syncService = syncService
+}
+
+func (l *LocalServerService) syncOperacionesAhora() {
+	if l.syncService == nil {
+		return
+	}
+	go func() {
+		if err := l.syncService.SyncOperacionesPendientes(); err != nil {
+			log.Printf("[SyncOp] sincronización inmediata fallida: %v", err)
+		}
+	}()
 }
 
 func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, conversiones *ConversionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
@@ -127,12 +144,14 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/proveedores/guardar", l.handleGuardarProveedor)
 	mux.HandleFunc("/local/compras", l.handleCrearCompra)
 	mux.HandleFunc("/local/compras/historial", l.handleHistorialCompras)
+	mux.HandleFunc("/local/compras/cancelar", l.handleCancelarCompra)
 	mux.HandleFunc("/local/facturacion/preparar", l.handlePrepararFacturacion)
 	mux.HandleFunc("/local/facturacion/entidades", l.handleBuscarEntidadesFacturacion)
 	mux.HandleFunc("/local/facturacion/emitir", l.handleEmitirFacturacion)
 	mux.HandleFunc("/local/facturacion/pdf", l.handleObtenerFacturaPDF)
 	mux.HandleFunc("/local/facturacion/acuse-cancelacion", l.handleObtenerAcuseCancelacionPDF)
 	mux.HandleFunc("/local/facturacion/global", l.handleGenerarFacturacionGlobal)
+	mux.HandleFunc("/local/facturacion/globales-operacion", l.handleObtenerFacturasGlobalesOperacion)
 	mux.HandleFunc("/local/facturacion/enviar-correo", l.handleEnviarFacturaCorreo)
 	mux.HandleFunc("/local/facturacion/motivos-cancelacion", l.handleObtenerMotivosCancelacion)
 	mux.HandleFunc("/local/facturacion/cancelar", l.handleCancelarCFDIVenta)
@@ -546,6 +565,26 @@ func (l *LocalServerService) handleHistorialCompras(w http.ResponseWriter, r *ht
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleCancelarCompra(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	var body struct {
+		PedidoGuid string `json:"pedidoGuid"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Cuerpo inválido")
+		return
+	}
+	result, err := l.compras.CancelarCompra(body.PedidoGuid)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (l *LocalServerService) handleCancelarVenta(w http.ResponseWriter, r *http.Request) {
@@ -971,6 +1010,7 @@ func (l *LocalServerService) handleCerrarOperacionSucursal(w http.ResponseWriter
 	})
 	// Notificar a todas las Cajas conectadas
 	if result != nil && result.Success {
+		l.syncOperacionesAhora()
 		l.BroadcastToClients("jornada:cerrada", map[string]any{"operacionID": body.OperacionID})
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -989,6 +1029,9 @@ func (l *LocalServerService) handleAbrirCaja(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	result := l.operacionesCaja.AbrirCaja(body)
+	if result != nil && result.Success {
+		l.syncOperacionesAhora()
+	}
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -1005,6 +1048,7 @@ func (l *LocalServerService) handleCerrarCaja(w http.ResponseWriter, r *http.Req
 	result := l.operacionesCaja.CerrarCaja(body)
 	// Notificar a todas las Cajas conectadas
 	if result != nil && result.Success {
+		l.syncOperacionesAhora()
 		l.BroadcastToClients("turno:cerrado", map[string]any{"operacionCajeroID": body.OperacionCajeroID})
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -1157,6 +1201,24 @@ func (l *LocalServerService) handleGenerarFacturacionGlobal(w http.ResponseWrite
 		return
 	}
 	result, err := l.facturacion.GenerarFacturacionGlobal(body.OperacionID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": result})
+}
+
+func (l *LocalServerService) handleObtenerFacturasGlobalesOperacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+	operacionID, err := strconv.ParseUint(r.URL.Query().Get("operacionId"), 10, 64)
+	if err != nil || operacionID == 0 {
+		writeError(w, http.StatusBadRequest, "operacionId requerido")
+		return
+	}
+	result, err := l.facturacion.ObtenerFacturasGlobalesOperacion(uint(operacionID))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

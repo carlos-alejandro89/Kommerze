@@ -65,7 +65,9 @@ export function CartStepTwo() {
             const res = await posService.obtenerTiposPedido();
             const availableTypes = (res || []).filter(tipo => {
                 const guid = transactionGuid(tipo);
-                return guid === TRANSACTION_TYPES.VENTA.guid || guid === TRANSACTION_TYPES.COTIZACION.guid;
+                return guid === TRANSACTION_TYPES.VENTA.guid
+                    || guid === TRANSACTION_TYPES.COTIZACION.guid
+                    || guid === TRANSACTION_TYPES.TRASPASO.guid;
             });
             setTiposPedido(availableTypes);
             const storedGuid = String(localStorage.getItem('operationTypeGuid') || '').replaceAll('"', '').toLowerCase();

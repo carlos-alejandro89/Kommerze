@@ -137,6 +137,7 @@ func (a *App) proveedoresService() interface {
 func (a *App) comprasService() interface {
 	CrearCompra(dto.CrearCompraDto) (*dto.ResponseDto, error)
 	ConsultarHistorial() ([]dto.CompraHistorialDto, error)
+	CancelarCompra(string) (*dto.ResponseDto, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
@@ -513,6 +514,10 @@ func (a *App) ServiceConsultarHistorialCompras() ([]dto.CompraHistorialDto, erro
 	return a.comprasService().ConsultarHistorial()
 }
 
+func (a *App) ServiceCancelarCompra(pedidoGuid string) (*dto.ResponseDto, error) {
+	return a.comprasService().CancelarCompra(pedidoGuid)
+}
+
 func (a *App) ServiceConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint) (*dto.ResponseDto, error) {
 	return a.posService().ConsultaTransacciones(tipoPedidoID, sucursalID)
 }
@@ -800,7 +805,11 @@ func (a *App) ServiceSucursalInicioOperacion(datos dto.SucursalInicioOperaciones
 	if a.services.OperacionesSucursal == nil {
 		return dto.NewResponseDto(false, "No disponible en modo Caja", nil, nil)
 	}
-	return a.services.OperacionesSucursal.SucursalInicioOperacion(datos)
+	res := a.services.OperacionesSucursal.SucursalInicioOperacion(datos)
+	if res != nil && res.Success && a.services.Sync != nil {
+		go a.services.Sync.SyncOperacionesPendientes()
+	}
+	return res
 }
 
 // ServiceObtenerOperacionSucursalActiva devuelve la jornada activa de la sucursal.
@@ -836,6 +845,9 @@ func (a *App) ServiceCerrarOperacionSucursal(datos dto.CerrarOperacionSucursalDt
 	}
 	res := a.services.OperacionesSucursal.CerrarOperacionSucursal(datos)
 	if res != nil && res.Success {
+		if a.services.Sync != nil {
+			go a.services.Sync.SyncOperacionesPendientes()
+		}
 		payload := map[string]any{"operacionID": datos.OperacionID}
 		runtime.EventsEmit(a.ctx, "jornada:cerrada", payload)
 		if a.services.LocalServer != nil {
@@ -856,7 +868,11 @@ func (a *App) ServiceAbrirCaja(datos dto.AbrirCajaDto) *dto.ResponseDto {
 	if a.services.OperacionesCaja == nil {
 		return dto.NewResponseDto(false, "No disponible", nil, nil)
 	}
-	return a.services.OperacionesCaja.AbrirCaja(datos)
+	res := a.services.OperacionesCaja.AbrirCaja(datos)
+	if res != nil && res.Success && a.services.Sync != nil {
+		go a.services.Sync.SyncOperacionesPendientes()
+	}
+	return res
 }
 
 // ServiceCerrarCaja finaliza el turno del cajero. Solo disponible en Servidor Local.
@@ -874,6 +890,9 @@ func (a *App) ServiceCerrarCaja(datos dto.CerrarCajaDto) *dto.ResponseDto {
 	}
 	res := a.services.OperacionesCaja.CerrarCaja(datos)
 	if res != nil && res.Success {
+		if a.services.Sync != nil {
+			go a.services.Sync.SyncOperacionesPendientes()
+		}
 		payload := map[string]any{"operacionCajeroID": datos.OperacionCajeroID}
 		runtime.EventsEmit(a.ctx, "turno:cerrado", payload)
 		if a.services.LocalServer != nil {
@@ -973,6 +992,7 @@ func (a *App) facturacionService() interface {
 	ObtenerFacturaPDF(string) (*dto.FacturacionResultadoDto, error)
 	ObtenerAcuseCancelacionPDF(string) (*dto.FacturacionResultadoDto, error)
 	GenerarFacturacionGlobal(uint) (*dto.ResponseDto, error)
+	ObtenerFacturasGlobalesOperacion(uint) (*dto.ResponseDto, error)
 	EnviarFacturaCorreo(dto.EnviarFacturaEmailRequestDto) error
 	ObtenerMotivosCancelacion() ([]dto.SatMotivoCancelacionDto, error)
 	CancelarCFDIVenta(dto.CancelarCFDIVentaRequestDto) (*dto.ResponseDto, error)
@@ -1005,6 +1025,10 @@ func (a *App) ServiceObtenerAcuseCancelacionPDF(pedidoGuid string) (*dto.Factura
 
 func (a *App) ServiceGenerarFacturacionGlobal(operacionID uint) (*dto.ResponseDto, error) {
 	return a.facturacionService().GenerarFacturacionGlobal(operacionID)
+}
+
+func (a *App) ServiceObtenerFacturasGlobalesOperacion(operacionID uint) (*dto.ResponseDto, error) {
+	return a.facturacionService().ObtenerFacturasGlobalesOperacion(operacionID)
 }
 
 func (a *App) ServiceEnviarFacturaCorreo(req dto.EnviarFacturaEmailRequestDto) error {

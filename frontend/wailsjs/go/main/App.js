@@ -46,6 +46,10 @@ export function ServiceCancelarCFDIVenta(arg1) {
   return window['go']['main']['App']['ServiceCancelarCFDIVenta'](arg1);
 }
 
+export function ServiceCancelarCompra(arg1) {
+  return window['go']['main']['App']['ServiceCancelarCompra'](arg1);
+}
+
 export function ServiceCancelarConversion(arg1) {
   return window['go']['main']['App']['ServiceCancelarConversion'](arg1);
 }
@@ -268,6 +272,10 @@ export function ServiceObtenerCliente(arg1) {
 
 export function ServiceObtenerFacturaPDF(arg1) {
   return window['go']['main']['App']['ServiceObtenerFacturaPDF'](arg1);
+}
+
+export function ServiceObtenerFacturasGlobalesOperacion(arg1) {
+  return window['go']['main']['App']['ServiceObtenerFacturasGlobalesOperacion'](arg1);
 }
 
 export function ServiceObtenerMotivosCancelacionCFDI() {

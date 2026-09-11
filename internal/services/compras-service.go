@@ -38,6 +38,52 @@ func (s *ComprasService) ConsultarHistorial() ([]dto.CompraHistorialDto, error) 
 	return compras, err
 }
 
+func (s *ComprasService) CancelarCompra(pedidoGuid string) (*dto.ResponseDto, error) {
+	guid, err := uuid.Parse(strings.TrimSpace(pedidoGuid))
+	if err != nil {
+		return nil, fmt.Errorf("identificador de compra inválido")
+	}
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		var pedido models.Pedido
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Estatus").Where("guid = ?", guid).First(&pedido).Error; err != nil {
+			return fmt.Errorf("no se encontró la compra: %w", err)
+		}
+		if strings.EqualFold(strings.TrimSpace(pedido.Estatus.Nombre), "cancelado") {
+			return fmt.Errorf("la compra ya está cancelada")
+		}
+		var compra models.Compra
+		if err := tx.Where("pedido_id = ?", pedido.ID).First(&compra).Error; err != nil {
+			return fmt.Errorf("no se encontraron los datos de la compra: %w", err)
+		}
+		var detalles []models.PedidoDetalle
+		if err := tx.Where("pedido_id = ?", pedido.ID).Find(&detalles).Error; err != nil {
+			return fmt.Errorf("no se pudo consultar el detalle de la compra: %w", err)
+		}
+		for _, detalle := range detalles {
+			var inventario models.SucursalProducto
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("nivel_id = ?", detalle.NivelID).First(&inventario).Error; err != nil {
+				return fmt.Errorf("no se encontró el inventario asociado: %w", err)
+			}
+			nuevaExistencia := inventario.Existencia.Sub(detalle.Cantidad)
+			if nuevaExistencia.IsNegative() {
+				return fmt.Errorf("no se puede cancelar: parte de la mercancía ya no está disponible en inventario")
+			}
+			if err := tx.Model(&inventario).Updates(map[string]any{"existencia": nuevaExistencia, "sync": false}).Error; err != nil {
+				return fmt.Errorf("no se pudo revertir el inventario: %w", err)
+			}
+		}
+		var cancelado models.Estatus
+		if err := tx.Where("LOWER(nombre) = ?", "cancelado").First(&cancelado).Error; err != nil {
+			return fmt.Errorf("no se encontró el estatus Cancelado sincronizado: %w", err)
+		}
+		return tx.Model(&pedido).Updates(map[string]any{"estatus_id": cancelado.ID, "sync": false}).Error
+	})
+	if err != nil {
+		return dto.NewResponseDto(false, "No se pudo cancelar la compra", nil, []string{err.Error()}), err
+	}
+	return dto.NewResponseDto(true, "Compra cancelada correctamente", nil, nil), nil
+}
+
 func parseOptionalPurchaseTime(value string) (*time.Time, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

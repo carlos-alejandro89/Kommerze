@@ -218,6 +218,7 @@ func (r *OperacionesCajaRepository) CerrarCaja(datos dto.CerrarCajaDto) *dto.Res
 		"ingreso_transferencia": transferencia,
 		"ingreso_otros":         otros,
 		"bloqueada":             datos.Bloqueada,
+		"synced_at":             nil,
 		"updated_at":            ahora,
 	}
 

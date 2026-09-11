@@ -301,33 +301,6 @@ export function AuditoriaPage() {
         }
       `}} />
 
-            <div className="mx-auto flex w-full max-w-[1320px] shrink-0 items-center justify-between border-b border-border/60 px-6 pb-2 pt-5">
-                <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                    <button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button>
-                    <span>/</span>
-                    <span className="text-foreground">Auditoría</span>
-                </nav>
-                <header className="contents [&>div:first-child]:hidden">
-                    <div className="flex items-center gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                            <ClipboardCheck className="size-4.5" strokeWidth={1.8} />
-                        </div>
-                        <div>
-                            <h1 className="text-base font-bold tracking-[-0.02em] text-foreground">
-                                {status === 'setup' ? 'Auditoría de inventario' : status === 'active' ? 'Auditoría en curso' : 'Conciliación de auditoría'}
-                            </h1>
-                            <p className="text-[11px] text-muted-foreground">
-                                {status === 'setup' ? 'Prepara y valida las condiciones antes de iniciar el conteo.' : status === 'active' ? 'Conteo físico y validación de existencias en proceso.' : 'Revisa las diferencias antes de actualizar el inventario.'}
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-muted">
-                        <ArrowLeft className="size-4" />
-                        Volver al inicio
-                    </button>
-                </header>
-            </div>
-
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <div className="mx-auto max-w-[1320px] space-y-5">
 

@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -19,10 +21,21 @@ type syncCloudResponse struct {
 	HttpCode int    `json:"httpCode"`
 }
 
+func cloudDecimal(value decimal.Decimal) float64 { return value.InexactFloat64() }
+
+func cloudDecimalPointer(value *decimal.Decimal) float64 {
+	if value == nil {
+		return 0
+	}
+	return value.InexactFloat64()
+}
+
 // SyncOperacionesPendientes empuja al cloud todas las OperacionSucursal y OperacionCajero
 // cuyo campo synced_at IS NULL (nunca sincronizadas o que fallaron en el intento anterior).
 // Se llama periódicamente desde una goroutine en NewServices.
 func (s *SyncService) SyncOperacionesPendientes() error {
+	s.operationsMu.Lock()
+	defer s.operationsMu.Unlock()
 	log.Println("[SyncOp] Iniciando sincronización de operaciones pendientes...")
 
 	// ── 1. Operaciones de sucursal pendientes ──────────────────────────────
@@ -78,7 +91,7 @@ func (s *SyncService) syncOperacionSucursal(op models.OperacionSucursal) error {
 		"sucursalGuid":           suc.Guid.String(),
 		"usuarioAperturaGuid":    usuarioGuid,
 		"fechaInicio":            op.FechaInicio.Format(time.RFC3339),
-		"valorInicialInventario": op.ValorInicialInventario,
+		"valorInicialInventario": cloudDecimal(op.ValorInicialInventario),
 		"guid":                   op.Guid.String(),
 	}
 
@@ -104,31 +117,31 @@ func (s *SyncService) syncOperacionSucursal(op models.OperacionSucursal) error {
 		}
 
 		finalizarPayload := map[string]any{
-			"operacionGuid":        op.Guid.String(),
-			"usuarioCierreGuid":    usuarioCierreGuid,
-			"estatusGuid":          estatusGuid,
-			"fechaInicio":          op.FechaInicio.Format(time.RFC3339),
-			"fechaFin":             op.FechaFin.Format(time.RFC3339),
-			"valorInicialInventario": op.ValorInicialInventario,
-			"valorCompras":         op.ValorCompras,
-			"valorVentas":          op.ValorVentas,
-			"descuentosAplicados":  op.DescuentosAplicados,
-			"ajusteInventario":     op.AjusteInventario,
-			"valorFinalInventario": op.ValorFinalInventario,
-			"ingresoEfectivo":      op.IngresoEfectivo,
-			"ingresoTarjetas":      op.IngresoTarjetas,
-			"ingresoCheques":       op.IngresoCheques,
-			"ingresoTransferencia": op.IngresoTransferencia,
-			"ingresoOtros":         op.IngresoOtros,
-			"creditos":             op.Creditos,
-			"valesSalida":          op.ValesSalida,
-			"valesEntrantes":       op.ValesEntrantes,
-			"cfdiEfectivo":         op.CFDIEfectivo,
-			"cfdiTarjetas":         op.CFDITarjetas,
-			"cfdiCheques":          op.CFDICheques,
-			"cfdiTransferencia":    op.CFDITransferencia,
-			"cfdiOtros":            op.CFDIOtros,
-			"bajasMercancia":       op.BajasMercancia,
+			"operacionGuid":          op.Guid.String(),
+			"usuarioCierreGuid":      usuarioCierreGuid,
+			"estatusGuid":            estatusGuid,
+			"fechaInicio":            op.FechaInicio.Format(time.RFC3339),
+			"fechaFin":               op.FechaFin.Format(time.RFC3339),
+			"valorInicialInventario": cloudDecimal(op.ValorInicialInventario),
+			"valorCompras":           cloudDecimal(op.ValorCompras),
+			"valorVentas":            cloudDecimal(op.ValorVentas),
+			"descuentosAplicados":    cloudDecimal(op.DescuentosAplicados),
+			"ajusteInventario":       cloudDecimal(op.AjusteInventario),
+			"valorFinalInventario":   cloudDecimal(op.ValorFinalInventario),
+			"ingresoEfectivo":        cloudDecimal(op.IngresoEfectivo),
+			"ingresoTarjetas":        cloudDecimal(op.IngresoTarjetas),
+			"ingresoCheques":         cloudDecimal(op.IngresoCheques),
+			"ingresoTransferencia":   cloudDecimal(op.IngresoTransferencia),
+			"ingresoOtros":           cloudDecimal(op.IngresoOtros),
+			"creditos":               cloudDecimal(op.Creditos),
+			"valesSalida":            cloudDecimal(op.ValesSalida),
+			"valesEntrantes":         cloudDecimal(op.ValesEntrantes),
+			"cfdiEfectivo":           cloudDecimal(op.CFDIEfectivo),
+			"cfdiTarjetas":           cloudDecimal(op.CFDITarjetas),
+			"cfdiCheques":            cloudDecimal(op.CFDICheques),
+			"cfdiTransferencia":      cloudDecimal(op.CFDITransferencia),
+			"cfdiOtros":              cloudDecimal(op.CFDIOtros),
+			"bajasMercancia":         cloudDecimal(op.BajasMercancia),
 		}
 
 		if err := s.cloudPut("sucursales/operaciones/finalizar", finalizarPayload); err != nil {
@@ -160,7 +173,7 @@ func (s *SyncService) syncOperacionCajero(op models.OperacionCajero) error {
 		"responsableCajaGuid":   responsableGuid,
 		"caja":                  op.CajaNombre,
 		"fechaInicio":           op.FechaInicio.Format(time.RFC3339),
-		"fondoCajaApertura":     op.FondoCajaApertura,
+		"fondoCajaApertura":     cloudDecimal(op.FondoCajaApertura),
 		"guidOperacionCajero":   op.Guid.String(),
 	}
 
@@ -182,13 +195,13 @@ func (s *SyncService) syncOperacionCajero(op models.OperacionCajero) error {
 			"operacionCajaGuid":    op.Guid.String(),
 			"estatusGuid":          estatusGuid,
 			"fechaFin":             op.FechaFin.Format(time.RFC3339),
-			"fondoCajaCierre":      op.FondoCajaCierre,
-			"retirosEfectivo":      op.RetirosEfectivo,
-			"ingresoEfectivo":      op.IngresoEfectivo,
-			"ingresoTarjetas":      op.IngresoTarjetas,
-			"ingresoCheques":       op.IngresoCheques,
-			"ingresoTransferencia": op.IngresoTransferencia,
-			"ingresoOtros":         op.IngresoOtros,
+			"fondoCajaCierre":      cloudDecimal(op.FondoCajaCierre),
+			"retirosEfectivo":      cloudDecimal(op.RetirosEfectivo),
+			"ingresoEfectivo":      cloudDecimalPointer(op.IngresoEfectivo),
+			"ingresoTarjetas":      cloudDecimalPointer(op.IngresoTarjetas),
+			"ingresoCheques":       cloudDecimalPointer(op.IngresoCheques),
+			"ingresoTransferencia": cloudDecimalPointer(op.IngresoTransferencia),
+			"ingresoOtros":         cloudDecimalPointer(op.IngresoOtros),
 			"bloqueada":            op.Bloqueada,
 		}
 
@@ -230,11 +243,28 @@ func (s *SyncService) cloudRequest(method, endpoint string, payload any) error {
 		return fmt.Errorf("error HTTP %s %s: %w", method, url, err)
 	}
 	defer resp.Body.Close()
+	responseBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return fmt.Errorf("no se pudo leer la respuesta cloud: %w", readErr)
+	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		var cloudResp syncCloudResponse
-		_ = json.NewDecoder(resp.Body).Decode(&cloudResp)
+		_ = json.Unmarshal(responseBody, &cloudResp)
 		return fmt.Errorf("cloud respondió %d: %s", resp.StatusCode, cloudResp.Mensaje)
+	}
+	if len(responseBody) > 0 {
+		var raw map[string]json.RawMessage
+		if json.Unmarshal(responseBody, &raw) == nil {
+			if successRaw, exists := raw["success"]; exists {
+				var success bool
+				if json.Unmarshal(successRaw, &success) == nil && !success {
+					var cloudResp syncCloudResponse
+					_ = json.Unmarshal(responseBody, &cloudResp)
+					return fmt.Errorf("cloud rechazó la operación: %s", cloudResp.Mensaje)
+				}
+			}
+		}
 	}
 
 	return nil

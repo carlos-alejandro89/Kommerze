@@ -289,7 +289,7 @@ export function ProductsPage() {
                   placeholder="Buscar productos, SKUs..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="h-10 w-full rounded-full border border-border/70 bg-background/75 pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/10"
+                  className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 

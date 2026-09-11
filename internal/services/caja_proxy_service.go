@@ -130,6 +130,17 @@ func (c *CajaProxyService) GenerarFacturacionGlobal(operacionID uint) (*dto.Resp
 	return &result.Data, nil
 }
 
+func (c *CajaProxyService) ObtenerFacturasGlobalesOperacion(operacionID uint) (*dto.ResponseDto, error) {
+	var result struct {
+		Success bool            `json:"success"`
+		Data    dto.ResponseDto `json:"data"`
+	}
+	if err := c.get(fmt.Sprintf("/local/facturacion/globales-operacion?operacionId=%d", operacionID), &result); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
 func (c *CajaProxyService) BuscarEntidadesReceptoras(termino string) ([]dto.FacturacionEntidadDto, error) {
 	var result struct {
 		Success bool                        `json:"success"`
@@ -312,6 +323,14 @@ func (c *CajaProxyService) ConsultarHistorial() ([]dto.CompraHistorialDto, error
 		return nil, err
 	}
 	return result.Data, nil
+}
+
+func (c *CajaProxyService) CancelarCompra(pedidoGuid string) (*dto.ResponseDto, error) {
+	var result dto.ResponseDto
+	if err := c.post("/local/compras/cancelar", map[string]string{"pedidoGuid": pedidoGuid}, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (c *CajaProxyService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {

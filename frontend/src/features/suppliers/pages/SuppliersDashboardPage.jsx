@@ -69,14 +69,6 @@ export function SuppliersDashboardPage() {
 
   return <div className="flex h-[calc(100vh-56px)] overflow-hidden">
     <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 overflow-hidden p-5 lg:p-6">
-      <div className="flex shrink-0 items-center justify-between border-b border-border/60 pb-2">
-        <nav className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><button type="button" onClick={() => navigate('/home')} className="transition hover:text-primary">Home</button><span>/</span><span className="text-foreground">Proveedores</span></nav>
-        <header className="contents [&>div:first-child]:hidden">
-          <div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400"><Handshake className="size-4.5" strokeWidth={1.8} /></div><div><h1 className="text-base font-bold tracking-[-0.02em]">Proveedores</h1><p className="text-[11px] text-muted-foreground">Consulta y administra las razones sociales registradas como proveedores.</p></div></div>
-          <button type="button" onClick={() => navigate('/home')} className="flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 text-[11px] font-semibold transition hover:bg-muted"><ArrowLeft className="size-3.5" />Volver al inicio</button>
-        </header>
-      </div>
-
       <section className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
         {summaries.map(summary => <div key={summary.label} className="flex min-h-[92px] items-center gap-3.5 rounded-2xl border border-white/70 bg-white/65 p-4 shadow-[0_12px_32px_-27px_rgba(30,64,120,.42)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.045]"><div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', summary.tone)}><summary.icon className="size-5" /></div><div className="min-w-0"><p className="text-[11px] font-semibold text-muted-foreground">{summary.label}</p>{loading ? <div className="mt-1 h-6 w-20 animate-pulse rounded-md bg-muted" /> : <p className="mt-0.5 text-xl font-bold">{summary.value}</p>}<p className="mt-0.5 truncate text-[10px] text-muted-foreground/75">{summary.detail}</p></div></div>)}
       </section>

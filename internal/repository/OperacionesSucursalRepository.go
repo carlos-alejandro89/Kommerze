@@ -612,6 +612,7 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 		"cfdi_cheques":             acum.CFDICheques,
 		"cfdi_transferencia":       acum.CFDITransferencia,
 		"cfdi_otros":               acum.CFDIOtros,
+		"synced_at":                nil,
 		"updated_at":               ahora,
 	}
 

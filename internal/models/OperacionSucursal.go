@@ -53,6 +53,21 @@ type OperacionSucursal struct {
 	CFDITransferencia decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 	CFDIOtros         decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
+	FacturaEfectivoId uint
+	FacturaEfectivo   *Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	FacturaCreditoId uint
+	FacturaCredito   *Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	FacturaDebitoId uint
+	FacturaDebito   *Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	FacturaTransferenciaId uint
+	FacturaTransferencia   *Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	FacturaOtrosId uint
+	FacturaOtros   *Factura `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
 	// Importes de ventas pendientes de facturar para preparar el cierre. Se
 	// calculan en vivo y no forman parte de los acumulados persistidos.
 	FacturacionPendienteEfectivo      decimal.Decimal `gorm:"-"`

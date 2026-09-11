@@ -28,6 +28,8 @@ export function ServiceBuscarProveedores(arg1:string):Promise<Array<dto.Proveedo
 
 export function ServiceCancelarCFDIVenta(arg1:dto.CancelarCFDIVentaRequestDto):Promise<dto.ResponseDto>;
 
+export function ServiceCancelarCompra(arg1:string):Promise<dto.ResponseDto>;
+
 export function ServiceCancelarConversion(arg1:string):Promise<void>;
 
 export function ServiceCancelarVenta(arg1:string):Promise<dto.ResponseDto>;
@@ -139,6 +141,8 @@ export function ServiceObtenerCajaConfigurada():Promise<models.Caja>;
 export function ServiceObtenerCliente(arg1:string):Promise<dto.ClienteDetalleDto>;
 
 export function ServiceObtenerFacturaPDF(arg1:string):Promise<dto.FacturacionResultadoDto>;
+
+export function ServiceObtenerFacturasGlobalesOperacion(arg1:number):Promise<dto.ResponseDto>;
 
 export function ServiceObtenerMotivosCancelacionCFDI():Promise<Array<dto.SatMotivoCancelacionDto>>;
 

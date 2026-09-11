@@ -685,8 +685,14 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 		}
 	}
 
-	resultados := make([]map[string]any, 0, len(porForma))
+	resultados, err := s.documentosFacturasGlobales(operacion)
+	if err != nil {
+		return nil, err
+	}
 	for _, clave := range []string{"01", "04", "28", "03"} {
+		if facturaGlobalID(operacion, clave) != 0 {
+			continue
+		}
 		grupo := porForma[clave]
 		if len(grupo) == 0 {
 			continue
@@ -708,6 +714,74 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 	}
 	resultados = append(resultados, reportes...)
 	return dto.NewResponseDto(true, "Facturación global generada correctamente", resultados, nil), nil
+}
+
+// ObtenerFacturasGlobalesOperacion recupera los PDF ya ligados a la jornada.
+// Permite reabrirlos antes de reintentar un cierre interrumpido.
+func (s *FacturacionService) ObtenerFacturasGlobalesOperacion(operacionID uint) (*dto.ResponseDto, error) {
+	var operacion models.OperacionSucursal
+	if err := s.db.First(&operacion, operacionID).Error; err != nil {
+		return nil, fmt.Errorf("jornada no encontrada: %w", err)
+	}
+	documentos, err := s.documentosFacturasGlobales(operacion)
+	if err != nil {
+		return nil, err
+	}
+	return dto.NewResponseDto(true, "Facturas globales ligadas a la jornada", documentos, nil), nil
+}
+
+func facturaGlobalID(operacion models.OperacionSucursal, claveForma string) uint {
+	switch claveForma {
+	case "01":
+		return operacion.FacturaEfectivoId
+	case "04":
+		return operacion.FacturaCreditoId
+	case "28":
+		return operacion.FacturaDebitoId
+	case "03":
+		return operacion.FacturaTransferenciaId
+	default:
+		return 0
+	}
+}
+
+func facturaGlobalColumn(claveForma string) (string, error) {
+	switch claveForma {
+	case "01":
+		return "factura_efectivo_id", nil
+	case "04":
+		return "factura_credito_id", nil
+	case "28":
+		return "factura_debito_id", nil
+	case "03":
+		return "factura_transferencia_id", nil
+	default:
+		return "", fmt.Errorf("forma de pago global no soportada: %s", claveForma)
+	}
+}
+
+func (s *FacturacionService) documentosFacturasGlobales(operacion models.OperacionSucursal) ([]map[string]any, error) {
+	documentos := make([]map[string]any, 0, 4)
+	for _, clave := range []string{"01", "04", "28", "03"} {
+		facturaID := facturaGlobalID(operacion, clave)
+		if facturaID == 0 {
+			continue
+		}
+		var factura models.Factura
+		if err := s.db.Where("id = ? AND deleted_at IS NULL", facturaID).First(&factura).Error; err != nil {
+			return nil, fmt.Errorf("no se encontró la factura global %s ligada a la jornada: %w", clave, err)
+		}
+		pdfBytes, err := os.ReadFile(strings.TrimSpace(factura.ArchivoPDF))
+		if err != nil || len(pdfBytes) == 0 {
+			return nil, fmt.Errorf("no se pudo leer el PDF de la factura global %s: %w", clave, err)
+		}
+		documentos = append(documentos, map[string]any{
+			"claveFormaPago": clave, "facturaId": factura.ID, "uuid": factura.UUID,
+			"total": satNumber(factura.Total), "archivoXML": factura.ArchivoXML, "archivoPDF": factura.ArchivoPDF,
+			"pdfBase64": base64.StdEncoding.EncodeToString(pdfBytes), "pdfFileName": filepath.Base(factura.ArchivoPDF),
+		})
+	}
+	return documentos, nil
 }
 
 func (s *FacturacionService) transferenciasPendientesJornada(operacion models.OperacionSucursal) (int64, error) {
@@ -803,7 +877,108 @@ func (s *FacturacionService) generarReportesJornada(operacion models.OperacionSu
 		}
 		resultados = append(resultados, map[string]any{"documentKey": item.key, "pdfBase64": base64.StdEncoding.EncodeToString(pdf), "pdfFileName": "reporte-" + item.key + ".pdf"})
 	}
+
+	financiero, err := s.prepararReporteFinanciero(operacion, fechaFin, header)
+	if err != nil {
+		return nil, err
+	}
+	pdfFinanciero, err := renders.RenderFinancialClosingPDF(financiero)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el resumen financiero: %w", err)
+	}
+	resultados = append(resultados, map[string]any{
+		"documentKey": "resumenFinanciero", "pdfBase64": base64.StdEncoding.EncodeToString(pdfFinanciero),
+		"pdfFileName": "resumen-financiero.pdf",
+	})
 	return resultados, nil
+}
+
+func (s *FacturacionService) prepararReporteFinanciero(operacion models.OperacionSucursal, fechaFin time.Time, header reportmodels.ClosingReportHeader) (reportmodels.FinancialClosingReport, error) {
+	acum := repository.NewOperacionesSucursalRepository(s.db).CalcularAcumuladosDia(operacion)
+	reporte := reportmodels.FinancialClosingReport{Header: header}
+	reporte.VentasInventario = []reportmodels.FinancialMetric{
+		{Label: "Valor inventario inicial", Value: satNumber(operacion.ValorInicialInventario)},
+		{Label: "Ventas a crédito", Value: satNumber(operacion.Creditos)},
+		{Label: "Valor de las compras", Value: satNumber(acum.ValorCompras)},
+		{Label: "Transferencias entrantes", Value: satNumber(acum.TransferenciasEntrantes)},
+		{Label: "Valor bruto de las ventas", Value: satNumber(acum.ValorBrutoVentas)},
+		{Label: "Transferencias de salida", Value: satNumber(acum.TransferenciasSalientes)},
+		{Label: "Descuentos aplicados", Value: satNumber(acum.DescuentosAplicados)},
+		{Label: "Bajas de mercancía", Value: satNumber(acum.BajasMercancia)},
+		{Label: "Valor real de las ventas", Value: satNumber(acum.ValorVentas)},
+		{Label: "Ajuste de inventario", Value: satNumber(acum.AjusteInventario)},
+		{Label: "Valor final inventario", Value: satNumber(acum.ValorFinalInventario)},
+	}
+	reporte.Ingresos = []reportmodels.FinancialMetric{
+		{Label: "Efectivo", Value: satNumber(acum.IngresoEfectivo)},
+		{Label: "Tarjetas", Value: satNumber(acum.IngresoTarjetas)},
+		{Label: "Cheques", Value: satNumber(acum.IngresoCheques)},
+		{Label: "Transferencia", Value: satNumber(acum.IngresoTransferencia)},
+		{Label: "Otros", Value: satNumber(acum.IngresoOtros)},
+		{Label: "Total ingresos", Value: satNumber(acum.IngresoEfectivo.Add(acum.IngresoTarjetas).Add(acum.IngresoCheques).Add(acum.IngresoTransferencia).Add(acum.IngresoOtros))},
+	}
+	reporte.CFDI = []reportmodels.FinancialMetric{
+		{Label: "Efectivo", Value: satNumber(acum.CFDIEfectivo)},
+		{Label: "Tarjetas", Value: satNumber(acum.CFDITarjetas)},
+		{Label: "Cheques", Value: satNumber(acum.CFDICheques)},
+		{Label: "Transferencia", Value: satNumber(acum.CFDITransferencia)},
+		{Label: "Otros", Value: satNumber(acum.CFDIOtros)},
+		{Label: "Total facturado", Value: satNumber(acum.CFDIEfectivo.Add(acum.CFDITarjetas).Add(acum.CFDICheques).Add(acum.CFDITransferencia).Add(acum.CFDIOtros))},
+	}
+
+	if err := s.db.Raw(`
+		SELECT LPAD(p.folio::text, 7, '0') folio, COALESCE(c.razon_social, 'PÚBLICO EN GENERAL') cliente,
+		       p.fecha, SUM((pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100))::double precision total
+		FROM pedidos p
+		JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+		JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.guid::text = ? AND tp.deleted_at IS NULL
+		JOIN estatus e ON e.id = p.estatus_id AND LOWER(e.nombre) IN ('completado', 'completada') AND e.deleted_at IS NULL
+		LEFT JOIN clientes c ON c.id = p.cliente_id AND c.deleted_at IS NULL
+		WHERE p.sucursal_origen_id = ? AND p.fecha BETWEEN ? AND ? AND p.deleted_at IS NULL
+		GROUP BY p.id, p.folio, p.fecha, c.razon_social ORDER BY p.fecha, p.folio
+	`, models.TipoPedidoVentaGuid, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&reporte.Ventas).Error; err != nil {
+		return reporte, fmt.Errorf("no se pudo preparar el detalle de ventas: %w", err)
+	}
+	for _, row := range reporte.Ventas {
+		reporte.TotalVentas += row.Total
+	}
+
+	if err := s.db.Raw(`
+		SELECT LPAD(p.folio::text, 7, '0') folio, COALESCE(ef.razon_social, 'PROVEEDOR NO DISPONIBLE') proveedor,
+		       p.fecha, CASE WHEN UPPER(co.origen_captura) = 'XML' THEN 'XML' ELSE 'Manual' END origen_captura,
+		       SUM(pd.precio_venta * pd.cantidad)::double precision total
+		FROM compras co
+		JOIN pedidos p ON p.id = co.pedido_id AND p.deleted_at IS NULL
+		JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
+		LEFT JOIN entidades_fiscales ef ON ef.id = co.proveedor_id AND ef.deleted_at IS NULL
+		WHERE p.sucursal_origen_id = ? AND p.fecha BETWEEN ? AND ? AND co.deleted_at IS NULL
+		GROUP BY p.id, p.folio, p.fecha, ef.razon_social, co.origen_captura ORDER BY p.fecha, p.folio
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&reporte.Compras).Error; err != nil {
+		return reporte, fmt.Errorf("no se pudo preparar el detalle de compras: %w", err)
+	}
+	for _, row := range reporte.Compras {
+		reporte.TotalCompras += row.Total
+	}
+
+	if err := s.db.Raw(`
+		SELECT CONCAT(f.serie, '-', LPAD(f.folio::text, 6, '0')) folio_cfdi,
+		       CASE WHEN f.es_global THEN 'Factura Global'
+		            ELSE STRING_AGG(DISTINCT LPAD(p.folio::text, 7, '0'), ', ' ORDER BY LPAD(p.folio::text, 7, '0')) END folios_venta,
+		       COALESCE(ef.razon_social, CASE WHEN f.es_global THEN 'PÚBLICO EN GENERAL' ELSE 'RECEPTOR NO DISPONIBLE' END) receptor,
+		       f.fecha_factura fecha, f.estatus, f.total::double precision total, f.es_global
+		FROM facturas f
+		JOIN pedidos p ON p.factura_id = f.id AND p.deleted_at IS NULL
+		LEFT JOIN entidades_fiscales ef ON ef.id = f.receptor_id AND ef.deleted_at IS NULL
+		WHERE p.sucursal_origen_id = ? AND p.fecha BETWEEN ? AND ? AND f.deleted_at IS NULL
+		GROUP BY f.id, f.serie, f.folio, ef.razon_social, f.es_global, f.fecha_factura, f.estatus, f.total
+		ORDER BY f.fecha_factura, f.folio
+	`, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&reporte.Facturas).Error; err != nil {
+		return reporte, fmt.Errorf("no se pudo preparar el detalle de facturas: %w", err)
+	}
+	for _, row := range reporte.Facturas {
+		reporte.TotalFacturas += row.Total
+	}
+	return reporte, nil
 }
 
 func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken string, operacion models.OperacionSucursal, claveForma string, tickets []globalInvoiceTicket) (map[string]any, error) {
@@ -949,16 +1124,26 @@ func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken
 		FechaFactura: stampDate, EsGlobal: true, Subtotal: subtotal, Impuestos: impuestos,
 		Descuento: decimal.Zero, Total: total, Estatus: "vigente", ArchivoXML: xmlPath, ArchivoPDF: pdfPath,
 	}
+	facturaColumn, err := facturaGlobalColumn(claveForma)
+	if err != nil {
+		return nil, err
+	}
 	if err = s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&factura).Error; err != nil {
 			return err
 		}
-		return tx.Model(&models.Pedido{}).Where("id IN ? AND factura_id IS NULL", pedidoIDs).Update("factura_id", factura.ID).Error
+		if err := tx.Model(&models.Pedido{}).Where("id IN ? AND factura_id IS NULL", pedidoIDs).Update("factura_id", factura.ID).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.OperacionSucursal{}).
+			Where("id = ? AND ("+facturaColumn+" IS NULL OR "+facturaColumn+" = 0)", operacion.ID).
+			Update(facturaColumn, factura.ID).Error
 	}); err != nil {
 		return nil, fmt.Errorf("factura global timbrada, pero no se pudo registrar localmente: %w", err)
 	}
 	return map[string]any{
 		"claveFormaPago": claveForma,
+		"facturaId":      factura.ID,
 		"uuid":           factura.UUID,
 		"total":          satNumber(total),
 		"archivoXML":     xmlPath,
