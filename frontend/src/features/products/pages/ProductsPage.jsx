@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Search, LayoutGrid, List as ListIcon,
   Package, Image as ImageIcon, ChevronRight, ChevronLeft,
-  Loader2, ChevronDown, ChevronUp, X, ClipboardList, Check
+  Loader2, ChevronDown, ChevronUp, X, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -158,9 +158,9 @@ export function ProductsPage() {
     <div className="flex h-[calc(100vh-56px)] overflow-hidden animate-fade-in">
 
       {/* ── Left Sidebar Filters ─────────────────────── */}
-      <div className="w-[280px] shrink-0 border-r border-border bg-surface flex flex-col overflow-hidden hidden md:block">
-        <div className="p-5 flex items-center justify-between border-b border-border">
-          <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">FILTROS</h3>
+      <div className="hidden w-[318px] shrink-0 flex-col overflow-hidden border-r border-[#dfe8f5] bg-white/75 backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/[.035]">
+        <div className="flex items-center justify-between px-7 pb-4 pt-6">
+          <h3 className="text-base font-bold text-foreground">Filtros</h3>
           {(selectedLineas.size > 0 || selectedMarcas.size > 0 || showOnlyWithStock) && (
             <button onClick={clearAllFilters} className="text-xs font-medium text-primary hover:text-brand-600 transition-colors">
               Limpiar
@@ -168,9 +168,9 @@ export function ProductsPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto px-7 pb-6">
           {/* Existencia */}
-          <div className="rounded-xl border border-border/55 bg-muted/[.16] px-3 py-2.5">
+          <div className="rounded-xl border border-[#dce7f6] bg-white/70 px-3 py-2.5 dark:border-white/10 dark:bg-white/[.04]">
             <StockFilterSwitch checked={showOnlyWithStock} onCheckedChange={setShowOnlyWithStock} className="justify-between" />
           </div>
 
@@ -181,7 +181,7 @@ export function ProductsPage() {
                 onClick={() => toggleFilterSection('linea')}
                 className="flex items-center justify-between w-full text-left"
               >
-                <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Línea</h4>
+                <h4 className="text-xs font-bold text-foreground">Línea</h4>
                 {expandedFilters.linea ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
               </button>
 
@@ -194,7 +194,7 @@ export function ProductsPage() {
                       placeholder="Buscar linea..."
                       value={lineaSearch}
                       onChange={e => setLineaSearch(e.target.value)}
-                      className="w-full rounded-md border border-border bg-bg-subtle pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition"
+                      className="h-9 w-full rounded-lg border border-[#dce7f6] bg-[#f5f8fd] pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition dark:border-white/10 dark:bg-white/[.05]"
                     />
                   </div>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
@@ -228,7 +228,7 @@ export function ProductsPage() {
                 onClick={() => toggleFilterSection('marca')}
                 className="flex items-center justify-between w-full text-left"
               >
-                <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Marca</h4>
+                <h4 className="text-xs font-bold text-foreground">Marca</h4>
                 {expandedFilters.marca ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
               </button>
 
@@ -241,7 +241,7 @@ export function ProductsPage() {
                       placeholder="Buscar marca..."
                       value={marcaSearch}
                       onChange={e => setMarcaSearch(e.target.value)}
-                      className="w-full rounded-md border border-border bg-bg-subtle pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition"
+                      className="h-9 w-full rounded-lg border border-[#dce7f6] bg-[#f5f8fd] pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition dark:border-white/10 dark:bg-white/[.05]"
                     />
                   </div>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
@@ -271,59 +271,50 @@ export function ProductsPage() {
       </div>
 
       {/* ── Main Content ─────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-transparent">
+      <div className="relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(99,157,255,.10),transparent_38%)]">
 
         {/* Header */}
-        <div className="flex flex-col gap-4 p-5 shrink-0 bg-surface border-b border-border">
+        <div className="flex shrink-0 flex-col gap-3 px-7 pb-4 pt-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-foreground">Catálogo de Productos</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[.08em] text-muted-foreground">Inventario</p>
+              <h2 className="mt-0.5 text-2xl font-bold tracking-[-.025em] text-foreground">Productos</h2>
               <p className="text-sm text-muted-foreground">Mostrando {filteredProducts.length} resultados</p>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-[330px]">
+              <div className="relative w-full sm:w-[440px]">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Buscar productos, SKUs..."
+                  placeholder="Buscar productos, SKUs o códigos..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="h-10 w-full rounded-xl border border-border/70 bg-background/75 pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 
-              <div className="hidden sm:flex items-center rounded-lg border border-border bg-bg-subtle p-0.5">
+              <div className="hidden items-center gap-1 sm:flex">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={cn('p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-surface shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                  className={cn('flex size-10 items-center justify-center rounded-xl border transition-colors', viewMode === 'grid' ? 'border-primary/35 bg-primary/10 text-primary shadow-sm' : 'border-border/70 bg-background/75 text-muted-foreground hover:text-foreground')}
                 >
                   <LayoutGrid className="size-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={cn('p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-surface shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                  className={cn('flex size-10 items-center justify-center rounded-xl border transition-colors', viewMode === 'list' ? 'border-primary/35 bg-primary/10 text-primary shadow-sm' : 'border-border/70 bg-background/75 text-muted-foreground hover:text-foreground')}
                 >
                   <ListIcon className="size-4" />
                 </button>
               </div>
 
-              <button
-                type="button"
-                disabled={selectedProductsCount === 0}
-                onClick={() => navigate('/products/request-summary', { state: { requestItems } })}
-                className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-4 text-sm font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ClipboardList className="size-4" />
-                <span>{selectedProductsCount} {selectedProductsCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}</span>
-                <ChevronRight className="size-4" />
-              </button>
             </div>
           </div>
 
           {/* Active Filters Bar */}
           {(selectedLineas.size > 0 || selectedMarcas.size > 0 || showOnlyWithStock) && (
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-3">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Filtros Activos:</span>
               <div className="flex flex-wrap gap-2">
                 {showOnlyWithStock && (
@@ -359,7 +350,7 @@ export function ProductsPage() {
         </div>
 
         {/* Product Grid/List */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-2 lg:px-7">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full space-y-4 text-muted-foreground">
               <Loader2 className="size-8 animate-spin text-primary" />
@@ -509,6 +500,10 @@ export function ProductsPage() {
               </div>
             </>
           )}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 z-30 flex h-[74px] items-center justify-between border-t border-[#dfe8f5] bg-white/95 px-7 shadow-[0_-12px_34px_-28px_rgba(20,55,110,.55)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0a1526]/95">
+          <div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Package className="size-5" /></span><div><p className="text-sm font-bold">{selectedProductsCount} {selectedProductsCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}</p><p className="text-[10px] text-muted-foreground">Selecciona uno o más productos para continuar</p></div></div>
+          <button type="button" disabled={selectedProductsCount === 0} onClick={() => navigate('/products/request-summary', { state: { requestItems } })} className="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-7 text-sm font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45">Siguiente <ChevronRight className="size-4" /></button>
         </div>
       </div>
 
