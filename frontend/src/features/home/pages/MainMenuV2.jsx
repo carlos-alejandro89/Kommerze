@@ -66,7 +66,7 @@ const MODULES = [
 
   { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard' },
   { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura' },
-  { id: 'sucursales', title: 'Sucursales', subtitle: 'Gestión de sucursales', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true },
+  { id: 'sucursales', title: 'Operación de sucursal', subtitle: 'Inicio, seguimiento y cierre de operaciones.', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true },
   { id: 'conversiones', title: 'Conversiones', subtitle: 'Transformación entre presentaciones', icon: Repeat2, color: '#30b9ce', to: '/conversions' },
   { id: 'configuracion', title: 'Configuración', subtitle: 'Parámetros del sistema', icon: Settings, color: '#607996', to: '/settings' },
 ];
@@ -487,12 +487,17 @@ export function MainMenuV2() {
               </div>
             </section>
 
-            <footer className="flex items-center justify-between pb-2 text-[11px] font-medium text-[#6e84a7] dark:text-slate-500">
-              <span>© {new Date().getFullYear()} Kommerze. Todos los derechos reservados.</span>
-              <span>v9.3.4 &nbsp; <strong className="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-700">Actualizado</strong></span>
-            </footer>
             </div>
           </main>
+          <div className="flex shrink-0 items-center justify-between gap-4 bg-[#f8fbff] px-6 py-1.5 text-[10px] text-[#6e84a7] dark:bg-[#091526] dark:text-slate-500">
+            <span>© {new Date().getFullYear()} Kommerze. Todos los derechos reservados.</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="font-semibold">v9.3.4</span>
+              <span className="rounded-full border border-emerald-500/15 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                Actualizado
+              </span>
+            </span>
+          </div>
           <HomeStatusBar />
         </div>
       </div>

@@ -32,6 +32,7 @@ type PedidoDetalleRequestDto struct {
 	NivelGuid     string  `json:"nivelGuid"`
 	Cantidad      float64 `json:"cantidad"`
 	PrecioCompra  float64 `json:"precioCompra"`
+	PrecioBase    float64 `json:"precioBase"`
 	PrecioVenta   float64 `json:"precioVenta"`
 	PrecioVenta2  float64 `json:"precioVenta2"`
 	Descuento     float64 `json:"descuento"`

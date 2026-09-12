@@ -757,6 +757,14 @@ func (r *PosRepository) ConfirmarTransaccion(
 		for _, item := range nivelesEmpaque {
 			dicNiveles[item.Guid] = item.ID
 		}
+		comisionVentas := decimal.Zero
+		if sucursalOrigen != nil {
+			var sucursal models.Sucursal
+			if err := tx.Select("comision_ventas").First(&sucursal, *sucursalOrigen).Error; err != nil {
+				return fmt.Errorf("no se pudo obtener la comisión de ventas de la sucursal: %w", err)
+			}
+			comisionVentas = sucursal.ComisionVentas
+		}
 
 		// Detalles
 		for _, item := range itemsPedido {
@@ -766,6 +774,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 				PedidoID:     pedido.ID,
 				NivelID:      dicNiveles[guid],
 				Cantidad:     item.Quantity,
+				PrecioBase:   models.CalcularPrecioBase(item.Price, comisionVentas),
 				PrecioVenta:  item.Price,
 				PrecioCompra: item.Price,
 				TasaIVA:      decimal.NewFromFloat(16.0),
@@ -881,6 +890,10 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 		if err := tx.Create(&pedido).Error; err != nil {
 			return fmt.Errorf("no se pudo crear el pedido: %w", err)
 		}
+		var sucursal models.Sucursal
+		if err := tx.Select("comision_ventas").First(&sucursal, solicitud.SucursalOrigenID).Error; err != nil {
+			return fmt.Errorf("no se pudo obtener la comisión de ventas de la sucursal: %w", err)
+		}
 
 		for _, item := range solicitud.Productos {
 			nivelGuid, parseErr := uuid.Parse(item.NivelGuid)
@@ -913,6 +926,7 @@ func (r *PosRepository) CrearSolicitudProductos(solicitud dto.SolicitudProductos
 				NivelID:      inventario.NivelID,
 				Cantidad:     item.Cantidad,
 				PrecioCompra: inventario.PrecioCompra,
+				PrecioBase:   models.CalcularPrecioBase(inventario.PrecioVenta, sucursal.ComisionVentas),
 				PrecioVenta:  inventario.PrecioVenta,
 				Descuento:    decimal.Zero,
 				TasaIVA:      decimal.NewFromInt(16),
@@ -994,6 +1008,7 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 			NivelGuid:     d.Nivel.Guid.String(),
 			Cantidad:      d.Cantidad.InexactFloat64(),
 			PrecioCompra:  d.PrecioCompra.InexactFloat64(),
+			PrecioBase:    d.PrecioBase.InexactFloat64(),
 			PrecioVenta:   d.PrecioVenta.InexactFloat64(),
 			Descuento:     d.Descuento.InexactFloat64(),
 			TrasladoIVA:   d.TrasladoIVA.InexactFloat64(),

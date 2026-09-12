@@ -10,30 +10,26 @@ export function HomeStatusBar() {
   const { isCaja } = useActivation();
 
   return (
-    <footer className="flex h-9 items-center justify-between px-6 shrink-0 border-t border-border bg-surface">
+    <footer className="flex min-h-10 shrink-0 items-center justify-between gap-4 border-t border-border bg-surface px-6">
       {/* Sync status */}
-      <div className="flex items-center gap-1.5 text-muted-foreground">
+      <div className="hidden items-center gap-1.5 text-muted-foreground sm:flex">
         <RefreshCw className="size-3 shrink-0" strokeWidth={2.5} />
         <span className="text-[11px]">Último sync hace 5 min</span>
       </div>
 
-      {/* Modo */}
       <div className="flex items-center gap-1.5">
         {isCaja ? (
-          <Cpu className="size-3 text-warning shrink-0" strokeWidth={2.5} />
+          <Cpu className="size-3 shrink-0 text-warning" strokeWidth={2.5} />
         ) : (
-          <Server className="size-3 text-success shrink-0" strokeWidth={2.5} />
+          <Server className="size-3 shrink-0 text-success" strokeWidth={2.5} />
         )}
-        <span className={cn(
-          'text-[11px] font-medium',
-          isCaja ? 'text-warning' : 'text-success',
-        )}>
+        <span className={cn('text-[11px] font-medium', isCaja ? 'text-warning' : 'text-success')}>
           Modo: {isCaja ? 'Caja' : 'Servidor Local'}
         </span>
       </div>
 
       {/* Shortcuts */}
-      <div className="flex items-center gap-3 text-muted-foreground">
+      <div className="hidden items-center gap-3 text-muted-foreground xl:flex">
         {[
           { key: 'F1',  label: 'Ayuda' },
           { key: 'F5',  label: 'Actualizar' },

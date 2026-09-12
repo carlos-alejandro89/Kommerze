@@ -290,10 +290,11 @@ func (s *CotizacionService) guardarTransferenciaEntrante(evento *dto.Transferenc
 			if err := tx.Where("guid = ?", item.NivelGuid).First(&nivel).Error; err != nil {
 				return fmt.Errorf("nivel de empaque %s no encontrado: %w", item.NivelGuid, err)
 			}
+			precioVenta := decimal.NewFromFloat(item.PrecioVenta)
 			detalle := models.PedidoDetalle{
 				PedidoID: pedido.ID, NivelID: nivel.ID,
 				Cantidad: decimal.NewFromFloat(item.Cantidad), PrecioCompra: decimal.NewFromFloat(item.PrecioCompra),
-				PrecioVenta: decimal.NewFromFloat(item.PrecioVenta), Descuento: decimal.NewFromFloat(item.Descuento),
+				PrecioBase: models.CalcularPrecioBase(precioVenta, origen.ComisionVentas), PrecioVenta: precioVenta, Descuento: decimal.NewFromFloat(item.Descuento),
 				TrasladoIVA: decimal.NewFromFloat(item.TrasladoIVA), TasaIVA: decimal.NewFromFloat(item.TasaIVA),
 				RetencionISR: decimal.NewFromFloat(item.RetencionISR), TasaISR: decimal.NewFromFloat(item.TasaISR),
 				InfoAdicional: item.InfoAdicional,

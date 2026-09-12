@@ -12,7 +12,7 @@ const THEME_KEY = 'kommerze-theme';
 
 const MODULE_CONTEXTS = [
   { path: '/purchases/history', title: 'Historial de compras', subtitle: 'Compras manuales y documentos cargados mediante XML', icon: ShoppingCart, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  { path: '/sucursal/cortes', title: 'Cierre de jornada', subtitle: 'Control y consolidación de la operación diaria', icon: Building2, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { path: '/sucursal/cortes', title: 'Operación de sucursal', subtitle: 'Inicio, seguimiento y cierre de operaciones', icon: Building2, tone: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
   { path: '/conversions', title: 'Conversiones', subtitle: 'Movimientos entre presentaciones y equivalencias', icon: Repeat2, tone: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
   { path: '/suppliers', title: 'Proveedores', subtitle: 'Entidades y datos fiscales de proveedores', icon: Handshake, tone: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
   { path: '/transfers', title: 'Transferencias', subtitle: 'Envío y recepción de productos entre sucursales', icon: Truck, tone: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },

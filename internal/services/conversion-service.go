@@ -100,6 +100,10 @@ func (s *ConversionService) EjecutarConversion(datos dto.EjecutarConversionDto) 
 		if err := tx.Preload("Operacion").Where("id = ? AND fecha_fin IS NULL", *datos.OperacionCajeroID).First(&operacion).Error; err != nil {
 			return fmt.Errorf("el turno de caja ya no se encuentra activo")
 		}
+		var sucursal models.Sucursal
+		if err := tx.Select("comision_ventas").First(&sucursal, operacion.Operacion.SucursalID).Error; err != nil {
+			return fmt.Errorf("no se pudo obtener la comisión de ventas de la sucursal: %w", err)
+		}
 		var tipo models.TipoPedido
 		if err := tx.Where("guid = ? AND deleted_at IS NULL", models.TipoPedidoConversionGuid).First(&tipo).Error; err != nil {
 			return fmt.Errorf("sincroniza el tipo de pedido Conversión de producto antes de continuar")
@@ -146,7 +150,7 @@ func (s *ConversionService) EjecutarConversion(datos dto.EjecutarConversionDto) 
 			ValorVentaOrigen: cantidad.Mul(origen.PrecioVenta), ValorVentaDestino: cantidadDestino.Mul(destino.PrecioVenta),
 			ExistenciaDestinoInicial: existenciaDestinoInicial, ExistenciaDestinoFinal: destino.Existencia,
 		})
-		detalle := models.PedidoDetalle{PedidoID: pedido.ID, NivelID: regla.NivelEmpaqueOrigenID, Cantidad: cantidad, PrecioCompra: origen.PrecioCompra, PrecioVenta: origen.PrecioVenta, Descuento: decimal.Zero, TrasladoIVA: decimal.Zero, TasaIVA: decimal.Zero, RetencionISR: decimal.Zero, TasaISR: decimal.Zero, InfoAdicional: string(metadata)}
+		detalle := models.PedidoDetalle{PedidoID: pedido.ID, NivelID: regla.NivelEmpaqueOrigenID, Cantidad: cantidad, PrecioCompra: origen.PrecioCompra, PrecioBase: models.CalcularPrecioBase(origen.PrecioVenta, sucursal.ComisionVentas), PrecioVenta: origen.PrecioVenta, Descuento: decimal.Zero, TrasladoIVA: decimal.Zero, TasaIVA: decimal.Zero, RetencionISR: decimal.Zero, TasaISR: decimal.Zero, InfoAdicional: string(metadata)}
 		if err := tx.Create(&detalle).Error; err != nil {
 			return fmt.Errorf("no se pudo registrar el detalle de la conversión: %w", err)
 		}

@@ -151,6 +151,10 @@ func (s *ComprasService) CrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto
 		if err := tx.Create(&pedido).Error; err != nil {
 			return fmt.Errorf("no se pudo crear el pedido: %w", err)
 		}
+		var sucursal models.Sucursal
+		if err := tx.Select("comision_ventas").First(&sucursal, datos.SucursalID).Error; err != nil {
+			return fmt.Errorf("no se pudo obtener la comisión de ventas de la sucursal: %w", err)
+		}
 
 		detalleSubtotal := decimal.Zero
 		for _, item := range datos.Productos {
@@ -172,7 +176,7 @@ func (s *ComprasService) CrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto
 				Where("sucursal_producto.deleted_at IS NULL").First(&inventario).Error; err != nil {
 				return fmt.Errorf("no se encontró el producto %s en el inventario: %w", item.NivelGuid, err)
 			}
-			detalle := models.PedidoDetalle{PedidoID: pedido.ID, NivelID: inventario.NivelID, Cantidad: cantidad, PrecioCompra: costo, PrecioVenta: inventario.PrecioVenta, Descuento: decimal.Zero, TasaIVA: decimal.Zero, TasaISR: decimal.Zero}
+			detalle := models.PedidoDetalle{PedidoID: pedido.ID, NivelID: inventario.NivelID, Cantidad: cantidad, PrecioCompra: costo, PrecioBase: models.CalcularPrecioBase(inventario.PrecioVenta, sucursal.ComisionVentas), PrecioVenta: inventario.PrecioVenta, Descuento: decimal.Zero, TasaIVA: decimal.Zero, TasaISR: decimal.Zero}
 			if err := tx.Create(&detalle).Error; err != nil {
 				return fmt.Errorf("no se pudo registrar el detalle: %w", err)
 			}

@@ -631,7 +631,11 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 			       COALESCE(SUM(
 				   (pd.precio_venta * pd.cantidad) -
 				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
-			   ), 0) total
+			   ), 0) total,
+			       COALESCE(SUM(
+				   (pd.precio_base * pd.cantidad) -
+				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			   ), 0) total_precio_base
 			FROM pedidos p
 			JOIN pedido_detalle pd ON pd.pedido_id=p.id AND pd.deleted_at IS NULL
 			JOIN tipos_pedido tp ON tp.id=p.tipo_pedido_id AND tp.deleted_at IS NULL
@@ -647,7 +651,8 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 			WHERE pg.deleted_at IS NULL
 			GROUP BY pg.pedido_id, pg.forma_id
 		)
-		SELECT v.pedido_id, v.folio, pr.forma_id, forma.clave, v.total
+		SELECT v.pedido_id, v.folio, pr.forma_id, forma.clave,
+		       CASE WHEN forma.clave = '01' THEN v.total_precio_base ELSE v.total END total
 		FROM ventas v
 		JOIN predominantes pr ON pr.pedido_id=v.pedido_id AND pr.posicion=1
 		JOIN sat_formas_pago forma ON forma.id=pr.forma_id AND forma.deleted_at IS NULL
@@ -661,11 +666,6 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 	for _, ticket := range tickets {
 		porForma[ticket.Clave] = append(porForma[ticket.Clave], ticket)
 	}
-	porcentajeEfectivo := operacion.Sucursal.ComisionVentas
-	if porcentajeEfectivo.IsNegative() || porcentajeEfectivo.GreaterThan(decimal.NewFromInt(100)) {
-		return nil, fmt.Errorf("ComisionVentas debe encontrarse entre 0 y 100")
-	}
-
 	var cfg *KommerzConfig
 	var accessToken string
 	if len(porForma) > 0 {
@@ -696,11 +696,6 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 		grupo := porForma[clave]
 		if len(grupo) == 0 {
 			continue
-		}
-		if clave == "01" {
-			for index := range grupo {
-				grupo[index].Total = grupo[index].Total.Mul(porcentajeEfectivo).Div(decimal.NewFromInt(100))
-			}
 		}
 		resultado, emitErr := s.emitirFacturaGlobal(cfg, accessToken, operacion, clave, grupo)
 		if emitErr != nil {

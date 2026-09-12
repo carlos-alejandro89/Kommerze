@@ -28,6 +28,11 @@ import {
   CheckCircle2,
   FileBarChart,
   ExternalLink,
+  Info,
+  Monitor,
+  Pencil,
+  Store,
+  WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,7 +54,10 @@ import {
   ServiceSucursalInicioOperacion,
   ServiceCerrarOperacionSucursal,
   ServiceObtenerOperacionesCajero,
+  ServiceObtenerCajaConfigurada,
+  ServiceAbrirCaja,
 } from "../../../../wailsjs/go/main/App";
+import bannerInicioJornada from "@/assets/banner-inicio-jornada.png";
 
 const TABS = [
   { id: "financiero", label: "Financiero", icon: BarChart3 },
@@ -75,7 +83,7 @@ export function CortesSucursalPage() {
   const { generarFacturacionGlobal, obtenerFacturasGlobalesOperacion } =
     usePosService();
   const { user } = useAuth();
-  const { store, isInitialized } = useActivation();
+  const { store, license, deviceName, isInitialized } = useActivation();
 
   // SucursalID viene de store (ActivationProvider) — el Usuario no tiene ese campo.
   const sucursalID = store?.ID ?? store?.id ?? 0;
@@ -95,6 +103,11 @@ export function CortesSucursalPage() {
   const [cierreSnapshot, setCierreSnapshot] = useState(null);
   const [facturasGlobales, setFacturasGlobales] = useState({});
   const [facturaGlobalVisible, setFacturaGlobalVisible] = useState(null);
+  const [modoInicio, setModoInicio] = useState("solo-jornada");
+  const [fondoModalOpen, setFondoModalOpen] = useState(false);
+  const [fondoCajaInput, setFondoCajaInput] = useState("");
+  const [fondoCaja, setFondoCaja] = useState(null);
+  const [cajaConfigurada, setCajaConfigurada] = useState(null);
 
   const cerrarDocumentoCierre = () => {
     if (facturaGlobalVisible?.pdfUrl) {
@@ -173,6 +186,38 @@ export function CortesSucursalPage() {
     setAlertAction("iniciar");
   };
 
+  const seleccionarModoInicio = async (modo) => {
+    setModoInicio(modo);
+    if (modo !== "jornada-caja") return;
+    try {
+      const caja = await ServiceObtenerCajaConfigurada();
+      if (!caja?.ID && !caja?.id && !caja?.Nombre && !caja?.nombre) {
+        toast.error("No se encontró una caja configurada para este equipo.");
+        setModoInicio("solo-jornada");
+        return;
+      }
+      setCajaConfigurada(caja || null);
+    } catch (error) {
+      console.error("No se pudo obtener la caja configurada", error);
+      setCajaConfigurada(null);
+      setModoInicio("solo-jornada");
+      toast.error("No fue posible obtener la caja configurada.");
+      return;
+    }
+    setFondoCajaInput(fondoCaja === null ? "" : String(fondoCaja));
+    setFondoModalOpen(true);
+  };
+
+  const aplicarFondoCaja = () => {
+    const monto = Number(String(fondoCajaInput).replace(/,/g, ""));
+    if (!Number.isFinite(monto) || monto < 0) {
+      toast.error("Ingresa un fondo de caja válido.");
+      return;
+    }
+    setFondoCaja(monto);
+    setFondoModalOpen(false);
+  };
+
   const confirmIniciarJornada = async () => {
     setAlertAction(null);
     setSubmitting(true);
@@ -184,7 +229,26 @@ export function CortesSucursalPage() {
         FechaInicio: new Date().toISOString(),
       });
       if (res?.success) {
-        toast.success("Jornada iniciada correctamente");
+        if (modoInicio === "jornada-caja") {
+          const operacionID = res.data?.ID || res.data?.id;
+          const cajaID = cajaConfigurada?.ID || cajaConfigurada?.id || 0;
+          const cajaNombre = cajaConfigurada?.Nombre || cajaConfigurada?.nombre || "";
+          if (!operacionID || !cajaNombre || fondoCaja === null) {
+            toast.warning("La jornada inició, pero no fue posible abrir la caja porque faltan datos de configuración.");
+          } else {
+            const cajaRes = await ServiceAbrirCaja({
+              OperacionSucursalID: operacionID,
+              ResponsableCajaID: userID,
+              CajaID: cajaID,
+              CajaNombre: cajaNombre,
+              FondoCajaApertura: fondoCaja,
+            });
+            if (cajaRes?.success) toast.success("Jornada iniciada y caja abierta correctamente");
+            else toast.warning(`La jornada inició, pero la caja no pudo abrirse: ${cajaRes?.message || "Error desconocido"}`);
+          }
+        } else {
+          toast.success("Jornada iniciada correctamente");
+        }
         await fetchDatos();
       } else {
         toast.error(res?.message || "Error al iniciar jornada");
@@ -337,6 +401,29 @@ export function CortesSucursalPage() {
   const estatusJornadaID = opSucursal?.EstatusID ?? opSucursal?.estatusID;
   const jornadaActiva = Boolean(opSucursal && Number(estatusJornadaID) === 1);
   const tituloJornada = jornadaActiva ? "Cierre de jornada" : "Iniciar jornada";
+  const sucursalNombre =
+    store?.NombreSucursal ||
+    store?.nombreSucursal ||
+    store?.Nombre ||
+    store?.nombre ||
+    license?.sucursal?.nombreSucursal ||
+    "Sucursal sin nombre";
+  const responsableNombre =
+    user?.Nombre || user?.nombre || user?.Name || user?.name || "Usuario actual";
+  const cajaNombre =
+    cajaConfigurada?.Nombre || cajaConfigurada?.nombre || "Caja principal";
+  const dispositivoNombre = deviceName || cajaNombre;
+  const fechaInicioPropuesta = new Date();
+  const fechaInicioTexto = fechaInicioPropuesta.toLocaleDateString("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const horaInicioTexto = fechaInicioPropuesta.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const turnosActivos = turnos.filter((turno) => {
     const estatusID = turno?.EstatusID ?? turno?.estatusID;
     const fechaFin = turno?.FechaFin ?? turno?.fechaFin;
@@ -571,7 +658,7 @@ export function CortesSucursalPage() {
   return (
     <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden animate-fade-in">
       {/* ── Page Header + Tabs ──────────────────────────────────────────── */}
-      <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
+      {jornadaActiva && <div className="shrink-0 px-5 pt-5 lg:px-6 lg:pt-6">
         <div className="mx-auto max-w-[1320px]">
           <div className="flex justify-end">
               <div
@@ -621,23 +708,24 @@ export function CortesSucursalPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ── Tab Content ─────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-5 lg:p-6">
         <div className="mx-auto max-w-[1320px]">
           {/* ── JORNADA ───────────────────────────────────────────────────── */}
-          {activeTab === "jornada" && (
+          {(activeTab === "jornada" || !jornadaActiva) && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-semibold tracking-[-0.015em] text-foreground">
-                  Estado de la jornada
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Consulta el periodo operativo, el inventario y los turnos
-                  asociados.
-                </p>
-              </div>
+              {jornadaActiva && (
+                <div>
+                  <h2 className="text-base font-semibold tracking-[-0.015em] text-foreground">
+                    Estado de la jornada
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Consulta el periodo operativo, el inventario y los turnos asociados.
+                  </p>
+                </div>
+              )}
 
               {jornadaActiva ? (
                 <>
@@ -742,18 +830,109 @@ export function CortesSucursalPage() {
                   )}
                 </>
               ) : (
-                <div className="rounded-2xl border border-amber-300/45 bg-amber-50/45 px-6 py-10 text-center shadow-[0_16px_36px_-30px_rgba(217,119,6,.6)] backdrop-blur-xl dark:border-amber-400/15 dark:bg-amber-400/[.045]">
-                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <Building2 className="size-6" strokeWidth={1.8} />
+                <>
+                  <section className="relative min-h-[250px] overflow-hidden rounded-2xl border border-blue-100/70 bg-gradient-to-r from-blue-50 via-blue-50/80 to-blue-100/40 px-7 py-10 shadow-[0_20px_50px_-38px_rgba(37,99,235,.55)] dark:border-blue-400/10 dark:from-blue-950/35 dark:via-blue-950/20 dark:to-transparent sm:px-10 sm:py-11">
+                    <div className="relative z-20 max-w-[62%]">
+                      <p className="text-[10px] font-bold uppercase tracking-[.1em] text-primary/80">
+                        {sucursalNombre} · {store?.Tipo || store?.tipo || "Operación"}
+                      </p>
+                      <h3 className="mt-3 text-[30px] font-bold leading-tight tracking-[-0.04em] text-foreground sm:text-[36px]">
+                        Todo listo para <span className="text-primary">iniciar operaciones</span>
+                      </h3>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Estás iniciando la jornada de hoy, {fechaInicioTexto}, a las {horaInicioTexto}.
+                      </p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        Verifica la información y elige si también deseas abrir una caja.
+                      </p>
+                    </div>
+                    <div className="absolute inset-y-0 right-0 w-[46%]">
+                      <div className="absolute inset-0 z-10 bg-gradient-to-r from-blue-50 via-blue-50/20 to-transparent dark:from-blue-950/40" />
+                      <img
+                        src={bannerInicioJornada}
+                        alt="Inicio de operaciones"
+                        className="h-full w-full object-cover object-[center_38%]"
+                      />
+                    </div>
+                  </section>
+
+                  <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_20px_55px_-38px_rgba(20,54,110,.55)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[.04]">
+                  <div className="space-y-3 p-4 sm:p-5">
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                      <StartInfo icon={Store} label="Sucursal" value={sucursalNombre} detail={store?.Tipo || store?.tipo || "Sucursal"} tone="blue" />
+                      <StartInfo icon={Users} label="Responsable de apertura" value={responsableNombre} detail="Usuario del sistema" tone="violet" />
+                      <StartInfo icon={Clock3} label="Fecha y hora de inicio" value={fechaInicioTexto} detail={horaInicioTexto} tone="cyan" />
+                      <StartInfo icon={Monitor} label="Dispositivo" value={dispositivoNombre} detail="Equipo actual" tone="blue" />
+                    </div>
+
+                    <div className="grid gap-3 rounded-xl border border-blue-200/50 bg-blue-50/45 p-3.5 dark:border-blue-400/10 dark:bg-blue-400/[.04] md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] md:items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,.75)]">
+                          <Package className="size-5" strokeWidth={1.8} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-muted-foreground">Valor actual del inventario</p>
+                          <p className="mt-0.5 text-xl font-bold tracking-[-0.025em] text-foreground">{fmt(inventario)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5 border-t border-blue-200/50 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0 dark:border-blue-400/10">
+                        <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                        <div>
+                          <p className="text-[11px] font-semibold text-foreground">Este será el punto de referencia para el cierre de jornada.</p>
+                          <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">El inventario puede variar conforme se registren movimientos durante el día.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-violet-200/55 bg-gradient-to-r from-violet-50/90 via-violet-50/45 to-blue-50/35 p-3.5 dark:border-violet-400/15 dark:from-violet-500/[.09] dark:via-violet-500/[.045] dark:to-blue-500/[.025]">
+                      <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+                        <div className="flex gap-3">
+                          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-[0_8px_18px_-8px_rgba(124,58,237,.75)]">
+                            <WalletCards className="size-5" strokeWidth={1.8} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-semibold text-foreground">¿También comenzarás a cobrar?</p>
+                              <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[9px] font-semibold text-violet-600 dark:text-violet-300">
+                                Opcional
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[10px] leading-4 text-muted-foreground">Puedes abrir una caja ahora o hacerlo más tarde desde el módulo Cajas.</p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <StartOption
+                            selected={modoInicio === "solo-jornada"}
+                            title="Solo iniciar jornada"
+                            description="Abre la operación de la sucursal. Podrás abrir una caja más tarde."
+                            onClick={() => setModoInicio("solo-jornada")}
+                          />
+                          <div>
+                            <StartOption
+                              selected={modoInicio === "jornada-caja"}
+                              title="Iniciar jornada y abrir caja"
+                              description="Inicia la operación y abre una caja para comenzar a registrar ventas."
+                              onClick={() => seleccionarModoInicio("jornada-caja")}
+                            />
+                            {modoInicio === "jornada-caja" && fondoCaja !== null && (
+                              <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 dark:border-emerald-400/15 dark:bg-emerald-400/[.05]">
+                                <WalletCards className="size-3.5 shrink-0 text-emerald-600" />
+                                <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">Fondo de caja · {cajaNombre}</span>
+                                <strong className="text-[11px] text-foreground">{fmt(fondoCaja)}</strong>
+                                <button type="button" onClick={() => seleccionarModoInicio("jornada-caja")} className="ml-1 flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline">
+                                  <Pencil className="size-3" /> Cambiar fondo
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold text-foreground">
-                    La sucursal no tiene una jornada activa
-                  </h3>
-                  <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-                    Inicia una jornada para habilitar la apertura de cajas y
-                    registrar la operación del día.
-                  </p>
-                </div>
+                  </section>
+                </>
               )}
             </div>
           )}
@@ -914,7 +1093,7 @@ export function CortesSucursalPage() {
           )}
 
           {/* ── FINANCIERO ────────────────────────────────────────────────── */}
-          {activeTab === "financiero" && (
+          {activeTab === "financiero" && jornadaActiva && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
                 Acumulados financieros de la jornada.
@@ -1104,9 +1283,26 @@ export function CortesSucursalPage() {
         </div>
       </div>
 
-      {(activeTab === "jornada" || activeTab === "financiero") && (
+      {(!jornadaActiva || activeTab === "financiero" || activeTab === "jornada") && (
         <footer className="shrink-0 border-t border-white/70 bg-white/78 px-5 py-3.5 shadow-[0_-14px_38px_-32px_rgba(20,54,110,.5)] backdrop-blur-xl dark:border-white/10 dark:bg-background/85 lg:px-6">
-          <div className="mx-auto flex max-w-[1320px] items-center justify-end gap-3">
+          <div className={cn("mx-auto flex max-w-[1320px] items-center gap-3", !jornadaActiva ? "justify-between" : "justify-end")}>
+            {!jornadaActiva && (
+              <button type="button" onClick={() => navigate("/")} className="flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-4 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <ArrowLeft className="size-3.5" /> Volver
+              </button>
+            )}
+            {!jornadaActiva ? (
+              <button
+                type="button"
+                onClick={handleIniciarJornada}
+                disabled={submitting || !sucursalID || (modoInicio === "jornada-caja" && fondoCaja === null)}
+                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-5 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(5,150,105,.8)] transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
+                {modoInicio === "jornada-caja" ? "Iniciar operaciones y abrir caja" : "Iniciar operaciones"}
+              </button>
+            ) : (
+            <>
             <button
               onClick={fetchDatos}
               disabled={loading}
@@ -1145,9 +1341,57 @@ export function CortesSucursalPage() {
                 Cerrar jornada
               </button>
             )}
+            </>
+            )}
           </div>
         </footer>
       )}
+
+      <Dialog open={fondoModalOpen} onOpenChange={setFondoModalOpen}>
+        <DialogContent className="w-[min(460px,94vw)] rounded-2xl border-white/80 p-0 shadow-2xl dark:border-white/10">
+          <DialogHeader className="border-b border-border/60 px-6 pb-4 pt-5 text-left">
+            <div className="flex items-start gap-3 pr-8">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-[0_8px_18px_-8px_rgba(124,58,237,.75)]">
+                <WalletCards className="size-5" strokeWidth={1.8} />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold tracking-[-0.02em]">Definir fondo de caja</DialogTitle>
+                <DialogDescription className="mt-1 text-xs">Indica el efectivo con el que comenzará la caja.</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-5">
+            <div className="flex items-start gap-2.5 rounded-xl bg-blue-500/[.075] px-3.5 py-3 text-blue-700 dark:text-blue-300">
+              <Info className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold">Este monto será registrado como el fondo inicial de la caja.</p>
+                <p className="mt-0.5 text-[10px] opacity-75">Puedes modificarlo antes de iniciar las operaciones.</p>
+              </div>
+            </div>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-semibold text-foreground">Fondo inicial</span>
+              <div className="flex h-11 items-center overflow-hidden rounded-lg border border-border bg-background focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10">
+                <span className="px-3 text-sm font-semibold text-muted-foreground">$</span>
+                <input
+                  autoFocus
+                  inputMode="decimal"
+                  value={fondoCajaInput}
+                  onChange={(event) => setFondoCajaInput(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && aplicarFondoCaja()}
+                  placeholder="0.00"
+                  className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+                />
+                <span className="px-3 text-[10px] font-semibold text-muted-foreground">MXN</span>
+              </div>
+              <span className="mt-1.5 block text-[10px] text-muted-foreground">Solo incluye efectivo en moneda nacional.</span>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-6 py-4">
+            <button type="button" onClick={() => setFondoModalOpen(false)} className="h-10 rounded-lg border border-border bg-background px-4 text-xs font-semibold transition hover:bg-muted">Cancelar</button>
+            <button type="button" onClick={aplicarFondoCaja} className="h-10 rounded-lg bg-primary px-5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">Aplicar fondo</button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={cierreModalOpen}
@@ -1308,14 +1552,16 @@ export function CortesSucursalPage() {
         onOpenChange={(open) => !open && setAlertAction(null)}
         title={
           alertAction === "iniciar"
-            ? "Iniciar Jornada"
+            ? "Iniciar operaciones"
             : alertAction === "cajas-abiertas"
               ? "Hay cajas abiertas"
               : "¿Está seguro?"
         }
         description={
           alertAction === "iniciar"
-            ? "¿Confirmas iniciar la jornada de esta sucursal?"
+            ? modoInicio === "jornada-caja"
+              ? `¿Confirmas iniciar la jornada y abrir ${cajaNombre} con un fondo de ${fmt(fondoCaja)}?`
+              : "¿Confirmas iniciar la jornada de esta sucursal?"
             : alertAction === "cajas-abiertas"
               ? "Debes cerrar todos los turnos de caja antes de cerrar la jornada de la sucursal."
               : "Al iniciar el cierre se consolidarán los acumulados y finalizará la jornada actual. Esta acción no se puede deshacer."
@@ -1331,6 +1577,51 @@ export function CortesSucursalPage() {
         type={alertAction === "iniciar" ? "success" : "warning"}
       />
     </div>
+  );
+}
+
+function StartInfo({ icon: Icon, label, value, detail, tone }) {
+  const tones = {
+    blue: "bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-[0_8px_18px_-8px_rgba(37,99,235,.75)]",
+    violet: "bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-[0_8px_18px_-8px_rgba(124,58,237,.75)]",
+    cyan: "bg-gradient-to-br from-cyan-400 to-cyan-600 text-white shadow-[0_8px_18px_-8px_rgba(8,145,178,.75)]",
+  };
+  return (
+    <div className="flex min-h-[70px] items-center gap-3 rounded-xl border border-border/60 bg-background/60 px-3.5 py-3">
+      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", tones[tone] || tones.blue)}>
+        <Icon className="size-4.5" strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[9px] font-medium text-muted-foreground">{label}</p>
+        <p className="mt-0.5 truncate text-xs font-semibold text-foreground" title={value}>{value}</p>
+        <p className="mt-0.5 truncate text-[9px] text-muted-foreground" title={detail}>{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function StartOption({ selected, title, description, onClick }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition",
+        selected
+          ? "border-primary/45 bg-primary/[.055] shadow-[0_8px_22px_-18px_rgba(37,99,235,.8)]"
+          : "border-border/65 bg-background/65 hover:border-primary/25 hover:bg-muted/35",
+      )}
+    >
+      <span className={cn("mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border", selected ? "border-primary" : "border-muted-foreground/55")}>
+        {selected && <span className="size-2 rounded-full bg-primary" />}
+      </span>
+      <span>
+        <span className="block text-[11px] font-semibold text-foreground">{title}</span>
+        <span className="mt-0.5 block text-[9px] leading-4 text-muted-foreground">{description}</span>
+      </span>
+    </button>
   );
 }
 

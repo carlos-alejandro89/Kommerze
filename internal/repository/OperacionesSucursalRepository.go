@@ -68,6 +68,12 @@ func (o *OperacionesSucursalRepository) ObtenerValorInventario() *dto.ResponseDt
 }
 
 func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.SucursalInicioOperacionesDto) *dto.ResponseDto {
+	if datos.Sucursal <= 0 {
+		return dto.NewResponseDto(false, "No se recibió una sucursal válida", nil, nil)
+	}
+	if datos.Usuario <= 0 {
+		return dto.NewResponseDto(false, "No se recibió un responsable de apertura válido", nil, nil)
+	}
 
 	var estatus = uint(1)
 	var usuario = uint(datos.Usuario)
@@ -80,6 +86,29 @@ func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.Sucurs
 		}
 	}
 
+	tx := o.db.Begin()
+	if tx.Error != nil {
+		return dto.NewResponseDto(false, "No se pudo iniciar la operación de sucursal", nil, []string{tx.Error.Error()})
+	}
+	defer tx.Rollback()
+
+	// Serializa el inicio para impedir que dos solicitudes creen jornadas activas
+	// simultáneas para la misma sucursal.
+	if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", int64(sucursal)).Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo validar la operación de la sucursal", nil, []string{err.Error()})
+	}
+
+	var operacionActiva models.OperacionSucursal
+	err := tx.
+		Where("sucursal_id = ? AND estatus_id = ? AND fecha_fin IS NULL AND deleted_at IS NULL", sucursal, estatus).
+		First(&operacionActiva).Error
+	if err == nil {
+		return dto.NewResponseDto(true, "La sucursal ya tiene una jornada activa", operacionActiva, nil)
+	}
+	if err != gorm.ErrRecordNotFound {
+		return dto.NewResponseDto(false, "No se pudo validar si existe una jornada activa", nil, []string{err.Error()})
+	}
+
 	var operacion = models.OperacionSucursal{
 		UsuarioAperturaID:      &usuario,
 		EstatusID:              &estatus,
@@ -88,7 +117,23 @@ func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.Sucurs
 		ValorInicialInventario: decimal.NewFromFloat(datos.ValorInventarioInicial),
 	}
 
-	o.db.Create(&operacion)
+	// Las facturas globales todavía no existen al iniciar la jornada. Se omiten
+	// para que PostgreSQL almacene NULL en lugar de intentar relacionar el ID 0.
+	if err := tx.
+		Omit(
+			"FacturaEfectivoId",
+			"FacturaCreditoId",
+			"FacturaDebitoId",
+			"FacturaTransferenciaId",
+			"FacturaOtrosId",
+		).
+		Create(&operacion).Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo guardar la operación de sucursal: "+err.Error(), nil, []string{err.Error()})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return dto.NewResponseDto(false, "No se pudo confirmar el inicio de la operación: "+err.Error(), nil, []string{err.Error()})
+	}
 
 	return dto.NewResponseDto(true, "Operación iniciada correctamente", operacion, nil)
 }
@@ -483,7 +528,11 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 			       COALESCE(SUM(
 				   (pd.precio_venta * pd.cantidad) -
 				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
-			   ), 0) total
+			   ), 0) total,
+			       COALESCE(SUM(
+				   (pd.precio_base * pd.cantidad) -
+				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			   ), 0) total_precio_base
 			FROM pedidos p
 			JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
 			JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.deleted_at IS NULL
@@ -506,7 +555,8 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 			WHERE pg.deleted_at IS NULL
 			GROUP BY pg.pedido_id, pg.forma_id
 		)
-		SELECT forma.clave, COALESCE(SUM(vp.total), 0) total
+		SELECT forma.clave,
+		       COALESCE(SUM(CASE WHEN forma.clave = '01' THEN vp.total_precio_base ELSE vp.total END), 0) total
 		FROM ventas_pendientes vp
 		JOIN pagos_agrupados pa ON pa.pedido_id = vp.pedido_id AND pa.posicion = 1
 		JOIN sat_formas_pago forma ON forma.id = pa.forma_id AND forma.deleted_at IS NULL
@@ -524,17 +574,6 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 		case "03":
 			result.FacturacionPendienteTransferencia = pendiente.Total
 		}
-	}
-
-	// ComisionVentas expresa el porcentaje del efectivo que se factura. Por
-	// ejemplo, 60 conserva el 60% de la suma y descuenta el 40% restante.
-	var sucursal models.Sucursal
-	if o.db.Select("comision_ventas").First(&sucursal, operacion.SucursalID).Error == nil &&
-		sucursal.ComisionVentas.GreaterThanOrEqual(decimal.Zero) &&
-		sucursal.ComisionVentas.LessThanOrEqual(decimal.NewFromInt(100)) {
-		result.FacturacionPendienteEfectivo = result.FacturacionPendienteEfectivo.
-			Mul(sucursal.ComisionVentas).
-			Div(decimal.NewFromInt(100))
 	}
 
 	return result
