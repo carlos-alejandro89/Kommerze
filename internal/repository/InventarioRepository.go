@@ -89,28 +89,45 @@ func (i *InventarioRepository) ImportarInventario(inventario string) *dto.Respon
 		return dto.NewResponseDto(false, "Error al decodificar el inventario", nil, []string{err.Error()})
 	}
 
+	type registroInventarioOmitido struct {
+		Fila       int             `json:"fila"`
+		Codigo     string          `json:"codigo"`
+		Existencia decimal.Decimal `json:"existencia"`
+		Motivo     string          `json:"motivo"`
+	}
 	type importResult struct {
-		Total        int      `json:"total"`
-		Insertados   int      `json:"insertados"`
-		Actualizados int      `json:"actualizados"`
-		Omitidos     int      `json:"omitidos"`
-		Errores      []string `json:"errores"`
+		Total                  int                         `json:"total"`
+		Insertados             int                         `json:"insertados"`
+		Actualizados           int                         `json:"actualizados"`
+		Omitidos               int                         `json:"omitidos"`
+		ProductosConExistencia int                         `json:"productosConExistencia"`
+		Errores                []string                    `json:"errores"`
+		RegistrosOmitidos      []registroInventarioOmitido `json:"registrosOmitidos"`
 	}
 
 	resultado := importResult{Total: len(data)}
+	productosConExistencia := make(map[uint]struct{})
 
 	err := i.db.Transaction(func(tx *gorm.DB) error {
 		for index, item := range data {
 			if item.Codigo == "" {
+				motivo := "Código vacío"
 				resultado.Omitidos++
 				resultado.Errores = append(resultado.Errores, fmt.Sprintf("item %d: codigo vacio", index+1))
+				resultado.RegistrosOmitidos = append(resultado.RegistrosOmitidos, registroInventarioOmitido{
+					Fila: index + 1, Codigo: item.Codigo, Existencia: item.Existencia.Decimal, Motivo: motivo,
+				})
 				continue
 			}
 
 			nivelID, ok := diccionarioNiveles[item.Codigo]
 			if !ok {
+				motivo := "No existe el nivel de empaque correspondiente"
 				resultado.Omitidos++
 				resultado.Errores = append(resultado.Errores, fmt.Sprintf("codigo %s: no existe nivel_empaque", item.Codigo))
+				resultado.RegistrosOmitidos = append(resultado.RegistrosOmitidos, registroInventarioOmitido{
+					Fila: index + 1, Codigo: item.Codigo, Existencia: item.Existencia.Decimal, Motivo: motivo,
+				})
 				continue
 			}
 
@@ -134,6 +151,9 @@ func (i *InventarioRepository) ImportarInventario(inventario string) *dto.Respon
 			}
 			if update.RowsAffected > 0 {
 				resultado.Actualizados++
+				if item.Existencia.Decimal.GreaterThan(decimal.Zero) {
+					productosConExistencia[nivelID] = struct{}{}
+				}
 				continue
 			}
 
@@ -153,12 +173,16 @@ func (i *InventarioRepository) ImportarInventario(inventario string) *dto.Respon
 				return fmt.Errorf("insertando codigo %s: %w", item.Codigo, err)
 			}
 			resultado.Insertados++
+			if item.Existencia.Decimal.GreaterThan(decimal.Zero) {
+				productosConExistencia[nivelID] = struct{}{}
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return dto.NewResponseDto(false, "Error al importar inventario", resultado, []string{err.Error()})
 	}
+	resultado.ProductosConExistencia = len(productosConExistencia)
 
 	return dto.NewResponseDto(true, "Inventario importado correctamente", resultado, resultado.Errores)
 }

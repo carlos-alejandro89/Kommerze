@@ -6,14 +6,30 @@ import {
   CheckCircle2,
   FileJson,
   HardDrive,
+  ListX,
   Loader2,
+  PackageCheck,
+  RefreshCw,
   UploadCloud,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const MAX_PREVIEW_LENGTH = 900;
+const formatExistence = (value) => {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric)
+    ? numeric.toLocaleString('es-MX', { maximumFractionDigits: 6 })
+    : String(value ?? 0);
+};
 
 async function guardarInventarioJSON(nombreArchivo, contenido) {
   const service = window?.go?.main?.App?.ServiceGuardarInventarioJSON;
@@ -31,6 +47,7 @@ export function InventoryImportPanel({ formId = 'inventory-import-form', onState
   const [result, setResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     onStateChange?.({ canSubmit: Boolean(file && content), isSaving });
@@ -46,6 +63,7 @@ export function InventoryImportPanel({ formId = 'inventory-import-form', onState
   const handleFile = async (selectedFile) => {
     setError('');
     setResult(null);
+    setDetailsOpen(false);
 
     if (!selectedFile) return;
     if (!selectedFile.name.toLowerCase().endsWith('.json')) {
@@ -190,7 +208,11 @@ export function InventoryImportPanel({ formId = 'inventory-import-form', onState
             )}
 
             {result && (
-              <div className="rounded-[1.15rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-300">
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(true)}
+                className="w-full rounded-[1.15rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950/65"
+              >
                 <div className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                   <div className="min-w-0">
@@ -201,12 +223,94 @@ export function InventoryImportPanel({ formId = 'inventory-import-form', onState
                       </p>
                     )}
                     <p className="mt-1 break-all text-xs opacity-80">{result.path}</p>
+                    <p className="mt-2 text-[10px] font-semibold opacity-75">Haz clic para consultar el detalle</p>
                   </div>
                 </div>
-              </div>
+              </button>
             )}
           </aside>
+
+          <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+            <DialogContent className="max-h-[86vh] w-[min(920px,94vw)] max-w-none overflow-hidden rounded-2xl p-0">
+              <DialogHeader className="border-b border-border/70 px-6 py-5 text-left">
+                <div className="flex items-start gap-3 pr-8">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <ListX className="size-5" />
+                  </div>
+                  <div>
+                    <DialogTitle>Resultado de la importación</DialogTitle>
+                    <DialogDescription className="mt-1">
+                      Consulta los registros omitidos y el motivo por el que no fueron procesados.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid border-b border-border/70 bg-background sm:grid-cols-2 min-[820px]:grid-cols-4">
+                <ImportMetric icon={UploadCloud} label="Insertados" description="Nuevos productos" value={result?.import?.insertados} tone="blue" />
+                <ImportMetric icon={RefreshCw} label="Actualizados" description="Registros existentes" value={result?.import?.actualizados} tone="emerald" bordered />
+                <ImportMetric icon={ListX} label="Omitidos" description="Sin procesar" value={result?.import?.omitidos} tone="amber" bordered />
+                <ImportMetric icon={PackageCheck} label="Con existencia" description="Productos importados" value={result?.import?.productosConExistencia} tone="violet" bordered />
+              </div>
+
+              <div className="max-h-[480px] overflow-y-auto px-6 py-5">
+                {result?.import?.registrosOmitidos?.length ? (
+                  <div className="space-y-2">
+                    {result.import.registrosOmitidos.map((record, index) => (
+                      <div key={`${record.codigo || 'fila'}-${record.fila || index}`} className="flex items-center gap-3 rounded-xl border border-amber-200/70 bg-amber-50/55 px-4 py-3 dark:border-amber-400/15 dark:bg-amber-400/[.05]">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-bold text-amber-700 dark:text-amber-300">{index + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-foreground">{record.codigo || `Fila ${record.fila}`}</p>
+                          <p className="mt-0.5 break-words text-[11px] leading-4 text-muted-foreground">{record.motivo}</p>
+                        </div>
+                        <div className="shrink-0 border-l border-amber-200/70 pl-4 text-right dark:border-amber-400/15">
+                          <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Existencia</p>
+                          <p className="mt-0.5 text-xs font-bold tabular-nums text-foreground">{formatExistence(record.existencia)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : result?.import?.errores?.length ? (
+                  <div className="space-y-2">
+                    {result.import.errores.map((message, index) => (
+                      <div key={`${message}-${index}`} className="flex items-start gap-3 rounded-xl border border-amber-200/70 bg-amber-50/55 px-4 py-3 dark:border-amber-400/15 dark:bg-amber-400/[.05]">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-bold text-amber-700 dark:text-amber-300">{index + 1}</span>
+                        <p className="break-words text-xs leading-5 text-foreground">{message}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-10 text-center">
+                    <CheckCircle2 className="mx-auto size-8 text-emerald-500" />
+                    <p className="mt-3 text-sm font-semibold text-foreground">No se omitieron registros</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Todos los elementos del archivo fueron procesados.</p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
     </form>
+  );
+}
+
+function ImportMetric({ icon: Icon, label, description, value, tone, bordered }) {
+  const colors = {
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  };
+  return (
+    <div className={cn('flex min-h-[96px] items-center gap-3 px-5 py-4', bordered && 'border-t border-border/60 sm:border-l sm:border-t-0 sm:[&:nth-child(3)]:border-l-0 min-[820px]:[&:nth-child(3)]:border-l')}>
+      <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', colors[tone])}>
+        <Icon className="size-4.5" strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-lg font-bold leading-none tabular-nums text-foreground">{value ?? 0}</p>
+        <p className="mt-1.5 text-[11px] font-semibold text-foreground/80">{label}</p>
+        <p className="mt-0.5 whitespace-normal text-[10px] leading-4 text-muted-foreground">{description}</p>
+      </div>
+    </div>
   );
 }
 

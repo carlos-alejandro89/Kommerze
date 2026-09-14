@@ -74,7 +74,13 @@ func RenderReceiptPDF(r models.Receipt) ([]byte, error) {
 	}
 	separator := strings.Repeat("-", 42)
 	pdf.CellFormat(70, 4, separator, "", 1, "L", false, 0, "")
-	for _, text := range []string{"Folio: " + r.Folio, "Fecha: " + r.Fecha.Format("02/01/2006 15:04"), "Cajero: " + r.Cajero} {
+	pdf.SetFont("Courier", "", 8)
+	folioLabel := tr("Folio: ")
+	pdf.CellFormat(pdf.GetStringWidth(folioLabel), 4, folioLabel, "", 0, "L", false, 0, "")
+	pdf.SetFont("Courier", "B", 8)
+	pdf.CellFormat(0, 4, receiptNumericFolio(r.Folio), "", 1, "L", false, 0, "")
+	pdf.SetFont("Courier", "", 8)
+	for _, text := range []string{"Fecha: " + r.Fecha.Format("02/01/2006 15:04"), "Cajero: " + r.Cajero} {
 		pdf.CellFormat(70, 4, tr(text), "", 1, "L", false, 0, "")
 	}
 	pdf.CellFormat(70, 4, separator, "", 1, "L", false, 0, "")
@@ -135,6 +141,10 @@ func RenderReceiptPDF(r models.Receipt) ([]byte, error) {
 		return nil, err
 	}
 	return out.Bytes(), nil
+}
+
+func receiptNumericFolio(folio string) string {
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(folio), "VTA-"))
 }
 
 func receiptImageType(data []byte) string {

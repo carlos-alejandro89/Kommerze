@@ -92,8 +92,10 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	r.Telefono = optionalText(r.Telefono)
 	r.Correo = optionalText(r.Correo)
 	width := 42
+	descriptionIndent := "    "
 	if paperWidthMM == 58 {
 		width = 32
+		descriptionIndent = ""
 	}
 	var b bytes.Buffer
 	// Inicializar, seleccionar Windows-1252 y forzar Font A. Font A es la
@@ -105,8 +107,9 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00, 0x1B, 0x61, 0x01})
 			b.Write(raster)
 			b.Write([]byte{0x1D, 0x4C, 0x00, 0x00, 0x1B, 0x61, 0x00})
-			// ESC J n: avance fino en puntos entre el logotipo y el encabezado.
-			b.Write([]byte{0x1B, 0x4A, rawSectionSpacing})
+			// Alimentar un renglón completo para separar claramente el logotipo
+			// del encabezado del ticket.
+			b.Write([]byte{0x1B, 0x64, 0x01})
 		}
 	}
 	b.Write([]byte{0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11})
@@ -127,15 +130,27 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	}
 	// Separar visualmente el encabezado de los datos y productos de la venta.
 	b.Write([]byte{0x1B, 0x4A, rawSectionSpacing})
-	b.Write([]byte{0x1B, 0x61, 0x00})
+	// Mantener centrado todo el cuerpo del ticket. Las filas monetarias conservan
+	// su cuadrícula interna porque ocupan el ancho completo del papel.
+	b.Write([]byte{0x1B, 0x61, 0x01})
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
-	writeEscPosText(&b, wrapReceiptText("Folio: "+r.Folio, width)+"\n")
+	writeEscPosText(&b, "Folio: ")
+	b.Write([]byte{0x1B, 0x45, 0x01})
+	writeEscPosText(&b, receiptNumericFolio(r.Folio)+"\n")
+	b.Write([]byte{0x1B, 0x45, 0x00})
 	writeEscPosText(&b, wrapReceiptText("Fecha: "+r.Fecha.Format("02/01/2006 15:04"), width)+"\n")
 	writeEscPosText(&b, wrapReceiptText("Cajero: "+r.Cajero, width)+"\n")
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	writeEscPosText(&b, line("Descripción", "Importe", width))
 	for index, item := range r.Items {
-		writeEscPosText(&b, wrapReceiptText(strings.ToUpper(item.Descripcion), width)+"\n")
+		// La descripción usa Font B, el siguiente tamaño menor disponible en
+		// ESC/POS. La sangría compensa la diferencia física de ancho respecto a
+		// Font A para iniciar exactamente bajo el encabezado "Descripción".
+		b.Write([]byte{0x1B, 0x61, 0x00, 0x1B, 0x4D, 0x01})
+		description := wrapReceiptText(strings.ToUpper(item.Descripcion), width-len(descriptionIndent))
+		description = descriptionIndent + strings.ReplaceAll(description, "\n", "\n"+descriptionIndent)
+		writeEscPosText(&b, description+"\n")
+		b.Write([]byte{0x1B, 0x4D, 0x00, 0x1B, 0x61, 0x01})
 		writeEscPosText(&b, line(fmt.Sprintf("%.2f x %s", item.Cantidad, money(item.Precio)), money(item.Importe), width))
 		if index < len(r.Items)-1 {
 			// Separación sutil entre productos sin agregar un renglón completo.
@@ -150,10 +165,12 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	b.Write([]byte{0x1B, 0x45, 0x01, 0x1D, 0x21, 0x01})
 	writeEscPosText(&b, line("TOTAL:", money(r.Total), width))
 	b.Write([]byte{0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00})
+	writeEscPosText(&b, "\n")
 	writeEscPosText(&b, line("Pago:", money(r.Pago), width))
 	writeEscPosText(&b, line("Cambio:", money(r.Cambio), width))
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	b.Write([]byte{0x1B, 0x61, 0x01})
+	hayLeyendas := false
 	if len(r.LeyendaGrupos) > 0 {
 		for index, group := range r.LeyendaGrupos {
 			if index > 0 {
@@ -162,6 +179,7 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 			}
 			b.Write([]byte{0x1B, 0x45, boolByte(group.Bold)})
 			if text := strings.TrimSpace(group.Text); text != "" {
+				hayLeyendas = true
 				writeEscPosText(&b, wrapReceiptText(text, width)+"\n")
 			}
 		}
@@ -169,9 +187,13 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	} else {
 		for _, legend := range r.Leyendas {
 			if strings.TrimSpace(legend) != "" {
+				hayLeyendas = true
 				writeEscPosText(&b, wrapReceiptText(legend, width)+"\n")
 			}
 		}
+	}
+	if hayLeyendas {
+		writeEscPosText(&b, "\n\n")
 	}
 	// ESC d 3: alimentar tres líneas completas antes del corte para evitar que
 	// el último contenido quede pegado al borde del papel.
