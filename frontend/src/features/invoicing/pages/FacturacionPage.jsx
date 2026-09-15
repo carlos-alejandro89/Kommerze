@@ -43,6 +43,14 @@ const money = (value) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(
     Number(value || 0),
   );
+const sortFiscalEntities = (entities) =>
+  [...entities].sort((left, right) =>
+    String(left.RazonSocial || "").localeCompare(
+      String(right.RazonSocial || ""),
+      "es-MX",
+      { sensitivity: "base" },
+    ),
+  );
 const SelectField = ({ label, value, onChange, children, icon: Icon }) => (
   <label className="block space-y-2 text-xs font-semibold text-foreground">
     <span>{label}</span>
@@ -668,6 +676,7 @@ export function FacturacionPage() {
   const [done, setDone] = useState(null);
   const [entityDialogOpen, setEntityDialogOpen] = useState(false);
   const [entityQuery, setEntityQuery] = useState("");
+  const [entitySearchNonce, setEntitySearchNonce] = useState(0);
   const [entityResults, setEntityResults] = useState([]);
   const [searchingEntities, setSearchingEntities] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -742,7 +751,7 @@ export function FacturacionPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [entityDialogOpen, entityQuery]);
+  }, [entityDialogOpen, entityQuery, entitySearchNonce]);
   const selectBillingEntity = (selectedEntity) => {
     setSelectedEntity(selectedEntity);
     setForm((current) => ({
@@ -753,11 +762,21 @@ export function FacturacionPage() {
     setEntityQuery("");
   };
   const entity = selectedEntity;
+  const filteredLinkedEntities = useMemo(() => {
+    const linked = data?.Entidades || [];
+    if (!entityQuery.trim()) return sortFiscalEntities(linked);
+    const resultIDs = new Set(entityResults.map((item) => String(item.ID)));
+    return sortFiscalEntities(
+      linked.filter((item) => resultIDs.has(String(item.ID))),
+    );
+  }, [data?.Entidades, entityQuery, entityResults]);
   const additionalEntities = useMemo(() => {
     const linkedIDs = new Set(
       (data?.Entidades || []).map((item) => String(item.ID)),
     );
-    return entityResults.filter((item) => !linkedIDs.has(String(item.ID)));
+    return sortFiscalEntities(
+      entityResults.filter((item) => !linkedIDs.has(String(item.ID))),
+    );
   }, [data?.Entidades, entityResults]);
   const submit = async () => {
     if (Object.values(form).some((x) => !x)) {
@@ -1099,6 +1118,12 @@ export function FacturacionPage() {
                 autoFocus
                 value={entityQuery}
                 onChange={(event) => setEntityQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    setEntitySearchNonce((current) => current + 1);
+                  }
+                }}
                 placeholder="Razón social, RFC, régimen o código postal…"
                 className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#7790b6]"
               />
@@ -1117,15 +1142,15 @@ export function FacturacionPage() {
                   />
                 ))}
               </div>
-            ) : data.Entidades?.length || additionalEntities.length ? (
+            ) : filteredLinkedEntities.length || additionalEntities.length ? (
               <div className="space-y-5">
-                {data.Entidades?.length > 0 && (
+                {filteredLinkedEntities.length > 0 && (
                   <section>
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
                       Ligadas al cliente de la venta
                     </p>
                     <div className="space-y-2">
-                      {data.Entidades.map((item) => (
+                      {filteredLinkedEntities.map((item) => (
                         <FiscalEntityOption
                           key={item.Guid || item.ID}
                           item={item}
@@ -1170,7 +1195,7 @@ export function FacturacionPage() {
           <div className="border-t border-border/70 bg-muted/20 px-6 py-3 text-[10px] text-muted-foreground">
             {searchingEntities
               ? "Consultando entidades fiscales…"
-              : `${(data.Entidades?.length || 0) + additionalEntities.length} entidad${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "es"} disponible${(data.Entidades?.length || 0) + additionalEntities.length === 1 ? "" : "s"}`}
+              : `${filteredLinkedEntities.length + additionalEntities.length} entidad${filteredLinkedEntities.length + additionalEntities.length === 1 ? "" : "es"} disponible${filteredLinkedEntities.length + additionalEntities.length === 1 ? "" : "s"}`}
           </div>
         </DialogContent>
       </Dialog>

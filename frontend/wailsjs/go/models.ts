@@ -1983,6 +1983,7 @@ export namespace services {
 	    netPayPassword?: string;
 	    netPayStoreId?: string;
 	    netPayDeviceSerial?: string;
+	    terminalCobro?: string;
 	    license?: LicenseData;
 	    dbHost?: string;
 	    dbPort?: string;
@@ -2012,6 +2013,7 @@ export namespace services {
 	        this.netPayPassword = source["netPayPassword"];
 	        this.netPayStoreId = source["netPayStoreId"];
 	        this.netPayDeviceSerial = source["netPayDeviceSerial"];
+	        this.terminalCobro = source["terminalCobro"];
 	        this.license = this.convertValues(source["license"], LicenseData);
 	        this.dbHost = source["dbHost"];
 	        this.dbPort = source["dbPort"];

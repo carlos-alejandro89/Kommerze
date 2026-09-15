@@ -39,7 +39,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useActivation } from "@/providers/ActivationProvider";
 import { DialogAlert } from "@/components/common/dialog-alert";
-import { PdfViewer } from "@/components/common/pdf-viewer";
 import { usePosService } from "../usePosService";
 import {
   Dialog,
@@ -1539,10 +1538,10 @@ export function CortesSucursalPage() {
               {facturaGlobalVisible?.pdfFileName || "CFDI global"}
             </DialogDescription>
           </DialogHeader>
-          <PdfViewer
-            fileUrl={facturaGlobalVisible?.pdfUrl || ""}
-            fileName={facturaGlobalVisible?.pdfFileName}
-            className="h-[calc(92vh-82px)] rounded-none border-0"
+          <iframe
+            src={facturaGlobalVisible?.pdfUrl || ""}
+            title={facturaGlobalVisible?.pdfFileName || "Documento de cierre"}
+            className="h-[calc(92vh-82px)] w-full border-0 bg-muted/30"
           />
         </DialogContent>
       </Dialog>

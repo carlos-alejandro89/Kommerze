@@ -389,7 +389,7 @@ func (s *FacturacionService) BuscarEntidadesReceptoras(termino string) ([]dto.Fa
 }
 
 func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) (*dto.FacturacionResultadoDto, error) {
-	prep, err := s.PrepararFactura(req.PedidoGuid)
+	_, err := s.PrepararFactura(req.PedidoGuid)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 			return nil, fmt.Errorf("el empaque %s del artículo %s no tiene una unidad SAT relacionada", d.Nivel.Empaque.NombreEmpaque, d.Nivel.Codigo)
 		}
 		claveUnidad := strings.ToUpper(strings.TrimSpace(d.Nivel.Empaque.UnidadSat.Clave))
-		conceptos = append(conceptos, map[string]any{"claveProdServ": claveProd, "noIdentificacion": d.Nivel.Codigo, "descripcion": d.Nivel.Producto.Descripcion, "cantidad": satNumber(calc.Quantity), "claveUnidad": claveUnidad, "unidad": d.Nivel.Empaque.NombreEmpaque, "valorUnitario": satNumber(calc.UnitValue), "importe": satNumber(calc.Amount), "objetoImp": obj, "descuento": satNumber(calc.Discount), "impuestos": []map[string]any{{"importeImpuesto": satNumber(calc.TaxAmount), "baseImpuesto": satNumber(calc.TaxBase), "impuesto": "002", "tasaOCuota": calc.TaxRate.StringFixed(6)}}})
+		conceptos = append(conceptos, map[string]any{"claveProdServ": claveProd, "noIdentificacion": d.Nivel.Codigo, "descripcion": d.Nivel.Producto.Descripcion, "cantidad": satNumber(calc.Quantity), "claveUnidad": claveUnidad, "unidad": d.Nivel.Empaque.NombreEmpaque, "valorUnitario": satConceptNumber(calc.UnitValue), "importe": satConceptNumber(calc.Amount), "objetoImp": obj, "descuento": satConceptNumber(calc.Discount), "impuestos": []map[string]any{{"importeImpuesto": satConceptNumber(calc.TaxAmount), "baseImpuesto": satConceptNumber(calc.TaxBase), "impuesto": "002", "tasaOCuota": calc.TaxRate.StringFixed(6)}}})
 		invoiceItems = append(invoiceItems, reportmodels.InvoiceItem{Codigo: d.Nivel.Codigo, ClaveSAT: claveProd, Descripcion: d.Nivel.Producto.Descripcion, Unidad: d.Nivel.Empaque.NombreEmpaque, Cantidad: satNumber(calc.Quantity), PrecioUnitario: satNumber(calc.UnitValue), Descuento: satNumber(calc.Discount), Impuestos: satNumber(calc.TaxAmount), Importe: satNumber(calc.Amount)})
 	}
 	emp := pedido.SucursalOrigen.Empresa
@@ -462,18 +462,14 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	if err != nil {
 		return nil, err
 	}
-	facturaSerie := strings.TrimSpace(prep.Serie)
-	if facturaSerie == "" {
-		facturaSerie = "A"
-	}
+	facturaSerie := strings.TrimSpace(pedido.SucursalOrigen.SerieCFDI)
 	var facturaFolio int
 	folioReservado := false
 	if pedido.FacturaID != nil {
 		var existente models.Factura
-		if err = s.db.Select("serie", "folio").First(&existente, *pedido.FacturaID).Error; err != nil {
+		if err = s.db.Select("folio").First(&existente, *pedido.FacturaID).Error; err != nil {
 			return nil, fmt.Errorf("no se pudo recuperar el folio interno de la factura: %w", err)
 		}
-		facturaSerie = existente.Serie
 		facturaFolio = existente.Folio
 	}
 	if facturaFolio <= 0 {
@@ -496,7 +492,10 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 			facturaFolio++
 		}
 	}
-	payload := map[string]any{"serie": facturaSerie, "folioInterno": fmt.Sprintf("%06d", facturaFolio), "fecha": fechaCFDI, "cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion, "cveFormaPago": forma.Clave, "formaPago": forma.Descripcion, "subTotal": satNumber(subtotalCFDI), "descuentos": satNumber(descuentosCFDI), "impuestos": satNumber(impuestosCFDI), "total": satNumber(totalCFDI), "rfcEmisor": emp.RFC, "emisor": emp.RazonSocial, "cveRegimenEmisor": emp.RegimenFiscal.Clave, "regimenEmisor": emp.RegimenFiscal.Descripcion, "lugarExpedicion": pedido.SucursalOrigen.CodigoPostal, "rfcReceptor": receptor.RFC, "receptor": receptor.RazonSocial, "cveRegimenReceptor": receptor.Regimen.Clave, "regimenReceptor": receptor.Regimen.Descripcion, "domicilioFiscalReceptor": receptor.CodigoPostal, "cveUsoCFDI": uso.Clave, "usoCFDI": uso.Descripcion, "conceptos": conceptos}
+	payload := map[string]any{"folioInterno": fmt.Sprintf("%06d", facturaFolio), "fecha": fechaCFDI, "cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion, "cveFormaPago": forma.Clave, "formaPago": forma.Descripcion, "subTotal": json.Number(subtotalCFDI.StringFixed(2)), "descuentos": satNumber(descuentosCFDI), "impuestos": satNumber(impuestosCFDI), "total": json.Number(totalCFDI.StringFixed(2)), "rfcEmisor": emp.RFC, "emisor": emp.RazonSocial, "cveRegimenEmisor": emp.RegimenFiscal.Clave, "regimenEmisor": emp.RegimenFiscal.Descripcion, "lugarExpedicion": pedido.SucursalOrigen.CodigoPostal, "rfcReceptor": receptor.RFC, "receptor": receptor.RazonSocial, "cveRegimenReceptor": receptor.Regimen.Clave, "regimenReceptor": receptor.Regimen.Descripcion, "domicilioFiscalReceptor": receptor.CodigoPostal, "cveUsoCFDI": uso.Clave, "usoCFDI": uso.Descripcion, "conceptos": conceptos}
+	if facturaSerie != "" {
+		payload["serie"] = facturaSerie
+	}
 	cfg, err := LoadKommerzConfig()
 	if err != nil {
 		return nil, err
@@ -993,32 +992,109 @@ func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken
 	conceptos := make([]map[string]any, 0, len(tickets))
 	items := make([]reportmodels.InvoiceItem, 0, len(tickets))
 	pedidoIDs := make([]uint, 0, len(tickets))
-	subtotal, impuestos := decimal.Zero, decimal.Zero
-	for _, ticket := range tickets {
-		base := ticket.Total.Div(decimal.NewFromFloat(1.16)).Round(6)
-		iva := ticket.Total.Sub(base).Round(6)
-		subtotal = subtotal.Add(base)
-		impuestos = impuestos.Add(iva)
+
+	// ============================================================
+	// 1. PREPARAR LOS TICKETS PARA EL MOTOR DE CÁLCULO SAT
+	// ============================================================
+	//
+	// ticket.Total YA incluye IVA.
+	//
+	// La regla de negocio precio_base / precio_venta ya fue aplicada
+	// previamente en GenerarFacturacionGlobal, por lo que aquí no
+	// necesitamos saber de cuál de los dos provino el importe.
+	inputs := make([]satSaleLineInput, len(tickets))
+
+	for index, ticket := range tickets {
+		inputs[index] = satSaleLineInput{
+			Quantity:        decimal.NewFromInt(1),
+			GrossUnit:       ticket.Total,
+			DiscountPercent: decimal.Zero,
+			TaxRate:         decimal.RequireFromString("0.16"),
+		}
+	}
+
+	// ============================================================
+	// 2. CALCULAR LA REPRESENTACIÓN FISCAL
+	// ============================================================
+
+	invoiceCalc, err := calculateSATInvoice(inputs)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"no se pudo calcular la factura global %s: %w",
+			forma.Descripcion,
+			err,
+		)
+	}
+
+	// ============================================================
+	// 3. GENERAR LOS CONCEPTOS
+	// ============================================================
+
+	for index, ticket := range tickets {
+
+		calc := invoiceCalc.Lines[index]
+
 		identificacion := fmt.Sprintf("%07d", ticket.Folio)
+
 		conceptos = append(conceptos, map[string]any{
-			"claveProdServ": "01010101", "noIdentificacion": identificacion,
-			"descripcion": "VENTA", "cantidad": 1, "claveUnidad": "H87", "unidad": "PIEZA",
-			"valorUnitario": satNumber(base), "importe": satNumber(base), "objetoImp": "02",
-			"impuestos": []map[string]any{{"importeImpuesto": satNumber(iva), "baseImpuesto": satNumber(base), "impuesto": "002", "tasaOCuota": "0.160000"}},
+			"claveProdServ":    "01010101",
+			"noIdentificacion": identificacion,
+			"descripcion":      "VENTA",
+
+			"cantidad":    1,
+			"claveUnidad": "ACT",
+			"unidad":      "ACTIVIDAD",
+
+			// Precio sin IVA seleccionado por calculateSATInvoice.
+			"valorUnitario": satConceptNumber(calc.UnitValue),
+
+			// Importe fiscal del concepto.
+			"importe": satConceptNumber(calc.Amount),
+
+			"objetoImp": "02",
+
+			"descuento": satConceptNumber(calc.Discount),
+
+			"impuestos": []map[string]any{
+				{
+					"importeImpuesto": satConceptNumber(calc.TaxAmount),
+					"baseImpuesto":    satConceptNumber(calc.TaxBase),
+					"impuesto":        "002",
+					"tasaOCuota":      calc.TaxRate.StringFixed(6),
+				},
+			},
 		})
-		items = append(items, reportmodels.InvoiceItem{Codigo: identificacion, ClaveSAT: "01010101", Descripcion: "VENTA", Unidad: "PIEZA", Cantidad: 1, PrecioUnitario: satNumber(base), Impuestos: satNumber(iva), Importe: satNumber(base)})
+
+		items = append(items, reportmodels.InvoiceItem{
+			Codigo:         identificacion,
+			ClaveSAT:       "01010101",
+			Descripcion:    "VENTA",
+			Unidad:         "ACTIVIDAD",
+			Cantidad:       1,
+			PrecioUnitario: satNumber(calc.UnitValue),
+			Descuento:      satNumber(calc.Discount),
+			Impuestos:      satNumber(calc.TaxAmount),
+			Importe:        satNumber(calc.Amount),
+		})
+
 		pedidoIDs = append(pedidoIDs, ticket.PedidoID)
 	}
-	total := subtotal.Add(impuestos)
+
+	// ============================================================
+	// 4. TOTALES DEL CFDI
+	// ============================================================
+
+	subtotal := invoiceCalc.Subtotal
+	impuestos := invoiceCalc.Taxes
+	total := invoiceCalc.Total
+
+	//	total := subtotal.Add(impuestos)
 	now := time.Now()
 	fechaCFDI, err := fechaFacturacion(now)
 	if err != nil {
 		return nil, err
 	}
 	serie := strings.TrimSpace(operacion.Sucursal.SerieCFDI)
-	if serie == "" {
-		serie = "A"
-	}
 
 	s.folioMu.Lock()
 	defer s.folioMu.Unlock()
@@ -1035,10 +1111,10 @@ func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken
 	}
 	empresa := operacion.Sucursal.Empresa
 	payload := map[string]any{
-		"serie": serie, "folioInterno": fmt.Sprintf("%06d", folio), "fecha": fechaCFDI,
+		"folioInterno": fmt.Sprintf("%06d", folio), "fecha": fechaCFDI,
 		"cveMetodoPago": metodo.Clave, "metodoPago": metodo.Descripcion,
 		"cveFormaPago": forma.Clave, "formaPago": forma.Descripcion,
-		"subTotal": satNumber(subtotal), "descuentos": 0, "impuestos": satNumber(impuestos), "total": satNumber(total),
+		"subTotal": json.Number(subtotal.StringFixed(2)), "descuentos": 0, "impuestos": satNumber(impuestos), "total": json.Number(total.StringFixed(2)),
 		"rfcEmisor": empresa.RFC, "emisor": empresa.RazonSocial,
 		"cveRegimenEmisor": empresa.RegimenFiscal.Clave, "regimenEmisor": empresa.RegimenFiscal.Descripcion,
 		"lugarExpedicion": operacion.Sucursal.CodigoPostal,
@@ -1048,6 +1124,9 @@ func (s *FacturacionService) emitirFacturaGlobal(cfg *KommerzConfig, accessToken
 		"cveUsoCFDI":              uso.Clave, "usoCFDI": uso.Descripcion,
 		"conceptos": conceptos, "esGlobal": true,
 		"Meses": fmt.Sprintf("%02d", int(now.Month())), "YYYY": fmt.Sprintf("%04d", now.Year()), "periodicidad": "01",
+	}
+	if serie != "" {
+		payload["serie"] = serie
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {

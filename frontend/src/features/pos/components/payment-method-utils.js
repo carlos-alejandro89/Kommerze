@@ -1,7 +1,6 @@
 import { ArrowRightLeft, CheckCircle, CreditCard, DollarSign, MoreHorizontal } from 'lucide-react';
 
 export const CARD_PAYMENT_CLAVES = new Set(['04', '28', '29']);
-export const pinpadConfigurada = true;
 
 export const isCardPayment = (paymentInfo) => {
     const clave = String(paymentInfo?.Clave ?? '').trim();

@@ -1,11 +1,13 @@
 package repository
 
 import (
-	"BitComercio/internal/models"
-	"BitComercio/internal/repository/dto"
 	"fmt"
 	"strings"
 	"time"
+
+	"BitComercio/internal/models"
+	"BitComercio/internal/repository/dto"
+	reportmodels "BitComercio/internal/usecases/reports/models"
 
 	"github.com/shopspring/decimal"
 	gorm "gorm.io/gorm"
@@ -17,6 +19,37 @@ type OperacionesCajaRepository struct {
 
 func NewOperacionesCajaRepository(db *gorm.DB) *OperacionesCajaRepository {
 	return &OperacionesCajaRepository{db: db}
+}
+
+func (r *OperacionesCajaRepository) ConstruirReporteCierreCaja(operacionCajeroID uint) (reportmodels.CashClosingReport, error) {
+	var operacion models.OperacionCajero
+	if err := r.db.Preload("ResponsableCaja").Preload("Operacion.Sucursal.Empresa").First(&operacion, operacionCajeroID).Error; err != nil {
+		return reportmodels.CashClosingReport{}, fmt.Errorf("no se pudo recuperar el turno cerrado: %w", err)
+	}
+	resumen := r.CalcularResumenCajero(operacion.ID)
+	fechaFin := time.Now()
+	if operacion.FechaFin != nil {
+		fechaFin = *operacion.FechaFin
+	}
+	empresa := operacion.Operacion.Sucursal.Empresa
+	reporte := reportmodels.CashClosingReport{
+		Header: reportmodels.ClosingReportHeader{
+			Negocio: empresa.NombreComercial, RazonSocial: empresa.RazonSocial, RFC: empresa.RFC,
+			Sucursal: operacion.Operacion.Sucursal.NombreSucursal, FechaInicio: operacion.FechaInicio, FechaFin: fechaFin,
+		},
+		CashRegister: operacion.CajaNombre, Cashier: operacion.ResponsableCaja.Nombre,
+		Sales: resumen.NumVentas, CancelledSales: resumen.VentasCanceladas,
+		OpeningFund: operacion.FondoCajaApertura.InexactFloat64(), TotalIncome: resumen.TotalIngresos,
+		ClosingCash: operacion.FondoCajaCierre.InexactFloat64(),
+	}
+	for _, forma := range resumen.Desglose {
+		reporte.Payments = append(reporte.Payments, reportmodels.CashClosingPayment{Name: forma.FormaPago, SATCode: forma.Clave, Amount: forma.Monto})
+		if forma.Clave == "01" {
+			reporte.CashIncome += forma.Monto
+		}
+	}
+	reporte.ExpectedCash = reporte.OpeningFund + reporte.CashIncome
+	return reporte, nil
 }
 
 // AbrirCaja inicia el turno de un cajero dentro de una jornada de sucursal.
@@ -162,6 +195,18 @@ func (r *OperacionesCajaRepository) CalcularResumenCajero(operacionCajeroID uint
 			Monto:     p.Total,
 		})
 	}
+	r.db.Raw(`
+		SELECT COUNT(DISTINCT p.id)
+		FROM pedidos p
+		INNER JOIN estatus e ON e.id = p.estatus_id
+		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
+		WHERE p.operacion_cajero_id = ?
+		  AND tp.guid = ?
+		  AND (LOWER(e.nombre) = 'cancelado' OR LOWER(e.nombre) = 'cancelada')
+		  AND p.deleted_at IS NULL
+		  AND e.deleted_at IS NULL
+		  AND tp.deleted_at IS NULL
+	`, operacionCajeroID, models.TipoPedidoVentaGuid).Scan(&result.VentasCanceladas)
 	if result.Desglose == nil {
 		result.Desglose = []dto.ResumenFormaPago{}
 	}

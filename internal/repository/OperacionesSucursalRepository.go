@@ -430,19 +430,20 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 	result.TransferenciasEntrantes = transferencia.Entrantes
 	result.TransferenciasSalientes = transferencia.Salientes
 
-	// Ajuste = inventario final - bajas -
-	//          (inventario inicial + compras - ventas brutas - transferencias de salida)
+	// Inventario esperado = inventario inicial + compras + transferencias entrantes
+	//                       - ventas brutas - transferencias salientes - bajas
+	// Ajuste = inventario final - inventario esperado
 	// El inventario final corresponde al valor real de las existencias actuales.
 	o.db.Model(&models.SucursalProducto{}).
 		Select("COALESCE(SUM(precio_venta * existencia), 0)").
 		Scan(&result.ValorFinalInventario)
 	valorEsperado := operacion.ValorInicialInventario.
 		Add(result.ValorCompras).
+		Add(result.TransferenciasEntrantes).
 		Sub(result.ValorBrutoVentas).
-		Sub(result.TransferenciasSalientes)
-	result.AjusteInventario = result.ValorFinalInventario.
-		Sub(result.BajasMercancia).
-		Sub(valorEsperado)
+		Sub(result.TransferenciasSalientes).
+		Sub(result.BajasMercancia)
+	result.AjusteInventario = result.ValorFinalInventario.Sub(valorEsperado)
 
 	// Pagos agrupados por clave SAT de forma de pago
 	type pagoRow struct {

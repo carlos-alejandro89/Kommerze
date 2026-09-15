@@ -17,7 +17,7 @@ import { moneyFormat } from '@/lib/helpers';
 import { usePosService } from './usePosService';
 import { useActivation } from '@/providers/ActivationProvider';
 import { toast } from 'sonner';
-import { isCardPayment, pinpadConfigurada } from './components/payment-method-utils';
+import { isCardPayment } from './components/payment-method-utils';
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 const shoppingCart = [];
 
@@ -96,6 +96,7 @@ export function CartStepThree() {
 
     // Cargar métodos de pago desde el backend local
     const [formaPago, setFormaPago] = React.useState([]);
+    const [pinpadEnabled, setPinpadEnabled] = React.useState(false);
 
     React.useEffect(() => {
         posService.obtenerFormasPago()
@@ -113,6 +114,21 @@ export function CartStepThree() {
                 setFormaPago([]);
                 toast.error('No se pudieron cargar las formas de pago sincronizadas.');
             });
+    }, []);
+
+    React.useEffect(() => {
+        posService.obtenerConfiguracionDispositivo()
+            .then(cfg => {
+                const selectedPinpad = cfg?.terminalCobro === 'pinpad';
+                const hasCredentials = Boolean(
+                    String(cfg?.netPayUser || '').trim() &&
+                    String(cfg?.netPayPassword || '').trim() &&
+                    String(cfg?.netPayStoreId || '').trim() &&
+                    String(cfg?.netPayDeviceSerial || '').trim()
+                );
+                setPinpadEnabled(selectedPinpad && hasCredentials);
+            })
+            .catch(() => setPinpadEnabled(false));
     }, []);
 
     React.useEffect(() => {
@@ -245,7 +261,7 @@ export function CartStepThree() {
     };
 
     const handleAddPayment = async (paymentInfo) => {
-        if (pinpadConfigurada && isCardPayment(paymentInfo)) {
+        if (pinpadEnabled && isCardPayment(paymentInfo)) {
             try {
                 const porPagar = total - totalPagos
                 paymentInfo.Monto = Number(porPagar)
@@ -355,6 +371,7 @@ export function CartStepThree() {
                                         onSelect={handleSelectPaymentMethod}
                                         onAddPayment={handleAddPayment}
                                         saldoPendiente={saldoPendiente}
+                                        pinpadEnabled={pinpadEnabled}
                                     />
 
                                     {/* ── Pagos Aplicados + Monto Recibido en fila ── */}

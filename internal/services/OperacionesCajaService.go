@@ -1,9 +1,13 @@
 package services
 
 import (
+	"encoding/base64"
+	"fmt"
+
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository"
 	"BitComercio/internal/repository/dto"
+	"BitComercio/internal/usecases/reports/renders"
 
 	"gorm.io/gorm"
 )
@@ -32,7 +36,22 @@ func (s *OperacionesCajaService) AbrirCaja(datos dto.AbrirCajaDto) *dto.Response
 
 // CerrarCaja finaliza el turno del cajero con los montos capturados.
 func (s *OperacionesCajaService) CerrarCaja(datos dto.CerrarCajaDto) *dto.ResponseDto {
-	return s.repo.CerrarCaja(datos)
+	result := s.repo.CerrarCaja(datos)
+	if result == nil || !result.Success {
+		return result
+	}
+	reporte, err := s.repo.ConstruirReporteCierreCaja(datos.OperacionCajeroID)
+	if err != nil {
+		return dto.NewResponseDto(true, "Caja cerrada, pero no se pudo generar el reporte", map[string]any{"operacion": result.Data}, []string{err.Error()})
+	}
+	pdf, err := renders.RenderCashClosingPDF(reporte)
+	if err != nil {
+		return dto.NewResponseDto(true, "Caja cerrada, pero no se pudo generar el reporte", map[string]any{"operacion": result.Data}, []string{err.Error()})
+	}
+	return dto.NewResponseDto(true, result.Message, map[string]any{
+		"operacion": result.Data, "pdfBase64": base64.StdEncoding.EncodeToString(pdf),
+		"pdfFileName": fmt.Sprintf("cierre-caja-%d.pdf", datos.OperacionCajeroID),
+	}, nil)
 }
 
 // ObtenerOperacionesCajero devuelve todos los turnos de una jornada de sucursal.

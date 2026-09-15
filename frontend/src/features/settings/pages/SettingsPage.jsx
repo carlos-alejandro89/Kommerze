@@ -4,7 +4,7 @@ import {
   Monitor, Globe, RotateCcw, Wifi, Copy, Check,
   ReceiptText, Mail, Plus, Trash2, Bold, Printer,
   ArrowLeft, Settings, PackagePlus, ImageIcon, MapPin, Phone,
-  FileKey2, KeyRound, FolderOpen,
+  FileKey2, KeyRound, FolderOpen, CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -86,6 +86,8 @@ export function SettingsPage() {
   const [testingPrinter, setTestingPrinter] = useState(false);
   const [facturacion, setFacturacion] = useState({ apiHost: '', clientId: '', clientSecret: '', xmlPath: '' });
   const [savingFacturacion, setSavingFacturacion] = useState(false);
+  const [terminalCobro, setTerminalCobro] = useState('manual');
+  const [savingTerminalCobro, setSavingTerminalCobro] = useState(false);
 
   useEffect(() => {
     ServiceGetLocalIP().then(setLocalIP).catch(() => {});
@@ -106,6 +108,7 @@ export function SettingsPage() {
           clientSecret: cfg?.facturacionClientSecret || '',
           xmlPath: cfg?.facturacionXmlPath || '',
         });
+        setTerminalCobro(cfg?.terminalCobro === 'pinpad' ? 'pinpad' : 'manual');
         if (cfg?.receipt) {
           const configuredGroups = cfg.receipt.legendGroups?.length
             ? cfg.receipt.legendGroups
@@ -219,6 +222,20 @@ export function SettingsPage() {
     }
   };
 
+  const handleSaveTerminalCobro = async (event) => {
+    event.preventDefault();
+    setSavingTerminalCobro(true);
+    try {
+      const current = await ServiceGetKommerzConfig();
+      await ServiceSaveKommerzConfig({ ...(current || {}), terminalCobro });
+      toast.success('Configuración de terminal de cobro guardada');
+    } catch (err) {
+      toast.error('No se pudo guardar la terminal de cobro: ' + String(err));
+    } finally {
+      setSavingTerminalCobro(false);
+    }
+  };
+
   const handleSelectInvoiceFolder = async () => {
     try {
       const folder = await ServiceSelectInvoiceFolder();
@@ -313,6 +330,7 @@ export function SettingsPage() {
     { id: 'recibos',     label: 'Ticket',                icon: ReceiptText },
     { id: 'impresora',   label: 'Impresora',             icon: Printer },
     { id: 'correo',      label: 'Correo SMTP',           icon: Mail },
+    { id: 'terminal',    label: 'Terminal Cobro',        icon: CreditCard },
     { id: 'cloud',       label: 'Nube y Sincronización', icon: Cloud,     serverOnly: true },
     { id: 'inventario',  label: 'Importar inventario',   icon: PackagePlus, serverOnly: true },
     { id: 'local',       label: 'Base de Datos Local',   icon: HardDrive, serverOnly: true },
@@ -779,6 +797,56 @@ export function SettingsPage() {
             </>
           )}
 
+          {activeTab === 'terminal' && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Define cómo se registrarán los cobros realizados con tarjeta durante una venta.
+              </p>
+              <form id="settings-terminal-form" onSubmit={handleSaveTerminalCobro} className={settingsPanelClass}>
+                <div className={settingsPanelHeaderClass}>
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <CreditCard className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Terminal de cobro</h3>
+                    <p className="text-xs text-muted-foreground">Selecciona el flujo utilizado para pagos con tarjeta</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 p-6 md:grid-cols-2">
+                  {[
+                    { value: 'manual', title: 'Manual', description: 'El cajero captura el importe directamente, igual que en efectivo o transferencia.' },
+                    { value: 'pinpad', title: 'Pinpad', description: 'El importe se envía a la terminal configurada para solicitar la autorización bancaria.' },
+                  ].map(option => {
+                    const selected = terminalCobro === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setTerminalCobro(option.value)}
+                        className={cn('flex items-start gap-3 rounded-2xl border p-4 text-left transition', selected ? 'border-primary/40 bg-primary/[.055] ring-2 ring-primary/10' : 'border-border/70 bg-background/60 hover:border-primary/25 hover:bg-muted/30')}
+                      >
+                        <span className={cn('mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border', selected ? 'border-primary' : 'border-muted-foreground/50')}>
+                          {selected && <span className="size-2 rounded-full bg-primary" />}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">{option.description}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {terminalCobro === 'pinpad' && (
+                    <div className="md:col-span-2 rounded-xl border border-blue-500/15 bg-blue-500/[.055] px-4 py-3 text-xs leading-5 text-muted-foreground">
+                      Si las credenciales o el número de serie de la Pinpad no están configurados, el cobro con tarjeta se capturará manualmente.
+                    </div>
+                  )}
+                </div>
+              </form>
+            </>
+          )}
+
           {/* ── CLOUD ──────────────────────────────────────────────────────── */}
           {activeTab === 'cloud' && (
             <>
@@ -983,7 +1051,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'cloud' || activeTab === 'inventario' || activeTab === 'facturacion' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
+      {(activeTab === 'recibos' || activeTab === 'impresora' || activeTab === 'correo' || activeTab === 'terminal' || activeTab === 'cloud' || activeTab === 'inventario' || activeTab === 'facturacion' || (activeTab === 'dispositivo' && deviceRole === 'caja')) && (
         <footer className="shrink-0 border-t border-border/70 bg-background/90 px-5 py-3 backdrop-blur-xl lg:px-6">
           <div className="mx-auto flex max-w-[1320px] justify-end">
             {activeTab === 'dispositivo' && deviceRole === 'caja' && (
@@ -1013,6 +1081,12 @@ export function SettingsPage() {
               <button form="settings-email-form" type="submit" disabled={savingReceipt} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
                 {savingReceipt ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Guardar correo SMTP
+              </button>
+            )}
+            {activeTab === 'terminal' && (
+              <button form="settings-terminal-form" type="submit" disabled={savingTerminalCobro} className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0876f9] to-[#075fd1] px-5 text-xs font-semibold text-white shadow-[0_10px_22px_-14px_rgba(8,118,249,.75)] transition hover:brightness-105 disabled:opacity-60">
+                {savingTerminalCobro ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Guardar terminal de cobro
               </button>
             )}
             {activeTab === 'cloud' && (

@@ -4,7 +4,7 @@ import { ModalFormaPago } from '../modal-forma-pago';
 import { PaymentCard } from './PaymentCard';
 import { isCommonMethod } from './payment-method-utils';
 
-export function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPayment, saldoPendiente }) {
+export function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAddPayment, saldoPendiente, pinpadEnabled = false }) {
     const [showOthers, setShowOthers] = React.useState(false);
 
     const common = formaPago.filter(m => isCommonMethod(m));
@@ -22,6 +22,7 @@ export function PaymentMethodSelector({ formaPago, paymentMethod, onSelect, onAd
                         onSelect={onSelect}
                         onAddPayment={onAddPayment}
                         saldoPendiente={saldoPendiente}
+                        pinpadEnabled={pinpadEnabled}
                     />
                 ))}
             </div>

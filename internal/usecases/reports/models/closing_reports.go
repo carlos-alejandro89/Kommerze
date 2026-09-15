@@ -34,6 +34,20 @@ type TransferSummaryReport struct {
 	ValorTotal float64
 }
 
+type CashClosingPayment struct {
+	Name, SATCode string
+	Amount        float64
+}
+
+type CashClosingReport struct {
+	Header                                ClosingReportHeader
+	CashRegister, Cashier                 string
+	Sales, CancelledSales                 int
+	Payments                              []CashClosingPayment
+	OpeningFund, TotalIncome              float64
+	CashIncome, ExpectedCash, ClosingCash float64
+}
+
 type FinancialMetric struct {
 	Label string
 	Value float64

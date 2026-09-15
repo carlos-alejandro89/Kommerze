@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -127,10 +128,11 @@ func calculateSATLineWithDiscount(qty, rate, netUnit, amount, discount decimal.D
 	}, nil
 }
 
-// calculateSATInvoice keeps the fiscal decomposition tied to the amount
-// actually charged by the POS. Different valid six-decimal representations of
-// the net unit price are evaluated because rounding subtotal and tax
-// independently can otherwise create or remove one cent at document level.
+// calculateSATInvoice mantiene la descomposición fiscal vinculada al importe
+// realmente cobrado por el POS. Se evalúan distintas representaciones válidas
+// de seis decimales del precio unitario neto, ya que redondear el subtotal y
+// el impuesto de forma independiente podría generar o eliminar un centavo
+// en el total del documento.
 func calculateSATInvoice(inputs []satSaleLineInput) (satInvoiceCalculation, error) {
 	if len(inputs) == 0 {
 		return satInvoiceCalculation{}, fmt.Errorf("la venta no contiene conceptos")
@@ -252,6 +254,10 @@ func satCurrency(value decimal.Decimal) decimal.Decimal {
 
 func satNumber(value decimal.Decimal) float64 {
 	return value.InexactFloat64()
+}
+
+func satConceptNumber(value decimal.Decimal) json.Number {
+	return json.Number(value.StringFixed(satConceptDecimals))
 }
 
 func fechaFacturacion(fechaVenta time.Time) (string, error) {

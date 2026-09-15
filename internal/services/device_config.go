@@ -121,6 +121,9 @@ type KommerzConfig struct {
 	NetPayPassword     string `json:"netPayPassword,omitempty"`
 	NetPayStoreId      string `json:"netPayStoreId,omitempty"`
 	NetPayDeviceSerial string `json:"netPayDeviceSerial,omitempty"`
+	// TerminalCobro define si los pagos con tarjeta se capturan manualmente o
+	// se envían a la terminal NetPay. Valores soportados: "manual", "pinpad".
+	TerminalCobro string `json:"terminalCobro,omitempty"`
 
 	// Licencia de la sucursal (solo Servidor Local, escrita al activar)
 	License *LicenseData `json:"license,omitempty"`

@@ -60,6 +60,7 @@ import {
     ServiceConsultarConversiones,
     ServiceCancelarConversion,
     ServiceGenerateConversionReport,
+    ServiceGetKommerzConfig,
 } from '../../../wailsjs/go/main/App';
 
 export function usePosService() {
@@ -174,6 +175,7 @@ export function usePosService() {
     const consultarConversiones = () => ServiceConsultarConversiones();
     const cancelarConversion = (pedidoGuid) => ServiceCancelarConversion(pedidoGuid);
     const generarReporteConversion = (pedidoGuid) => ServiceGenerateConversionReport(pedidoGuid);
+    const obtenerConfiguracionDispositivo = () => ServiceGetKommerzConfig();
 
     // ── Cotizaciones ────────────────────────────────────────────────────────────────────
 
@@ -259,6 +261,7 @@ export function usePosService() {
         consultarConversiones,
         cancelarConversion,
         generarReporteConversion,
+        obtenerConfiguracionDispositivo,
         // Cotizaciones
         solicitarAutorizacion,
         convertirCotizacionAVenta,

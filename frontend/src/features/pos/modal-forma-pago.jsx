@@ -6,8 +6,7 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
-    DialogClose
+    DialogTrigger
 } from "@/components/ui/dialog"
 import { DollarSign, CreditCard, CheckCircle, MoreHorizontal, ArrowRightLeft, ChevronRight } from 'lucide-react';
 
@@ -15,6 +14,7 @@ import { DollarSign, CreditCard, CheckCircle, MoreHorizontal, ArrowRightLeft, Ch
 
 import { Badge } from "@/components/ui/badge"
 import { BtnFormaPago } from "./components/btn-forma-pago";
+import { toast } from 'sonner';
 
 const Icons = {
     // Nombres usados internamente (fallback)
@@ -52,20 +52,39 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
     const Icon = Icons[formaPago.Nombre] ?? MoreHorizontal;
 
 
-    const agregarPago = () => {
+    const [open, setOpen] = useState(false);
+    const [amountReceived, setAmountReceived] = useState('');
+
+    const agregarPago = (event) => {
+        event?.preventDefault();
+        const numericAmount = Number(amountReceived);
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+            toast.error('Ingresa un monto válido mayor que cero');
+            return;
+        }
         const data = {
             ID:         formaPago.ID,
             Clave:      formaPago.Clave,   // ← clave SAT para identificar el ícono
             Nombre:     formaPago.Nombre,
-            Monto:      amountReceived,
+            Monto:      numericAmount.toFixed(2),
             Referencia: 'Pago realizado en caja',
         }
         handleAddPayment(data);
+        setAmountReceived('');
+        setOpen(false);
     }
 
-    const [amountReceived, setAmountReceived] = useState('');
+    const handleAmountChange = (event) => {
+        let value = event.target.value.replace(/[^0-9.]/g, '');
+        const [integer = '', ...decimalParts] = value.split('.');
+        value = decimalParts.length
+            ? `${integer}.${decimalParts.join('').slice(0, 2)}`
+            : integer;
+        setAmountReceived(value);
+    };
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {renderTrigger
                     ? renderTrigger({ onClick: () => onClick(formaPago.ID) })
@@ -84,7 +103,7 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
                 </DialogHeader>
 
                 {/* Contenido (form, inputs, etc) iría aquí, con padding interior */}
-                <div className="px-6 py-1">
+                <form onSubmit={agregarPago} className="px-6 py-1">
                     {/* Placeholder content so it's not totally empty */}
                     <div className="text-sm text-center">
                         <label className="block text-lg font-bold text-muted-foreground mb-4 tracking-tight">Monto Recibido</label>
@@ -92,15 +111,16 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">$</span>
                             <input
                                 type="text"
+                                inputMode="decimal"
+                                pattern="[0-9]*[.]?[0-9]{0,2}"
                                 value={amountReceived || ''}
-                                onChange={(e) => setAmountReceived(e.target.value)}
+                                onChange={handleAmountChange}
                                 className="w-full bg-slate-200 dark:bg-zinc-800/50 border-none rounded-xl py-6 pl-10 pr-6 text-4xl font-extrabold focus:ring-2 focus:ring-primary/20 dark:text-primary-foreground outline-none transition-all placeholder:text-muted-foreground/30"
 
                             />
                         </div>
-                        <DialogClose asChild>
                         <Button 
-                            onClick={agregarPago}
+                            type="submit"
                             className="w-full h-11 mt-8 mb-5 rounded-lg bg-gradient-to-r from-[#002366] to-[#001233] text-white hover:from-[#001233] hover:to-[#000b1a] border-none font-black text-xs shadow-[0_4px_14px_rgba(0,35,102,0.3)] flex items-center justify-between px-4 group relative overflow-hidden active:scale-[0.98] transition-all
  z-[var(--z-layer-raised)]"
                         >
@@ -113,9 +133,8 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
                             {/* Shimmer effect */}
                             <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-[var(--z-layer-bg)]" />
                         </Button>
-                        </DialogClose>
                     </div>
-                </div>
+                </form>
             </DialogContent>
         </Dialog>
     );

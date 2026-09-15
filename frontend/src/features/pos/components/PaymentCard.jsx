@@ -4,10 +4,9 @@ import {
     getMethodColor,
     getMethodIcon,
     isCardPayment,
-    pinpadConfigurada,
 } from './payment-method-utils';
 
-export function PaymentCard({ fp, isActive, onSelect, onAddPayment, saldoPendiente }) {
+export function PaymentCard({ fp, isActive, onSelect, onAddPayment, saldoPendiente, pinpadEnabled = false }) {
     const Icon = getMethodIcon(fp);
     const gradient = getMethodColor(fp);
 
@@ -49,7 +48,7 @@ export function PaymentCard({ fp, isActive, onSelect, onAddPayment, saldoPendien
         </>
     );
 
-    if (pinpadConfigurada && isCardPayment(fp)) {
+    if (pinpadEnabled && isCardPayment(fp)) {
         const handleCardPayment = () => {
             onSelect(fp.ID);
 
