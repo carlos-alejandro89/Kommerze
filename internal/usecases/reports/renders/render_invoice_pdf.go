@@ -25,30 +25,33 @@ func RenderInvoicePDF(r reportmodels.Invoice) ([]byte, error) {
 	pdf.AddPage()
 	drawInvoiceHeader(pdf, r)
 	drawInvoiceReceiver(pdf, r, 60)
-	firstEnd := len(r.Items)
-	if firstEnd > 6 {
-		firstEnd = 6
-	}
-	y := drawInvoiceItems(pdf, r.Items[:firstEnd], 108)
-	if firstEnd == len(r.Items) {
-		bottom := drawInvoiceTotals(pdf, r, y+6)
-		drawInvoiceFiscalSection(pdf, r, bottom+7)
-	} else {
-		remaining := r.Items[firstEnd:]
-		for len(remaining) > 0 {
-			pdf.AddPage()
-			drawInvoiceContinuation(pdf, r)
-			take := len(remaining)
-			if take > 13 {
-				take = 13
-			}
-			y = drawInvoiceItems(pdf, remaining[:take], 32)
-			remaining = remaining[take:]
-			if len(remaining) == 0 {
-				bottom := drawInvoiceTotals(pdf, r, y+6)
-				drawInvoiceFiscalSection(pdf, r, bottom+7)
+	remaining := r.Items
+	startY := 108.0
+	for len(remaining) > 0 {
+		take := invoiceItemsPerPage(startY)
+		finalPageCapacity := invoiceItemsWithSummaryPerPage(pdf, r, startY)
+		if len(remaining) <= finalPageCapacity {
+			take = len(remaining)
+		} else if startY == 32 && len(remaining) <= take+finalPageCapacity {
+			// Balancea las dos últimas páginas para evitar una página de conceptos
+			// casi vacía seguida por una página ocupada únicamente por el resumen.
+			take = (len(remaining) + 1) / 2
+			if len(remaining)-take > finalPageCapacity {
+				take = len(remaining) - finalPageCapacity
 			}
 		}
+		if take > len(remaining) {
+			take = len(remaining)
+		}
+		y := drawInvoiceItems(pdf, remaining[:take], startY)
+		remaining = remaining[take:]
+		if len(remaining) == 0 {
+			drawInvoiceSummary(pdf, r, y)
+			break
+		}
+		pdf.AddPage()
+		drawInvoiceContinuation(pdf, r)
+		startY = 32
 	}
 	var out bytes.Buffer
 	if err := pdf.Output(&out); err != nil {
@@ -57,13 +60,55 @@ func RenderInvoicePDF(r reportmodels.Invoice) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+func invoiceItemsWithSummaryPerPage(pdf *gofpdf.Fpdf, r reportmodels.Invoice, startY float64) int {
+	const (
+		tableHeaderHeight = 8.0
+		rowHeight         = 8.2
+		summarySpacing    = 52.0
+		pageBottom        = 278.0
+	)
+	available := pageBottom - startY - tableHeaderHeight - summarySpacing - invoiceFiscalSectionHeight(pdf, r)
+	if available <= 0 {
+		return 0
+	}
+	return int(available / rowHeight)
+}
+
+func invoiceItemsPerPage(startY float64) int {
+	const (
+		tableHeaderHeight = 8.0
+		rowHeight         = 8.2
+		pageContentBottom = 270.0
+	)
+	rows := int((pageContentBottom - startY - tableHeaderHeight) / rowHeight)
+	if rows < 1 {
+		return 1
+	}
+	return rows
+}
+
+func drawInvoiceSummary(pdf *gofpdf.Fpdf, r reportmodels.Invoice, itemsBottom float64) {
+	const (
+		totalsGap    = 6.0
+		totalsHeight = 26.0
+		fiscalGap    = 7.0
+		footerSpace  = 13.0
+		pageBottom   = 278.0
+	)
+	fiscalHeight := invoiceFiscalSectionHeight(pdf, r)
+	totalsY := itemsBottom + totalsGap
+	if totalsY+totalsHeight+fiscalGap+fiscalHeight+footerSpace > pageBottom {
+		pdf.AddPage()
+		drawInvoiceContinuation(pdf, r)
+		totalsY = 32
+	}
+	bottom := drawInvoiceTotals(pdf, r, totalsY)
+	drawInvoiceFiscalSection(pdf, r, bottom+fiscalGap)
+}
+
 func drawInvoiceHeader(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	if len(kommerzeHorizontalLogo) > 0 {
-		name := "invoice-kommerze-logo"
-		pdf.RegisterImageOptionsReader(name, gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}, bytes.NewReader(kommerzeHorizontalLogo))
-		pdf.ImageOptions(name, 8, 10, 48, 0, false, gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}, 0, "")
-	}
+	drawReportHeaderLogo(pdf, "invoice-report-logo", 8, 10, 48, 18)
 	setRGB(pdf, quotationNavy)
 	commercialName := strings.TrimSpace(r.NombreComercial)
 	if commercialName == "" {
@@ -326,18 +371,7 @@ func drawInvoiceFiscalSection(pdf *gofpdf.Fpdf, r reportmodels.Invoice, start fl
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	fields := [][2]string{{"SELLO DIGITAL DEL CFDI", cleanFiscalText(r.SelloEmisor)}, {"SELLO DIGITAL DEL SAT", cleanFiscalText(r.SelloSAT)}, {"CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACION DIGITAL DEL SAT", cleanFiscalText(r.CadenaOriginalSAT)}}
 	contentWidth, lineHeight := 154.0, 2.8
-	pdf.SetFont("Arial", "", 5.5)
-	height := 6.0
-	for _, field := range fields {
-		lines := pdf.SplitLines([]byte(tr(field[1])), contentWidth)
-		if len(lines) == 0 {
-			lines = [][]byte{{}}
-		}
-		height += 3.2 + float64(len(lines))*lineHeight + 2.2
-	}
-	if height < 34 {
-		height = 34
-	}
+	height := invoiceFiscalSectionHeight(pdf, r)
 	if start+height+13 > 278 {
 		pdf.AddPage()
 		drawInvoiceContinuation(pdf, r)
@@ -398,11 +432,34 @@ func drawInvoiceFiscalSection(pdf *gofpdf.Fpdf, r reportmodels.Invoice, start fl
 	}
 }
 
+func invoiceFiscalSectionHeight(pdf *gofpdf.Fpdf, r reportmodels.Invoice) float64 {
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	fields := []string{cleanFiscalText(r.SelloEmisor), cleanFiscalText(r.SelloSAT), cleanFiscalText(r.CadenaOriginalSAT)}
+	const (
+		contentWidth = 154.0
+		lineHeight   = 2.8
+	)
+	pdf.SetFont("Arial", "", 5.5)
+	height := 6.0
+	for _, field := range fields {
+		lines := pdf.SplitLines([]byte(tr(field)), contentWidth)
+		if len(lines) == 0 {
+			lines = [][]byte{{}}
+		}
+		height += 3.2 + float64(len(lines))*lineHeight + 2.2
+	}
+	if height < 34 {
+		return 34
+	}
+	return height
+}
+
 func drawInvoiceContinuation(pdf *gofpdf.Fpdf, r reportmodels.Invoice) {
+	drawReportHeaderLogo(pdf, fmt.Sprintf("invoice-continuation-logo-%d", pdf.PageNo()), 8, 7, 35, 14)
 	setRGB(pdf, quotationNavy)
 	pdf.SetFont("Arial", "B", 14)
-	pdf.SetXY(8, 10)
-	pdf.CellFormat(120, 8, "CFDI "+r.Serie+"-"+r.Folio, "", 0, "L", false, 0, "")
+	pdf.SetXY(48, 10)
+	pdf.CellFormat(80, 8, "CFDI "+r.Serie+"-"+r.Folio, "", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "", 6)
 	pdf.SetXY(8, 20)
 	pdf.CellFormat(190, 5, "Folio fiscal: "+r.UUID, "B", 1, "L", false, 0, "")

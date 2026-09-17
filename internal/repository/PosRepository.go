@@ -398,6 +398,9 @@ func (r *PosRepository) BeforeCreate(p *models.Pedido, tx *gorm.DB) (err error) 
 
 	switch tipo.Guid.String() {
 	case models.TipoPedidoVentaGuid:
+		if err := p.AsignarCodigoFacturacion(tx); err != nil {
+			return err
+		}
 		seqName = "consecutivo_folio_pedido"
 	case models.TipoPedidoCotizacionGuid:
 		seqName = "consecutivo_folio_cotizacion"
@@ -1054,6 +1057,7 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 	}
 
 	pedidoRequestDto := dto.PedidoRequestDto{
+		CodigoFacturacion:  pedido.CodigoFacturacion,
 		SucursalOrigenGuid: sucursalOrigenGuid,
 		PedidoGuid:         pedido.Guid.String(),
 		EstatusGuid:        pedido.Estatus.Guid.String(),

@@ -48,12 +48,7 @@ func RenderTransferPDF(r models.TransferReport) ([]byte, error) {
 
 func drawTransferHeader(pdf *gofpdf.Fpdf, r models.TransferReport, continuation bool) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	if len(kommerzeHorizontalLogo) > 0 {
-		opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-		name := fmt.Sprintf("transfer-logo-%d", pdf.PageNo())
-		pdf.RegisterImageOptionsReader(name, opts, bytes.NewReader(kommerzeHorizontalLogo))
-		pdf.ImageOptions(name, 10, 10, 43, 0, false, opts, 0, "")
-	} else {
+	if !drawReportHeaderLogo(pdf, fmt.Sprintf("transfer-logo-%d", pdf.PageNo()), 10, 10, 43, 17) {
 		drawKommerzeMark(pdf, 10, 10, 10)
 	}
 	setRGB(pdf, quotationNavy)

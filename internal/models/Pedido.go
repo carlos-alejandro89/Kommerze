@@ -29,6 +29,10 @@ type Pedido struct {
 	Sync        bool      `gorm:"default:false"`
 	Comentarios string    `gorm:"type:text;default:''"`
 
+	// Facturación En linea
+
+	CodigoFacturacion string `gorm:"size:36;default:null;index"`
+
 	// Sucursal origen (aplica a Ventas, Cotizaciones y Transferencias)
 	SucursalOrigenID *uint
 	SucursalOrigen   Sucursal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`

@@ -61,6 +61,59 @@ type cfdiEmissionResponse struct {
 	} `json:"data"`
 }
 
+type stampedCFDIXML struct {
+	Serie           string `xml:"Serie,attr"`
+	Folio           string `xml:"Folio,attr"`
+	Fecha           string `xml:"Fecha,attr"`
+	SubTotal        string `xml:"SubTotal,attr"`
+	Descuento       string `xml:"Descuento,attr"`
+	Total           string `xml:"Total,attr"`
+	LugarExpedicion string `xml:"LugarExpedicion,attr"`
+	MetodoPago      string `xml:"MetodoPago,attr"`
+	FormaPago       string `xml:"FormaPago,attr"`
+	NoCertificado   string `xml:"NoCertificado,attr"`
+	Sello           string `xml:"Sello,attr"`
+	Emisor          struct {
+		RFC           string `xml:"Rfc,attr"`
+		Nombre        string `xml:"Nombre,attr"`
+		RegimenFiscal string `xml:"RegimenFiscal,attr"`
+	} `xml:"Emisor"`
+	Receptor struct {
+		RFC                     string `xml:"Rfc,attr"`
+		Nombre                  string `xml:"Nombre,attr"`
+		DomicilioFiscalReceptor string `xml:"DomicilioFiscalReceptor,attr"`
+		RegimenFiscalReceptor   string `xml:"RegimenFiscalReceptor,attr"`
+		UsoCFDI                 string `xml:"UsoCFDI,attr"`
+	} `xml:"Receptor"`
+	Conceptos struct {
+		Items []struct {
+			ClaveProdServ    string `xml:"ClaveProdServ,attr"`
+			NoIdentificacion string `xml:"NoIdentificacion,attr"`
+			Cantidad         string `xml:"Cantidad,attr"`
+			ClaveUnidad      string `xml:"ClaveUnidad,attr"`
+			Unidad           string `xml:"Unidad,attr"`
+			Descripcion      string `xml:"Descripcion,attr"`
+			ValorUnitario    string `xml:"ValorUnitario,attr"`
+			Importe          string `xml:"Importe,attr"`
+			Descuento        string `xml:"Descuento,attr"`
+			Impuestos        struct {
+				Traslados []struct {
+					Importe string `xml:"Importe,attr"`
+				} `xml:"Traslados>Traslado"`
+			} `xml:"Impuestos"`
+		} `xml:"Concepto"`
+	} `xml:"Conceptos"`
+	Complemento struct {
+		Timbre struct {
+			UUID             string `xml:"UUID,attr"`
+			FechaTimbrado    string `xml:"FechaTimbrado,attr"`
+			NoCertificadoSAT string `xml:"NoCertificadoSAT,attr"`
+			SelloCFD         string `xml:"SelloCFD,attr"`
+			SelloSAT         string `xml:"SelloSAT,attr"`
+		} `xml:"TimbreFiscalDigital"`
+	} `xml:"Complemento"`
+}
+
 type cfdiCancellationResponse struct {
 	Success     bool   `json:"success"`
 	Mensaje     string `json:"mensaje"`
@@ -714,7 +767,7 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 // Permite reabrirlos antes de reintentar un cierre interrumpido.
 func (s *FacturacionService) ObtenerFacturasGlobalesOperacion(operacionID uint) (*dto.ResponseDto, error) {
 	var operacion models.OperacionSucursal
-	if err := s.db.First(&operacion, operacionID).Error; err != nil {
+	if err := s.db.Preload("Sucursal.Empresa.RegimenFiscal").First(&operacion, operacionID).Error; err != nil {
 		return nil, fmt.Errorf("jornada no encontrada: %w", err)
 	}
 	documentos, err := s.documentosFacturasGlobales(operacion)
@@ -754,6 +807,164 @@ func facturaGlobalColumn(claveForma string) (string, error) {
 	}
 }
 
+func cfdiXMLNumber(value, field string) (float64, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, nil
+	}
+	parsed, err := decimal.NewFromString(value)
+	if err != nil {
+		return 0, fmt.Errorf("el XML del CFDI contiene un valor inválido en %s: %w", field, err)
+	}
+	return parsed.InexactFloat64(), nil
+}
+
+func catalogDescription(code, description string) string {
+	code = strings.TrimSpace(code)
+	description = strings.TrimSpace(description)
+	if code == "" {
+		return description
+	}
+	if description == "" {
+		return code
+	}
+	return code + " - " + description
+}
+
+func (s *FacturacionService) regenerarPDFFacturaGlobal(operacion models.OperacionSucursal, factura *models.Factura) ([]byte, string, error) {
+	xmlPath := strings.TrimSpace(factura.ArchivoXML)
+	if xmlPath == "" {
+		return nil, "", fmt.Errorf("la factura global no tiene una ruta XML registrada")
+	}
+	xmlBytes, err := os.ReadFile(xmlPath)
+	if err != nil || len(xmlBytes) == 0 {
+		return nil, "", fmt.Errorf("no se pudo leer el XML de la factura global: %w", err)
+	}
+	var cfdi stampedCFDIXML
+	if err = xml.Unmarshal(xmlBytes, &cfdi); err != nil {
+		return nil, "", fmt.Errorf("el XML de la factura global no es válido: %w", err)
+	}
+	emissionDate, err := parseStampDate(cfdi.Fecha)
+	if err != nil {
+		return nil, "", fmt.Errorf("el XML de la factura global contiene una fecha de emisión inválida: %w", err)
+	}
+	stampDate := factura.FechaFactura
+	if strings.TrimSpace(cfdi.Complemento.Timbre.FechaTimbrado) != "" {
+		stampDate, err = parseStampDate(cfdi.Complemento.Timbre.FechaTimbrado)
+		if err != nil {
+			return nil, "", fmt.Errorf("el XML de la factura global contiene una fecha de timbrado inválida: %w", err)
+		}
+	}
+
+	items := make([]reportmodels.InvoiceItem, 0, len(cfdi.Conceptos.Items))
+	for index, concepto := range cfdi.Conceptos.Items {
+		cantidad, parseErr := cfdiXMLNumber(concepto.Cantidad, fmt.Sprintf("Concepto[%d].Cantidad", index+1))
+		if parseErr != nil {
+			return nil, "", parseErr
+		}
+		valorUnitario, parseErr := cfdiXMLNumber(concepto.ValorUnitario, fmt.Sprintf("Concepto[%d].ValorUnitario", index+1))
+		if parseErr != nil {
+			return nil, "", parseErr
+		}
+		importe, parseErr := cfdiXMLNumber(concepto.Importe, fmt.Sprintf("Concepto[%d].Importe", index+1))
+		if parseErr != nil {
+			return nil, "", parseErr
+		}
+		descuento, parseErr := cfdiXMLNumber(concepto.Descuento, fmt.Sprintf("Concepto[%d].Descuento", index+1))
+		if parseErr != nil {
+			return nil, "", parseErr
+		}
+		impuestos := 0.0
+		for _, traslado := range concepto.Impuestos.Traslados {
+			importeImpuesto, taxErr := cfdiXMLNumber(traslado.Importe, fmt.Sprintf("Concepto[%d].Impuestos", index+1))
+			if taxErr != nil {
+				return nil, "", taxErr
+			}
+			impuestos += importeImpuesto
+		}
+		unidad := strings.TrimSpace(concepto.Unidad)
+		if unidad == "" {
+			unidad = concepto.ClaveUnidad
+		}
+		items = append(items, reportmodels.InvoiceItem{
+			Codigo: concepto.NoIdentificacion, ClaveSAT: concepto.ClaveProdServ,
+			Descripcion: concepto.Descripcion, Unidad: unidad, Cantidad: cantidad,
+			PrecioUnitario: valorUnitario, Descuento: descuento, Impuestos: impuestos, Importe: importe,
+		})
+	}
+	if len(items) == 0 {
+		return nil, "", fmt.Errorf("el XML de la factura global no contiene conceptos")
+	}
+	subtotal, err := cfdiXMLNumber(cfdi.SubTotal, "SubTotal")
+	if err != nil {
+		return nil, "", err
+	}
+	descuento, err := cfdiXMLNumber(cfdi.Descuento, "Descuento")
+	if err != nil {
+		return nil, "", err
+	}
+	total, err := cfdiXMLNumber(cfdi.Total, "Total")
+	if err != nil {
+		return nil, "", err
+	}
+	impuestos := total - subtotal + descuento
+
+	empresa := operacion.Sucursal.Empresa
+	serie := strings.TrimSpace(cfdi.Serie)
+	if serie == "" {
+		serie = factura.Serie
+	}
+	folio := strings.TrimSpace(cfdi.Folio)
+	if folio == "" {
+		folio = fmt.Sprintf("%06d", factura.Folio)
+	}
+	uuid := strings.TrimSpace(cfdi.Complemento.Timbre.UUID)
+	if uuid == "" {
+		uuid = factura.UUID
+	}
+	regimenEmisor := catalogDescription(cfdi.Emisor.RegimenFiscal, empresa.RegimenFiscal.Descripcion)
+	regimenReceptor := catalogDescription(cfdi.Receptor.RegimenFiscalReceptor, factura.Receptor.Regimen.Descripcion)
+	usoCFDI := catalogDescription(cfdi.Receptor.UsoCFDI, factura.UsoCFDI.Descripcion)
+	metodoPago := catalogDescription(cfdi.MetodoPago, factura.MetodoPago.Descripcion)
+	formaPago := catalogDescription(cfdi.FormaPago, factura.FormaPago.Descripcion)
+	reporte := reportmodels.Invoice{
+		Serie: serie, Folio: folio, UUID: uuid, FechaEmision: emissionDate, FechaTimbrado: stampDate,
+		NombreComercial: empresa.NombreComercial, Emisor: cfdi.Emisor.Nombre, RFCEmisor: cfdi.Emisor.RFC,
+		RegimenEmisor: regimenEmisor, LugarExpedicion: cfdi.LugarExpedicion,
+		Sucursal:  operacion.Sucursal.NombreSucursal,
+		Direccion: joinAddress(operacion.Sucursal.Calle, operacion.Sucursal.Exterior, operacion.Sucursal.Interior, operacion.Sucursal.Colonia, operacion.Sucursal.Ciudad, operacion.Sucursal.Estado, "C.P. "+operacion.Sucursal.CodigoPostal),
+		Telefono:  operacion.Sucursal.Telefono, Correo: operacion.Sucursal.Correo,
+		Receptor: cfdi.Receptor.Nombre, RFCReceptor: cfdi.Receptor.RFC,
+		RegimenReceptor: regimenReceptor, DomicilioReceptor: cfdi.Receptor.DomicilioFiscalReceptor,
+		UsoCFDI: usoCFDI, MetodoPago: metodoPago, FormaPago: formaPago,
+		CertificadoEmisor: cfdi.NoCertificado, CertificadoSAT: cfdi.Complemento.Timbre.NoCertificadoSAT,
+		SelloEmisor: cfdi.Sello, SelloSAT: cfdi.Complemento.Timbre.SelloSAT, CadenaOriginalSAT: factura.CadenaOriginalSAT,
+		Items: items, Subtotal: subtotal, Descuento: descuento, Impuestos: impuestos, Total: total,
+	}
+	if reporte.Emisor == "" {
+		reporte.Emisor = empresa.RazonSocial
+	}
+	if reporte.SelloEmisor == "" {
+		reporte.SelloEmisor = factura.SelloEmisor
+	}
+	if reporte.SelloSAT == "" {
+		reporte.SelloSAT = factura.SelloSAT
+	}
+	pdfBytes, err := renders.RenderInvoicePDF(reporte)
+	if err != nil {
+		return nil, "", fmt.Errorf("no se pudo regenerar el PDF de la factura global: %w", err)
+	}
+	pdfPath, err := saveInvoicePDF(xmlPath, pdfBytes)
+	if err != nil {
+		return nil, "", err
+	}
+	if err = s.db.Model(&models.Factura{}).Where("id = ?", factura.ID).Update("archivo_pdf", pdfPath).Error; err != nil {
+		return nil, "", fmt.Errorf("el PDF global fue regenerado, pero no se pudo actualizar su ruta: %w", err)
+	}
+	factura.ArchivoPDF = pdfPath
+	return pdfBytes, pdfPath, nil
+}
+
 func (s *FacturacionService) documentosFacturasGlobales(operacion models.OperacionSucursal) ([]map[string]any, error) {
 	documentos := make([]map[string]any, 0, 4)
 	for _, clave := range []string{"01", "04", "28", "03"} {
@@ -762,12 +973,15 @@ func (s *FacturacionService) documentosFacturasGlobales(operacion models.Operaci
 			continue
 		}
 		var factura models.Factura
-		if err := s.db.Where("id = ? AND deleted_at IS NULL", facturaID).First(&factura).Error; err != nil {
+		if err := s.db.Preload("Receptor.Regimen").Preload("UsoCFDI").Preload("MetodoPago").Preload("FormaPago").Where("id = ? AND deleted_at IS NULL", facturaID).First(&factura).Error; err != nil {
 			return nil, fmt.Errorf("no se encontró la factura global %s ligada a la jornada: %w", clave, err)
 		}
 		pdfBytes, err := os.ReadFile(strings.TrimSpace(factura.ArchivoPDF))
 		if err != nil || len(pdfBytes) == 0 {
-			return nil, fmt.Errorf("no se pudo leer el PDF de la factura global %s: %w", clave, err)
+			pdfBytes, _, err = s.regenerarPDFFacturaGlobal(operacion, &factura)
+			if err != nil {
+				return nil, fmt.Errorf("no se pudo recuperar el PDF de la factura global %s: %w", clave, err)
+			}
 		}
 		documentos = append(documentos, map[string]any{
 			"claveFormaPago": clave, "facturaId": factura.ID, "uuid": factura.UUID,

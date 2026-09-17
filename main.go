@@ -27,6 +27,11 @@ func main() {
 		log.Printf("[main] Error leyendo config del dispositivo: %v — iniciando con config vacía", err)
 		cfg = &services.KommerzConfig{}
 	}
+	if receiptLogo, logoErr := services.LoadReceiptLogo(); logoErr == nil {
+		renders.SetReportHeaderLogo(receiptLogo)
+	} else {
+		log.Printf("[main] Error leyendo logotipo de recibos: %v", logoErr)
+	}
 	log.Printf("[main] Rol del dispositivo: '%s'", cfg.Role)
 
 	// Configurar Zona Horaria Global

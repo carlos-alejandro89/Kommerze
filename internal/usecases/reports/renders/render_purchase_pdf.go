@@ -38,11 +38,7 @@ func RenderPurchasePDF(r models.PurchaseReport) ([]byte, error) {
 
 func drawPurchaseHeader(pdf *gofpdf.Fpdf, r models.PurchaseReport) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	if len(kommerzeHorizontalLogo) > 0 {
-		opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-		pdf.RegisterImageOptionsReader("purchase-kommerze-logo", opts, bytes.NewReader(kommerzeHorizontalLogo))
-		pdf.ImageOptions("purchase-kommerze-logo", 10, 9, 47, 0, false, opts, 0, "")
-	} else {
+	if !drawReportHeaderLogo(pdf, "purchase-report-logo", 10, 9, 47, 18) {
 		drawKommerzeMark(pdf, 10, 10, 10)
 		setRGB(pdf, quotationNavy)
 		pdf.SetFont("Arial", "B", 20)
@@ -250,9 +246,10 @@ func drawPurchaseTotals(pdf *gofpdf.Fpdf, r models.PurchaseReport, y float64) {
 }
 
 func drawPurchaseContinuationHeader(pdf *gofpdf.Fpdf, r models.PurchaseReport) {
+	drawReportHeaderLogo(pdf, fmt.Sprintf("purchase-continuation-logo-%d", pdf.PageNo()), 10, 7, 34, 14)
 	setRGB(pdf, quotationNavy)
 	pdf.SetFont("Arial", "B", 15)
-	pdf.SetXY(10, 10)
+	pdf.SetXY(49, 10)
 	pdf.Cell(130, 8, "REPORTE DE COMPRA - CONTINUACIÓN")
 	setRGB(pdf, quotationBlue)
 	pdf.SetFont("Arial", "B", 9)

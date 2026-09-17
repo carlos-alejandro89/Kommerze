@@ -31,11 +31,7 @@ func RenderCancellationReceiptPDF(r reportmodels.CancellationReceipt) ([]byte, e
 
 func drawCancellationHeader(pdf *gofpdf.Fpdf, r reportmodels.CancellationReceipt) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	if len(kommerzeHorizontalLogo) > 0 {
-		opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-		pdf.RegisterImageOptionsReader("cancellation-logo", opts, bytes.NewReader(kommerzeHorizontalLogo))
-		pdf.ImageOptions("cancellation-logo", 10, 10, 43, 0, false, opts, 0, "")
-	} else {
+	if !drawReportHeaderLogo(pdf, "cancellation-logo", 10, 10, 43, 17) {
 		drawKommerzeMark(pdf, 10, 10, 10)
 	}
 	business := strings.TrimSpace(r.Negocio)

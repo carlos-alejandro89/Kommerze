@@ -170,6 +170,40 @@ func RenderReceiptEscPos(r models.Receipt, paperWidthMM int, paperCut, openDrawe
 	writeEscPosText(&b, line("Cambio:", money(r.Cambio), width))
 	writeEscPosText(&b, strings.Repeat("-", width)+"\n")
 	b.Write([]byte{0x1B, 0x61, 0x01})
+	if r.ServicioAutoFactura && strings.TrimSpace(r.CodigoFacturacion) != "" {
+		writeEscPosText(&b, "Codigo de facturacion\n")
+		b.Write([]byte{0x1B, 0x45, 0x01})
+		writeEscPosText(&b, strings.TrimSpace(r.CodigoFacturacion)+"\n")
+		b.Write([]byte{0x1B, 0x45, 0x00})
+		// Code 128, juego B; el contenido codificado es únicamente el código.
+		barcodeData := "{B" + strings.TrimSpace(r.CodigoFacturacion)
+		if len(barcodeData) <= 255 {
+			b.Write([]byte{0x1D, 0x48, 0x00, 0x1D, 0x77, 0x02, 0x1D, 0x68, 0x40})
+			b.Write([]byte{0x1D, 0x6B, 0x49, byte(len(barcodeData))})
+			b.WriteString(barcodeData)
+			writeEscPosText(&b, "\n")
+		}
+		// Font B: misma fuente compacta que las descripciones de artículos.
+		// Font A ocupa 12 puntos por carácter y Font B 9. Ampliar la
+		// cantidad de caracteres conserva el ancho físico y márgenes del cuerpo.
+		autoFacturaWidth := width * 12 / 9
+		b.Write([]byte{0x1B, 0x4D, 0x01})
+		writeEscPosText(&b, wrapReceiptText(receiptAutoFacturaIntro(r.UrlAutoFactura), autoFacturaWidth)+"\n")
+		if url := strings.TrimSpace(r.UrlAutoFactura); url != "" {
+			// Font A es el siguiente tamaño disponible; ESC/POS no admite
+			// incrementos arbitrarios de 1px. Conservar negritas y subrayado.
+			b.Write([]byte{0x1B, 0x4D, 0x00})
+			writeEscPosText(&b, "\n")
+			b.Write([]byte{0x1B, 0x45, 0x01, 0x1B, 0x2D, 0x01})
+			writeEscPosText(&b, wrapReceiptText(url, width)+"\n")
+			b.Write([]byte{0x1B, 0x45, 0x00, 0x1B, 0x2D, 0x00})
+			writeEscPosText(&b, "\n")
+			b.Write([]byte{0x1B, 0x4D, 0x01})
+		}
+		writeEscPosText(&b, wrapReceiptText(receiptAutoFacturaConditions, autoFacturaWidth)+"\n")
+		b.Write([]byte{0x1B, 0x4D, 0x00})
+		writeEscPosText(&b, "\n"+strings.Repeat("-", width)+"\n")
+	}
 	hayLeyendas := false
 	if len(r.LeyendaGrupos) > 0 {
 		for index, group := range r.LeyendaGrupos {

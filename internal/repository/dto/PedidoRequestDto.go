@@ -5,6 +5,7 @@ import (
 )
 
 type PedidoRequestDto struct {
+	CodigoFacturacion  string                    `json:"codigoFacturacion,omitempty"`
 	SucursalOrigenGuid string                    `json:"sucursalOrigenGuid"`
 	PedidoGuid         string                    `json:"pedidoGuid"`
 	EstatusGuid        string                    `json:"estatusGuid"`

@@ -256,26 +256,31 @@ func (s *ReceiptService) BuildPurchaseReport(pedidoGuid string) (reportmodels.Pu
 
 func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, error) {
 	var header struct {
-		Folio          int
-		TipoPedidoID   uint
-		TipoPedidoGuid string
-		Fecha          time.Time
-		Sucursal       string
-		Negocio        string
-		Logo           string
-		Calle          string
-		Exterior       string
-		Interior       string
-		Colonia        string
-		Ciudad         string
-		Estado         string
-		CodigoPostal   string
-		Telefono       string
-		Correo         string
-		Cajero         string
+		CodigoFacturacion   string
+		ServicioAutoFactura bool
+		UrlAutoFactura      string
+		Folio               int
+		TipoPedidoID        uint
+		TipoPedidoGuid      string
+		Fecha               time.Time
+		Sucursal            string
+		Negocio             string
+		Logo                string
+		Calle               string
+		Exterior            string
+		Interior            string
+		Colonia             string
+		Ciudad              string
+		Estado              string
+		CodigoPostal        string
+		Telefono            string
+		Correo              string
+		Cajero              string
 	}
 	err := s.db.Raw(`
 		SELECT p.folio, p.fecha, COALESCE(p.tipo_pedido_id, 0) tipo_pedido_id, COALESCE(tp.guid::text, '') tipo_pedido_guid,
+		       COALESCE(p.codigo_facturacion, '') codigo_facturacion, COALESCE(e.servicio_auto_factura, false) servicio_auto_factura,
+		       COALESCE(e.url_auto_factura, '') url_auto_factura,
 		       COALESCE(s.nombre_sucursal, 'Sucursal') sucursal,
 		       COALESCE(NULLIF(e.nombre_comercial, ''), NULLIF(e.razon_social, ''), 'KOMMERZE') negocio,
 		       COALESCE(e.logo, '') logo,
@@ -334,9 +339,12 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 		address = append(address, "C.P. "+cp)
 	}
 	r := reportmodels.Receipt{
-		TipoPedidoID:   header.TipoPedidoID,
-		TipoPedidoGuid: header.TipoPedidoGuid,
-		Folio:          fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
+		CodigoFacturacion:   header.CodigoFacturacion,
+		ServicioAutoFactura: header.ServicioAutoFactura && header.TipoPedidoGuid == models.TipoPedidoVentaGuid,
+		UrlAutoFactura:      strings.TrimSpace(header.UrlAutoFactura),
+		TipoPedidoID:        header.TipoPedidoID,
+		TipoPedidoGuid:      header.TipoPedidoGuid,
+		Folio:               fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
 		Sucursal: cleanDocumentText(header.Sucursal), Logo: header.Logo, Direccion: strings.Join(address, ", "),
 		Telefono: cleanDocumentText(header.Telefono), Correo: cleanDocumentText(header.Correo),
 		Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,

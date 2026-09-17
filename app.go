@@ -1240,11 +1240,19 @@ func (a *App) ServiceLoadReceiptLogo() (string, error) {
 }
 
 func (a *App) ServiceSaveReceiptLogo(value string) error {
-	return services.SaveReceiptLogo(value)
+	if err := services.SaveReceiptLogo(value); err != nil {
+		return err
+	}
+	renders.SetReportHeaderLogo(value)
+	return nil
 }
 
 func (a *App) ServiceDeleteReceiptLogo() error {
-	return services.DeleteReceiptLogo()
+	if err := services.DeleteReceiptLogo(); err != nil {
+		return err
+	}
+	renders.SetReportHeaderLogo("")
+	return nil
 }
 
 // ServiceTestDBConnection prueba una conexión a PostgreSQL con los valores

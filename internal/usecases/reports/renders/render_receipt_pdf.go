@@ -8,6 +8,7 @@ import (
 
 	"BitComercio/internal/usecases/reports/models"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf/contrib/barcode"
 )
 
 func RenderReceiptPDF(r models.Receipt) ([]byte, error) {
@@ -39,6 +40,17 @@ func RenderReceiptPDF(r models.Receipt) ([]byte, error) {
 		}
 	}
 	height := 80.8 + headerExtraHeight + float64(len(r.Items))*16.5 + legendHeight
+	if r.ServicioAutoFactura && strings.TrimSpace(r.CodigoFacturacion) != "" {
+		// Medir el texto con la misma fuente y ancho del bloque impreso.
+		measure := gofpdf.New("P", "mm", "Letter", "")
+		measure.SetFont("Courier", "", receiptAutoFacturaFontSize)
+		translate := measure.UnicodeTranslatorFromDescriptor("")
+		height += 36 + float64(len(measure.SplitLines([]byte(translate(receiptAutoFacturaIntro(r.UrlAutoFactura))), 70))+len(measure.SplitLines([]byte(translate(receiptAutoFacturaConditions)), 70)))*receiptAutoFacturaLineHeight
+		if url := strings.TrimSpace(r.UrlAutoFactura); url != "" {
+			measure.SetFont("Courier", "BU", receiptAutoFacturaFontSize)
+			height += float64(len(measure.SplitLines([]byte(translate(url)), 70))) * receiptAutoFacturaLineHeight
+		}
+	}
 	pdf := gofpdf.NewCustom(&gofpdf.InitType{UnitStr: "mm", Size: gofpdf.SizeType{Wd: 80, Ht: height}})
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	pdf.SetMargins(5, 5, 5)
@@ -115,6 +127,26 @@ func RenderReceiptPDF(r models.Receipt) ([]byte, error) {
 		pdf.CellFormat(24, 4, total[1], "", 1, "R", false, 0, "")
 	}
 	pdf.CellFormat(70, 4, separator, "", 1, "L", false, 0, "")
+	if r.ServicioAutoFactura && strings.TrimSpace(r.CodigoFacturacion) != "" {
+		pdf.SetFont("Courier", "", 8)
+		pdf.CellFormat(70, 4, tr("Código de facturación"), "", 1, "C", false, 0, "")
+		pdf.SetFont("Courier", "B", 10)
+		pdf.CellFormat(70, 6, strings.TrimSpace(r.CodigoFacturacion), "", 1, "C", false, 0, "")
+		code := barcode.RegisterCode128(pdf, strings.TrimSpace(r.CodigoFacturacion))
+		barcode.Barcode(pdf, code, 15, pdf.GetY()+2, 50, 14, false)
+		pdf.Ln(18)
+		pdf.SetFont("Courier", "", receiptAutoFacturaFontSize)
+		pdf.MultiCell(70, receiptAutoFacturaLineHeight, tr(receiptAutoFacturaIntro(r.UrlAutoFactura)), "", "C", false)
+		if url := strings.TrimSpace(r.UrlAutoFactura); url != "" {
+			pdf.SetFont("Courier", "BU", receiptAutoFacturaFontSize)
+			pdf.MultiCell(70, receiptAutoFacturaLineHeight, tr(url), "", "C", false)
+			pdf.SetFont("Courier", "", receiptAutoFacturaFontSize)
+		}
+		pdf.MultiCell(70, receiptAutoFacturaLineHeight, tr(receiptAutoFacturaConditions), "", "C", false)
+		pdf.SetFont("Courier", "", 8)
+		pdf.Ln(4)
+		pdf.CellFormat(70, 4, separator, "", 1, "L", false, 0, "")
+	}
 	if len(r.LeyendaGrupos) > 0 {
 		for index, group := range r.LeyendaGrupos {
 			if index > 0 {

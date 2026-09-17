@@ -525,7 +525,10 @@ func (s *CotizacionService) ConvertirAVenta(
 		pedido.EstatusID = &estatusCompletado
 		pedido.SucursalOrigenID = sucursalOrigenID
 
-		if err := tx.Select("TipoPedidoID", "EstatusID", "SucursalOrigenID").Updates(&pedido).Error; err != nil {
+		if err := pedido.AsignarCodigoFacturacion(tx); err != nil {
+			return err
+		}
+		if err := tx.Select("TipoPedidoID", "EstatusID", "SucursalOrigenID", "CodigoFacturacion").Updates(&pedido).Error; err != nil {
 			return fmt.Errorf("actualizando pedido: %w", err)
 		}
 

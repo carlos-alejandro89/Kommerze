@@ -32,11 +32,7 @@ func RenderConversionPDF(r models.ConversionReport) ([]byte, error) {
 
 func drawConversionHeader(pdf *gofpdf.Fpdf, r models.ConversionReport) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	if len(kommerzeHorizontalLogo) > 0 {
-		opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-		pdf.RegisterImageOptionsReader("conversion-logo", opts, bytes.NewReader(kommerzeHorizontalLogo))
-		pdf.ImageOptions("conversion-logo", 10, 10, 43, 0, false, opts, 0, "")
-	} else {
+	if !drawReportHeaderLogo(pdf, "conversion-logo", 10, 10, 43, 17) {
 		drawKommerzeMark(pdf, 10, 10, 10)
 	}
 	setRGB(pdf, quotationNavy)

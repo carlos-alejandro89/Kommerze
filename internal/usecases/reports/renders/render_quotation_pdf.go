@@ -15,11 +15,42 @@ const quotationLine = "210,220,237"
 const quotationPale = "246,249,255"
 
 var kommerzeHorizontalLogo []byte
+var reportHeaderLogo []byte
 
 // SetKommerzeHorizontalLogo recibe el logotipo empaquetado desde public/media.
 // La copia evita conservar una referencia mutable proporcionada por el caller.
 func SetKommerzeHorizontalLogo(data []byte) {
 	kommerzeHorizontalLogo = append(kommerzeHorizontalLogo[:0], data...)
+	reportHeaderLogo = append(reportHeaderLogo[:0], data...)
+}
+
+// SetReportHeaderLogo aplica a los reportes el mismo logotipo configurable
+// utilizado por el receipt. Un valor vacío o inválido restaura el logotipo
+// empaquetado de Kommerze.
+func SetReportHeaderLogo(value string) {
+	logo, ok := decodeReceiptLogo(value)
+	if !ok {
+		reportHeaderLogo = append(reportHeaderLogo[:0], kommerzeHorizontalLogo...)
+		return
+	}
+	reportHeaderLogo = append(reportHeaderLogo[:0], logo...)
+}
+
+func drawReportHeaderLogo(pdf *gofpdf.Fpdf, name string, x, y, maxWidth, maxHeight float64) bool {
+	if len(reportHeaderLogo) == 0 {
+		return false
+	}
+	width, height := proportionalLogoSize(reportHeaderLogo, maxWidth, maxHeight)
+	if width <= 0 || height <= 0 {
+		return false
+	}
+	options := gofpdf.ImageOptions{ImageType: receiptImageType(reportHeaderLogo), ReadDpi: true}
+	pdf.RegisterImageOptionsReader(name, options, bytes.NewReader(reportHeaderLogo))
+	if pdf.Error() != nil {
+		return false
+	}
+	pdf.ImageOptions(name, x+(maxWidth-width)/2, y+(maxHeight-height)/2, width, height, false, options, 0, "")
+	return true
 }
 
 func RenderQuotationPDF(q models.Quotation) ([]byte, error) {
@@ -54,15 +85,14 @@ func RenderQuotationPDF(q models.Quotation) ([]byte, error) {
 func drawQuotationHeader(pdf *gofpdf.Fpdf, q models.Quotation) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	// Marca / logotipo.
-	setRGBDraw(pdf, "174,198,235")
-	pdf.RoundedRect(10, 11, 28, 39, 2, "1234", "D")
-	setRGB(pdf, quotationBlue)
-	pdf.SetFont("Arial", "B", 25)
-	pdf.SetXY(10, 19)
-	pdf.CellFormat(28, 12, "K", "", 1, "C", false, 0, "")
-	pdf.SetFont("Arial", "B", 6.5)
-	pdf.SetXY(12, 36)
-	pdf.MultiCell(24, 4, tr("IDENTIDAD\nDE SU EMPRESA"), "", "C", false)
+	if !drawReportHeaderLogo(pdf, "quotation-header-logo", 10, 11, 28, 39) {
+		setRGBDraw(pdf, "174,198,235")
+		pdf.RoundedRect(10, 11, 28, 39, 2, "1234", "D")
+		setRGB(pdf, quotationBlue)
+		pdf.SetFont("Arial", "B", 25)
+		pdf.SetXY(10, 19)
+		pdf.CellFormat(28, 12, "K", "", 1, "C", false, 0, "")
+	}
 
 	setRGBDraw(pdf, quotationLine)
 	pdf.Line(43, 11, 43, 50)
@@ -421,10 +451,11 @@ func drawKommerzeMark(pdf *gofpdf.Fpdf, x, y, size float64) {
 
 func drawContinuationHeader(pdf *gofpdf.Fpdf, q models.Quotation) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	drawReportHeaderLogo(pdf, fmt.Sprintf("quotation-continuation-logo-%d", pdf.PageNo()), 10, 7, 31, 13)
 	setRGB(pdf, quotationNavy)
 	pdf.SetFont("Arial", "B", 13)
-	pdf.SetXY(10, 10)
-	pdf.CellFormat(110, 8, tr(strings.ToUpper(q.Negocio)), "", 0, "L", false, 0, "")
+	pdf.SetXY(46, 10)
+	pdf.CellFormat(74, 8, tr(strings.ToUpper(q.Negocio)), "", 0, "L", false, 0, "")
 	setRGB(pdf, quotationBlue)
 	pdf.CellFormat(86, 8, tr("COTIZACIÓN "+q.Folio), "", 1, "R", false, 0, "")
 	setRGBDraw(pdf, quotationBlue)

@@ -21,10 +21,8 @@ type Empresa struct {
 	RegimenFiscalID *uint
 	RegimenFiscal   SATRegimenFiscal `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 
-	// Certificados
-	Certificado string `gorm:"type:text"`
-	Llave       string `gorm:"type:text"`
-	Password    string `gorm:"size:50"`
+	ServicioAutoFactura bool
+	UrlAutoFactura      string `gorm:"size:255;default:null;index"`
 
 	Sync bool `gorm:"default:false"`
 }

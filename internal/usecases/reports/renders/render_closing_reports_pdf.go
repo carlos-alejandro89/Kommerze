@@ -17,12 +17,7 @@ func closingReportPDF(header reportmodels.ClosingReportHeader, title string) *go
 	pdf.SetAuthor("Kommerze", true)
 	pdf.SetHeaderFunc(func() {
 		tr := pdf.UnicodeTranslatorFromDescriptor("")
-		if len(kommerzeHorizontalLogo) > 0 {
-			opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-			name := fmt.Sprintf("closing-logo-%d", pdf.PageNo())
-			pdf.RegisterImageOptionsReader(name, opts, bytes.NewReader(kommerzeHorizontalLogo))
-			pdf.ImageOptions(name, 10, 8, 38, 0, false, opts, 0, "")
-		}
+		drawReportHeaderLogo(pdf, fmt.Sprintf("closing-logo-%d", pdf.PageNo()), 10, 8, 38, 17)
 		setRGB(pdf, quotationNavy)
 		pdf.SetFont("Arial", "B", 12)
 		pdf.SetXY(59, 9)
