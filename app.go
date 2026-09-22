@@ -26,19 +26,23 @@ import (
 	"gorm.io/gorm"
 )
 
+const AppVersion = "1.4.2"
+
 // App struct
 type App struct {
 	ctx      context.Context
 	db       *gorm.DB
 	services *services.Services
+	updates  *services.UpdateService
 	setupMu  sync.Mutex
 }
 
 // NewApp creates a new App application struct
-func NewApp(db *gorm.DB, svc *services.Services) *App {
+func NewApp(db *gorm.DB, svc *services.Services, cloudAPIURL string) *App {
 	return &App{
 		db:       db,
 		services: svc,
+		updates:  services.NewUpdateService(cloudAPIURL, AppVersion),
 	}
 }
 
@@ -46,6 +50,48 @@ func NewApp(db *gorm.DB, svc *services.Services) *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.services.SetContext(ctx)
+}
+
+// domReady se ejecuta cuando React ya puede recibir eventos del runtime.
+func (a *App) domReady(ctx context.Context) {
+	a.ctx = ctx
+	go a.checkUpdates()
+}
+
+func (a *App) checkUpdates() {
+	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
+	defer cancel()
+	update, err := a.updates.CheckForUpdates(ctx)
+	if err != nil {
+		log.Printf("[updater] No se pudo consultar actualizaciones: %v", err)
+		return
+	}
+	if update != nil {
+		runtime.EventsEmit(a.ctx, "update-available", update)
+	}
+}
+
+func (a *App) ServiceGetAppVersion() string {
+	return AppVersion
+}
+
+func (a *App) ServiceGetAvailableUpdate() *services.AvailableUpdate {
+	return a.updates.Current()
+}
+
+func (a *App) ServiceInstallAvailableUpdate() error {
+	err := a.updates.DownloadAndLaunch(a.ctx, func(progress services.UpdateProgress) {
+		runtime.EventsEmit(a.ctx, "update-progress", progress)
+	})
+	if err != nil {
+		runtime.EventsEmit(a.ctx, "update-error", err.Error())
+		return err
+	}
+	go func() {
+		time.Sleep(750 * time.Millisecond)
+		runtime.Quit(a.ctx)
+	}()
+	return nil
 }
 
 // ── Helpers internos para soporte dual (Servidor Local / Caja) ────────────────

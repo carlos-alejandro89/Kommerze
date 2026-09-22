@@ -192,12 +192,19 @@ export function MainMenuV2() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [dark, setDark] = useMenuDarkMode();
   const [salesSummary, setSalesSummary] = useState(null);
+  const [appVersion, setAppVersion] = useState('1.4.2');
 
   const userName = user?.Nombre ?? user?.nombre ?? user?.CorreoElectronico ?? 'Usuario';
   const firstName = userName.split(' ').filter(Boolean)[0] || 'Usuario';
   const initials = userName.split(' ').filter(Boolean).slice(0, 2).map(word => word[0]?.toUpperCase()).join('');
   const storeName = store?.Nombre ?? store?.NombreSucursal ?? store?.nombre ?? license?.sucursal?.nombreSucursal ?? 'Matriz Centro';
   const storeID = store?.ID ?? store?.id ?? 0;
+
+  useEffect(() => {
+    window.go?.main?.App?.ServiceGetAppVersion?.()
+      .then(version => version && setAppVersion(version))
+      .catch(() => {});
+  }, []);
 
   const modules = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -492,7 +499,7 @@ export function MainMenuV2() {
           <div className="flex shrink-0 items-center justify-between gap-4 bg-[#f8fbff] px-6 py-1.5 text-[10px] text-[#6e84a7] dark:bg-[#091526] dark:text-slate-500">
             <span>© {new Date().getFullYear()} Kommerze. Todos los derechos reservados.</span>
             <span className="flex shrink-0 items-center gap-2">
-              <span className="font-semibold">v9.3.4</span>
+              <span className="font-semibold">v{appVersion}</span>
               <span className="rounded-full border border-emerald-500/15 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
                 Actualizado
               </span>

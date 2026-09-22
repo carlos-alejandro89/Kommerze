@@ -4,6 +4,7 @@ import { AuthProvider } from '@/providers/AuthProvider';
 import { ActivationProvider } from '@/providers/ActivationProvider';
 import { SettingsProvider } from '@/providers/SettingsProvider';
 import { router } from './router';
+import { UpdateManager } from '@/components/UpdateManager';
 
 /**
  * Root — wraps all global providers and the router.
@@ -15,6 +16,7 @@ export function Root() {
       <AuthProvider>
         <ActivationProvider>
           <RouterProvider router={router} />
+          <UpdateManager />
           <Toaster richColors position="top-right" />
         </ActivationProvider>
       </AuthProvider>

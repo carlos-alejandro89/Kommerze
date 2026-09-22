@@ -62,19 +62,19 @@ func main() {
 			log.Fatal("[main] Error en seeder:", err)
 		}
 		svc := services.NewServices(db, nil, cfg)
-		app = NewApp(db, svc)
+		app = NewApp(db, svc, cfg.EffectiveCloudAPIURL())
 
 	case services.RoleCaja:
 		// ── Caja: sin BD local, solo proxy HTTP hacia el Servidor Local ───────
 		svc := services.NewServices(nil, nil, cfg)
-		app = NewApp(nil, svc)
+		app = NewApp(nil, svc, cfg.EffectiveCloudAPIURL())
 
 	default:
 		// ── Sin rol configurado: iniciar sin servicios ─────────────────────────
 		// El frontend detectará que no hay rol y redirigirá a /device-setup/role
 		log.Println("[main] Dispositivo sin rol configurado — esperando selección en UI")
 		svc := &services.Services{}
-		app = NewApp(nil, svc)
+		app = NewApp(nil, svc, cfg.EffectiveCloudAPIURL())
 	}
 
 	// Correr Wails
@@ -89,6 +89,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnDomReady:       app.domReady,
 		Bind: []interface{}{
 			app,
 		},
