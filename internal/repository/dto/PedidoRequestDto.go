@@ -5,7 +5,6 @@ import (
 )
 
 type PedidoRequestDto struct {
-	CodigoFacturacion  string                    `json:"codigoFacturacion,omitempty"`
 	SucursalOrigenGuid string                    `json:"sucursalOrigenGuid"`
 	PedidoGuid         string                    `json:"pedidoGuid"`
 	EstatusGuid        string                    `json:"estatusGuid"`
@@ -15,7 +14,8 @@ type PedidoRequestDto struct {
 	Fecha              time.Time                 `json:"fecha"`
 	EsCredito          bool                      `json:"esCredito"`
 	Sync               bool                      `json:"sync"`
-	Comentarios        string                    `json:"comentarios,omitempty"`
+	Comentarios        string                    `json:"comentarios"`
+	CodigoFacturacion  string                    `json:"codigoFacturacion"`
 	PedidoDetalle      []PedidoDetalleRequestDto `json:"pedidoDetalle"`
 	Pagos              []PagoRequestDto          `json:"pagos,omitempty"`
 	Traspaso           *TraspasoRequestDto       `json:"traspaso,omitempty"`
