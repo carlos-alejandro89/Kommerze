@@ -998,6 +998,10 @@ export namespace dto {
 	    Nombre: string;
 	    // Go type: decimal
 	    Monto: any;
+	    // Go type: decimal
+	    MontoRecibido: any;
+	    // Go type: decimal
+	    Cambio: any;
 	    Referencia: string;
 	
 	    static createFrom(source: any = {}) {
@@ -1009,6 +1013,8 @@ export namespace dto {
 	        this.ID = source["ID"];
 	        this.Nombre = source["Nombre"];
 	        this.Monto = this.convertValues(source["Monto"], null);
+	        this.MontoRecibido = this.convertValues(source["MontoRecibido"], null);
+	        this.Cambio = this.convertValues(source["Cambio"], null);
 	        this.Referencia = source["Referencia"];
 	    }
 	
