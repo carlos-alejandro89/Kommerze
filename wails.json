@@ -6,6 +6,13 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "Info": {
+    "companyName": "Softi Digital",
+    "productName": "Kommerze POS",
+    "productVersion": "1.5.0",
+    "copyright": "Copyright.........",
+    "comments": "Kommerze Punto de Venta"
+  },
   "author": {
     "name": "Softi Digital",
     "email": "carlos.alejandro@softi.digital"
