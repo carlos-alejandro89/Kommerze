@@ -67,6 +67,8 @@ export function ModalFormaPago({ formaPago, isActive, onClick, handleAddPayment,
             Clave:      formaPago.Clave,   // ← clave SAT para identificar el ícono
             Nombre:     formaPago.Nombre,
             Monto:      numericAmount.toFixed(2),
+            MontoRecibido: numericAmount.toFixed(2),
+            Cambio:     '0.00',
             Referencia: 'Pago realizado en caja',
         }
         handleAddPayment(data);

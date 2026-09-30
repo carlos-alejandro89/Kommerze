@@ -51,6 +51,11 @@ export function ItemPagos({ pago, handleDeletePaymentItem }) {
                 {leyendaPago && (
                     <p className="text-[11px] text-muted-foreground truncate">{leyendaPago}</p>
                 )}
+                {Number(pago.Cambio || 0) > 0 && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 truncate">
+                        Recibido {moneyFormat(pago.MontoRecibido)} · Cambio {moneyFormat(pago.Cambio)}
+                    </p>
+                )}
             </div>
 
             {/* Monto */}

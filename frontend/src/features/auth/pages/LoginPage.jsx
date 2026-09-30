@@ -48,8 +48,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: 'admin@kommerze.com',
-    password: 'admin123',
+    username: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -72,11 +72,8 @@ export function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#001b4c] p-2 sm:p-3 lg:p-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(30,120,255,.62),transparent_34%),radial-gradient(circle_at_100%_100%,rgba(1,74,178,.42),transparent_42%),linear-gradient(135deg,#043d95_0%,#001d51_45%,#001238_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom_right,transparent,black,transparent)]" />
-
-      <section className="relative mx-auto flex min-h-[calc(100vh-16px)] w-full overflow-hidden rounded-[24px] border border-white/20 bg-white shadow-[0_28px_80px_-36px_rgba(0,7,31,.75)] sm:min-h-[calc(100vh-24px)] lg:min-h-[calc(100vh-32px)]">
+    <main className="h-screen w-screen overflow-hidden bg-white">
+      <section className="flex h-full w-full overflow-hidden bg-white">
         <div className="relative z-10 flex w-full shrink-0 items-center justify-center overflow-x-hidden overflow-y-auto bg-white px-7 py-10 sm:px-9 lg:w-[560px] lg:px-10 xl:w-[600px]">
           <div className="pointer-events-none absolute -right-32 -top-32 size-80 rounded-full bg-primary/5 blur-3xl" />
           <motion.div

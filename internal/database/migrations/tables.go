@@ -72,6 +72,17 @@ func MigrateTables(db *gorm.DB) error {
 		return err
 	}
 
+	// Los registros anteriores solo almacenaban el efectivo entregado en monto.
+	// Se conserva ese valor como recibido; los pagos nuevos guardan en monto
+	// únicamente la parte aplicada a la venta.
+	if err := db.Exec(`
+		UPDATE pagos
+		SET monto_recibido = monto
+		WHERE monto > 0 AND monto_recibido = 0 AND cambio = 0
+	`).Error; err != nil {
+		return fmt.Errorf("no se pudo completar el monto recibido de pagos históricos: %w", err)
+	}
+
 	// Solo puede existir una regla activa por combinación. El índice parcial
 	// permite conservar el historial de reglas desactivadas o eliminadas.
 	if err := db.Exec(`

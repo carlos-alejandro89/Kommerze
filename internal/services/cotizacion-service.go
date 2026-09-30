@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -532,27 +533,82 @@ func (s *CotizacionService) ConvertirAVenta(
 			return fmt.Errorf("actualizando pedido: %w", err)
 		}
 
-		// 4. Registrar pagos
-		for _, p := range pagos {
-			pago := models.Pago{
-				PedidoID: pedido.ID,
-				FormaID:  uint(p.ID),
-				Monto:    p.Monto.InexactFloat64(),
-				Fecha:    time.Now(),
-				Saldo:    p.Monto.InexactFloat64(),
-				Sync:     false,
-			}
-			if err := tx.Create(&pago).Error; err != nil {
-				return fmt.Errorf("registrando pago: %w", err)
-			}
-		}
-
-		// 5. Descontar stock en sucursal_producto
+		// 4. Cargar el detalle para validar el total y reutilizarlo al descontar stock.
 		var detalles []models.PedidoDetalle
 		if err := tx.Preload("Nivel").Where("pedido_id = ? AND deleted_at IS NULL", pedido.ID).
 			Find(&detalles).Error; err != nil {
 			return fmt.Errorf("cargando detalles: %w", err)
 		}
+		totalPedido := decimal.Zero
+		for _, detalle := range detalles {
+			bruto := detalle.PrecioVenta.Mul(detalle.Cantidad)
+			descuento := bruto.Mul(detalle.Descuento).Div(decimal.NewFromInt(100))
+			totalPedido = totalPedido.Add(bruto.Sub(descuento))
+		}
+		totalPedido = totalPedido.Round(2)
+		aplicado := decimal.Zero
+
+		// 5. Registrar pagos. Solo efectivo (clave SAT 01) puede generar cambio.
+		type pagoConForma struct {
+			pago  dto.PagosAplicadosDto
+			forma models.SATFormaPago
+		}
+		pagosOrdenados := make([]pagoConForma, 0, len(pagos))
+		for _, p := range pagos {
+			var forma models.SATFormaPago
+			if err := tx.Where("id = ? AND deleted_at IS NULL", p.ID).First(&forma).Error; err != nil {
+				return fmt.Errorf("forma de pago inválida: %w", err)
+			}
+			pagosOrdenados = append(pagosOrdenados, pagoConForma{pago: p, forma: forma})
+		}
+		sort.SliceStable(pagosOrdenados, func(i, j int) bool {
+			return strings.TrimSpace(pagosOrdenados[i].forma.Clave) != "01" && strings.TrimSpace(pagosOrdenados[j].forma.Clave) == "01"
+		})
+		for _, entrada := range pagosOrdenados {
+			p := entrada.pago
+			forma := entrada.forma
+			recibido := p.MontoRecibido
+			if !recibido.GreaterThan(decimal.Zero) {
+				recibido = p.Monto
+			}
+			recibido = recibido.Round(2)
+			if !recibido.GreaterThan(decimal.Zero) {
+				return fmt.Errorf("el monto recibido debe ser mayor que cero")
+			}
+			saldoPendiente := totalPedido.Sub(aplicado).Round(2)
+			if !saldoPendiente.GreaterThan(decimal.Zero) {
+				return fmt.Errorf("la venta ya está cubierta; no se pueden registrar más pagos")
+			}
+			montoAplicado := recibido
+			cambio := decimal.Zero
+			if strings.TrimSpace(forma.Clave) == "01" {
+				if recibido.GreaterThan(saldoPendiente) {
+					montoAplicado = saldoPendiente
+					cambio = recibido.Sub(saldoPendiente).Round(2)
+				}
+			} else if recibido.GreaterThan(saldoPendiente) {
+				return fmt.Errorf("%s no puede superar el saldo pendiente de $%s", forma.Descripcion, saldoPendiente.StringFixed(2))
+			}
+			pago := models.Pago{
+				PedidoID:      pedido.ID,
+				FormaID:       uint(p.ID),
+				Monto:         montoAplicado.InexactFloat64(),
+				MontoRecibido: recibido.InexactFloat64(),
+				Cambio:        cambio.InexactFloat64(),
+				Fecha:         time.Now(),
+				Saldo:         montoAplicado.InexactFloat64(),
+				Sync:          false,
+			}
+			if err := tx.Create(&pago).Error; err != nil {
+				return fmt.Errorf("registrando pago: %w", err)
+			}
+			aplicado = aplicado.Add(montoAplicado)
+		}
+		if !aplicado.Round(2).Equal(totalPedido) {
+			return fmt.Errorf("los pagos aplicados ($%s) no cubren el total de la venta ($%s)", aplicado.StringFixed(2), totalPedido.StringFixed(2))
+		}
+
+		// 6. Descontar stock en sucursal_producto
 		for _, d := range detalles {
 			var sp models.SucursalProducto
 			if err := tx.Where("nivel_id = ?", d.NivelID).First(&sp).Error; err != nil {

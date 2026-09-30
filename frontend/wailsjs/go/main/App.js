@@ -162,6 +162,14 @@ export function ServiceGenerateTransferReport(arg1) {
   return window['go']['main']['App']['ServiceGenerateTransferReport'](arg1);
 }
 
+export function ServiceGetAppVersion() {
+  return window['go']['main']['App']['ServiceGetAppVersion']();
+}
+
+export function ServiceGetAvailableUpdate() {
+  return window['go']['main']['App']['ServiceGetAvailableUpdate']();
+}
+
 export function ServiceGetEmpaques() {
   return window['go']['main']['App']['ServiceGetEmpaques']();
 }
@@ -240,6 +248,10 @@ export function ServiceIniciarAuditoria(arg1, arg2) {
 
 export function ServiceInitializeDatabase(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['ServiceInitializeDatabase'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function ServiceInstallAvailableUpdate() {
+  return window['go']['main']['App']['ServiceInstallAvailableUpdate']();
 }
 
 export function ServiceListarClientes() {

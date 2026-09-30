@@ -153,11 +153,19 @@ export function CartStepThree() {
         return suma + parseFloat(item.Monto)
     }, 0);
 
+    const totalRecibido = pagosAplicados.reduce((suma, item) => {
+        return suma + parseFloat(item.MontoRecibido || item.Monto || 0)
+    }, 0);
+
+    const cambioTotal = pagosAplicados.reduce((suma, item) => {
+        return suma + parseFloat(item.Cambio || 0)
+    }, 0);
+
     React.useEffect(() => {
-        setAmountReceived(totalPagos)
+        setAmountReceived(totalRecibido)
         localStorage.setItem('pagosAplicados', JSON.stringify(pagosAplicados))
 
-    }, [pagosAplicados])
+    }, [pagosAplicados, totalRecibido])
 
     const total = subtotal - descuento;
     const saldoPendiente = Math.max(total - totalPagos, 0);
@@ -298,12 +306,42 @@ export function CartStepThree() {
             }
         }
 
+        const recibido = Number(paymentInfo.MontoRecibido ?? paymentInfo.Monto ?? 0);
+        if (!Number.isFinite(recibido) || recibido <= 0) {
+            toast.error('Ingresa un monto válido mayor que cero');
+            return;
+        }
+
+        const aplicadoEnOtrosMetodos = pagosAplicados
+            .filter(pago => pago.ID != paymentInfo.ID)
+            .reduce((suma, pago) => suma + Number(pago.Monto || 0), 0);
+        const pendienteParaMetodo = Math.max(0, Number((total - aplicadoEnOtrosMetodos).toFixed(2)));
+        if (pendienteParaMetodo <= 0) {
+            toast.info('El pedido ya está cubierto');
+            return;
+        }
+
+        const esEfectivo = String(paymentInfo.Clave || '').trim() === '01';
+        if (!esEfectivo && recibido > pendienteParaMetodo + 0.001) {
+            toast.error(`Este medio de pago no puede superar el saldo pendiente de $${pendienteParaMetodo.toFixed(2)}`);
+            return;
+        }
+
+        const montoAplicado = esEfectivo ? Math.min(recibido, pendienteParaMetodo) : recibido;
+        const cambio = esEfectivo ? Math.max(0, recibido - pendienteParaMetodo) : 0;
+        const pagoNormalizado = {
+            ...paymentInfo,
+            Monto: montoAplicado.toFixed(2),
+            MontoRecibido: recibido.toFixed(2),
+            Cambio: cambio.toFixed(2),
+        };
+
         const pagoExists = pagosAplicados.find(pago => pago.ID == paymentInfo.ID)
         if (pagoExists) {
-            const pagos = pagosAplicados.map(p => p.ID == paymentInfo.ID ? paymentInfo : p)
+            const pagos = pagosAplicados.map(p => p.ID == paymentInfo.ID ? pagoNormalizado : p)
             setPagosAplicados(pagos)
         } else {
-            setPagosAplicados([...pagosAplicados, paymentInfo])
+            setPagosAplicados([...pagosAplicados, pagoNormalizado])
         }
 
     }
@@ -403,17 +441,13 @@ export function CartStepThree() {
                                             {/* Cambio / Por pagar */}
                                             <div className="pt-3 border-t border-border/60">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">
-                                                    {(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
-                                                        ? 'Por pagar'
-                                                        : 'Cambio a entregar'}
+                                                    {cambioTotal > 0 ? 'Cambio a entregar' : 'Por pagar'}
                                                 </p>
-                                                <p className={`text-4xl font-extrabold tracking-tighter ${(!amountReceived || isNaN(parseFloat(amountReceived)) || parseFloat(amountReceived) < total)
-                                                    ? 'text-red-500'
-                                                    : 'text-emerald-600 dark:text-emerald-400'
+                                                <p className={`text-4xl font-extrabold tracking-tighter ${cambioTotal > 0 || saldoPendiente <= 0
+                                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                                    : 'text-red-500'
                                                     }`}>
-                                                    ${amountReceived && !isNaN(parseFloat(amountReceived))
-                                                        ? Math.abs(parseFloat(amountReceived) - total).toFixed(2)
-                                                        : total.toFixed(2)}
+                                                    ${(cambioTotal > 0 ? cambioTotal : saldoPendiente).toFixed(2)}
                                                 </p>
                                             </div>
                                         </div>

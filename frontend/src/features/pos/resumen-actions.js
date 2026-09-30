@@ -166,11 +166,13 @@ export const validarPago = async (total, setAlertConfig) => {
     }, 0)
 
     // Adding 0.01 tolerance for floating point JS bugs
-    if (totalPagado < total - 0.01) {
+    if (Math.abs(totalPagado - total) > 0.01) {
         setAlertConfig({
             open: true,
-            title: 'Monto Insuficiente',
-            description: 'El total pagado no cubre el importe del pedido. Faltan $' + (total - totalPagado).toFixed(2),
+            title: 'Pagos incompletos',
+            description: totalPagado < total
+                ? 'El total pagado no cubre el importe del pedido. Faltan $' + (total - totalPagado).toFixed(2)
+                : 'Los importes aplicados superan el total del pedido.',
             type: 'warning'
         });
 

@@ -88,6 +88,11 @@ export function ModalConvertirVenta({ row, onClose }) {
 
   const handleSubmit = async () => {
     if (falta > 0) { setError(`Falta $${falta.toFixed(2)} para completar el pago.`); return; }
+    const esEfectivo = String(formaSeleccionada?.Clave || '').trim() === '01';
+    if (!esEfectivo && monto > totales.total + 0.001) {
+      setError('Los medios de pago distintos de efectivo no pueden superar el total de la venta.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -95,6 +100,8 @@ export function ModalConvertirVenta({ row, onClose }) {
         ID: formaSeleccionada?.ID || 1,
         Nombre: formaSeleccionada?.Nombre || 'Efectivo',
         Monto: totales.total,
+        MontoRecibido: monto,
+        Cambio: esEfectivo ? cambio : 0,
       }];
       const res = await convertirCotizacionAVenta(row.ID, pagos, null);
       if (res?.success === false) { setError(res.message || 'Error al procesar la venta'); return; }

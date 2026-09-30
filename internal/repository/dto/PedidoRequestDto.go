@@ -26,6 +26,8 @@ type PagoRequestDto struct {
 	FormaPagoGuid string    `json:"formaPagoGuid"`
 	Fecha         time.Time `json:"fecha"`
 	Monto         float64   `json:"monto"`
+	MontoRecibido float64   `json:"montoRecibido"`
+	Cambio        float64   `json:"cambio"`
 	Saldo         float64   `json:"saldo"`
 }
 

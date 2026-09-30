@@ -116,8 +116,7 @@ export function CartOrderPlaced() {
     }, 0);
     const total = subtotal - descuento;
 
-    const totalPagos = pagosAplicados.reduce((suma, item) => suma + parseFloat(item.Monto || 0), 0);
-    const cambio = Math.max(0, totalPagos - total);
+    const cambio = pagosAplicados.reduce((suma, item) => suma + parseFloat(item.Cambio || 0), 0);
 
     const handlePrint = async () => {
         if (!pedidoGuid) { toast.error('No se encontró el identificador de la venta'); return; }

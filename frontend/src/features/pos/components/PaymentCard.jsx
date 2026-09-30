@@ -62,6 +62,8 @@ export function PaymentCard({ fp, isActive, onSelect, onAddPayment, saldoPendien
                 Clave: fp.Clave,
                 Nombre: fp.Nombre,
                 Monto: saldoPendiente.toFixed(2),
+                MontoRecibido: saldoPendiente.toFixed(2),
+                Cambio: '0.00',
                 Referencia: 'Pago con tarjeta',
             });
         };

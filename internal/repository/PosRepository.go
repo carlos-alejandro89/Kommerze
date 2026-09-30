@@ -620,34 +620,77 @@ func (r *PosRepository) ReintegrarExistencias(detalles []models.PedidoDetalle, t
 	return nil
 }
 
-func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, pedido *models.Pedido, tx *gorm.DB) error {
+func (r *PosRepository) RegistrarPagos(pagosAplicados []dto.PagosAplicadosDto, totalPedido decimal.Decimal, pedido *models.Pedido, tx *gorm.DB) error {
+	totalPedido = totalPedido.Round(2)
+	aplicado := decimal.Zero
+	type pagoConForma struct {
+		item  dto.PagosAplicadosDto
+		forma models.SATFormaPago
+	}
+	pagosOrdenados := make([]pagoConForma, 0, len(pagosAplicados))
 	for _, item := range pagosAplicados {
 		formaID := uint(item.ID)
 		if formaID == 0 {
 			return fmt.Errorf("la forma de pago es requerida")
 		}
-
-		var existe int64
-		if err := tx.Model(&models.SATFormaPago{}).
-			Where("id = ? AND deleted_at IS NULL", formaID).
-			Count(&existe).Error; err != nil {
+		var forma models.SATFormaPago
+		if err := tx.Where("id = ? AND deleted_at IS NULL", formaID).First(&forma).Error; err != nil {
 			return fmt.Errorf("no fue posible validar la forma de pago: %w", err)
 		}
-		if existe == 0 {
-			return fmt.Errorf("la forma de pago seleccionada ya no existe en el catálogo sincronizado")
+		pagosOrdenados = append(pagosOrdenados, pagoConForma{item: item, forma: forma})
+	}
+	// El efectivo se aplica al final para que, en multipago, el cambio se calcule
+	// contra el saldo dejado por tarjetas, transferencias y demás medios.
+	sort.SliceStable(pagosOrdenados, func(i, j int) bool {
+		return strings.TrimSpace(pagosOrdenados[i].forma.Clave) != "01" && strings.TrimSpace(pagosOrdenados[j].forma.Clave) == "01"
+	})
+
+	for _, entrada := range pagosOrdenados {
+		item := entrada.item
+		forma := entrada.forma
+		formaID := forma.ID
+
+		recibido := item.MontoRecibido
+		if !recibido.GreaterThan(decimal.Zero) {
+			recibido = item.Monto
+		}
+		recibido = recibido.Round(2)
+		if !recibido.GreaterThan(decimal.Zero) {
+			return fmt.Errorf("el monto recibido debe ser mayor que cero")
+		}
+		saldoPendiente := totalPedido.Sub(aplicado).Round(2)
+		if !saldoPendiente.GreaterThan(decimal.Zero) {
+			return fmt.Errorf("el pedido ya está cubierto; no se pueden registrar más pagos")
+		}
+
+		montoAplicado := recibido
+		cambio := decimal.Zero
+		if strings.TrimSpace(forma.Clave) == "01" {
+			if recibido.GreaterThan(saldoPendiente) {
+				montoAplicado = saldoPendiente
+				cambio = recibido.Sub(saldoPendiente).Round(2)
+			}
+		} else if recibido.GreaterThan(saldoPendiente) {
+			return fmt.Errorf("%s no puede superar el saldo pendiente de $%s", forma.Descripcion, saldoPendiente.StringFixed(2))
 		}
 		pago := models.Pago{
-			PedidoID: pedido.ID,
-			FormaID:  formaID,
-			Monto:    item.Monto.InexactFloat64(),
-			Fecha:    time.Now(),
-			Saldo:    item.Monto.InexactFloat64(),
-			Sync:     false,
+			PedidoID:      pedido.ID,
+			FormaID:       formaID,
+			Monto:         montoAplicado.InexactFloat64(),
+			MontoRecibido: recibido.InexactFloat64(),
+			Cambio:        cambio.InexactFloat64(),
+			Fecha:         time.Now(),
+			Saldo:         montoAplicado.InexactFloat64(),
+			Sync:          false,
 		}
 
 		if err := tx.Create(&pago).Error; err != nil {
 			return err
 		}
+		aplicado = aplicado.Add(montoAplicado)
+	}
+	if !aplicado.Round(2).Equal(totalPedido) {
+		return fmt.Errorf("los pagos aplicados ($%s) no cubren el total del pedido ($%s)", aplicado.StringFixed(2), totalPedido.StringFixed(2))
 	}
 	return nil
 }
@@ -770,6 +813,7 @@ func (r *PosRepository) ConfirmarTransaccion(
 		}
 
 		// Detalles
+		totalPedido := decimal.Zero
 		for _, item := range itemsPedido {
 			guid, _ := uuid.Parse(fmt.Sprintf("%v", item.ID))
 
@@ -788,11 +832,14 @@ func (r *PosRepository) ConfirmarTransaccion(
 			if err := tx.Create(&detalle).Error; err != nil {
 				return err
 			}
+			bruto := item.Price.Mul(item.Quantity)
+			descuento := bruto.Mul(item.Discount).Div(decimal.NewFromInt(100))
+			totalPedido = totalPedido.Add(bruto.Sub(descuento))
 		}
 
 		//Registrar Pagos
 		if tipoGuid == models.TipoPedidoVentaGuid {
-			if err := r.RegistrarPagos(pagosAplicados, &pedido, tx); err != nil {
+			if err := r.RegistrarPagos(pagosAplicados, totalPedido, &pedido, tx); err != nil {
 				return err
 			}
 		}
@@ -1051,7 +1098,8 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 		for _, pago := range pagos {
 			pagosDto = append(pagosDto, dto.PagoRequestDto{
 				PedidoGuid: pedido.Guid.String(), FormaPagoGuid: pago.Forma.Guid.String(),
-				Fecha: pago.Fecha, Monto: pago.Monto, Saldo: pago.Saldo,
+				Fecha: pago.Fecha, Monto: pago.Monto, MontoRecibido: pago.MontoRecibido,
+				Cambio: pago.Cambio, Saldo: pago.Saldo,
 			})
 		}
 	}

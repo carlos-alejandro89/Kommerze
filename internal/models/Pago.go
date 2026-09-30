@@ -11,10 +11,12 @@ type Pago struct {
 	PedidoID uint
 	Pedido   Pedido
 
-	Fecha time.Time `gorm:"type:timestamptz;not null;default:now();index"`
-	Monto float64
-	Saldo float64
-	Sync  bool
+	Fecha         time.Time `gorm:"type:timestamptz;not null;default:now();index"`
+	Monto         float64   // Importe aplicado a la venta.
+	MontoRecibido float64   // Importe entregado por el cliente.
+	Cambio        float64   // Efectivo devuelto al cliente.
+	Saldo         float64
+	Sync          bool
 }
 
 func (Pago) TableName() string {

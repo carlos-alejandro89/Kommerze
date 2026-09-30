@@ -320,8 +320,16 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 		return reportmodels.Receipt{}, err
 	}
 
-	var pagos float64
-	if err := s.db.Raw(`SELECT COALESCE(SUM(pg.monto), 0) FROM pagos pg JOIN pedidos p ON p.id=pg.pedido_id WHERE p.guid=? AND pg.deleted_at IS NULL`, pedidoGuid).Scan(&pagos).Error; err != nil {
+	var pagoResumen struct {
+		Recibido float64
+		Cambio   float64
+	}
+	if err := s.db.Raw(`
+		SELECT COALESCE(SUM(CASE WHEN pg.monto_recibido > 0 THEN pg.monto_recibido ELSE pg.monto END), 0) recibido,
+		       COALESCE(SUM(pg.cambio), 0) cambio
+		FROM pagos pg
+		JOIN pedidos p ON p.id=pg.pedido_id
+		WHERE p.guid=? AND pg.deleted_at IS NULL`, pedidoGuid).Scan(&pagoResumen).Error; err != nil {
 		return reportmodels.Receipt{}, err
 	}
 
@@ -347,7 +355,7 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 		Folio:               fmt.Sprintf("VTA-%06d", header.Folio), Negocio: header.Negocio,
 		Sucursal: cleanDocumentText(header.Sucursal), Logo: header.Logo, Direccion: strings.Join(address, ", "),
 		Telefono: cleanDocumentText(header.Telefono), Correo: cleanDocumentText(header.Correo),
-		Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagos,
+		Cajero: header.Cajero, Fecha: header.Fecha, Pago: pagoResumen.Recibido,
 	}
 	if cfg != nil {
 		if cfg.Receipt.BusinessName != "" {
@@ -377,10 +385,7 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 		r.Descuento += descuento
 	}
 	r.Total = r.Subtotal - r.Descuento
-	r.Cambio = r.Pago - r.Total
-	if r.Cambio < 0 {
-		r.Cambio = 0
-	}
+	r.Cambio = pagoResumen.Cambio
 	return r, nil
 }
 
