@@ -86,6 +86,10 @@ export function ServiceGenerateSaleDocument(arg1:string):Promise<models.Document
 
 export function ServiceGenerateTransferReport(arg1:string):Promise<models.DocumentOutput>;
 
+export function ServiceGetAppVersion():Promise<string>;
+
+export function ServiceGetAvailableUpdate():Promise<services.AvailableUpdate>;
+
 export function ServiceGetEmpaques():Promise<dto.ResponseDto>;
 
 export function ServiceGetKommerzConfig():Promise<services.KommerzConfig>;
@@ -125,6 +129,8 @@ export function ServiceGuardarProveedor(arg1:dto.GuardarProveedorDto):Promise<dt
 export function ServiceIniciarAuditoria(arg1:string,arg2:string):Promise<dto.ResponseDto>;
 
 export function ServiceInitializeDatabase(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<dto.ResponseDto>;
+
+export function ServiceInstallAvailableUpdate():Promise<void>;
 
 export function ServiceListarClientes():Promise<Array<dto.ClienteDto>>;
 

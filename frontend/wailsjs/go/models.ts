@@ -1795,6 +1795,71 @@ export namespace requestdto {
 
 export namespace services {
 	
+	export class UpdatePackage {
+	    url: string;
+	    sha256: string;
+	    size?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdatePackage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.sha256 = source["sha256"];
+	        this.size = source["size"];
+	    }
+	}
+	export class AvailableUpdate {
+	    version: string;
+	    title?: string;
+	    releaseNotes?: string[];
+	    mandatory?: boolean;
+	    // Go type: time
+	    publishedAt?: any;
+	    url?: string;
+	    downloadUrl?: string;
+	    sha256?: string;
+	    size?: number;
+	    packages?: Record<string, UpdatePackage>;
+	
+	    static createFrom(source: any = {}) {
+	        return new AvailableUpdate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.title = source["title"];
+	        this.releaseNotes = source["releaseNotes"];
+	        this.mandatory = source["mandatory"];
+	        this.publishedAt = this.convertValues(source["publishedAt"], null);
+	        this.url = source["url"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.sha256 = source["sha256"];
+	        this.size = source["size"];
+	        this.packages = this.convertValues(source["packages"], UpdatePackage, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CloudCredentials {
 	    email: string;
 	    password: string;
@@ -2067,6 +2132,7 @@ export namespace services {
 	        this.traceability = source["traceability"];
 	    }
 	}
+	
 	
 	
 
