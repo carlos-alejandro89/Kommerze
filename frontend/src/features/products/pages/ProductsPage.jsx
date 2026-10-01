@@ -10,8 +10,10 @@ import { ServiceConsultaProductos, ServiceGetLineas, ServiceGetMarcas } from '..
 import { ProductRequestModal } from '../components/ProductRequestModal';
 import { loadProductRequestItems, saveProductRequestItems } from '../request-storage';
 import { StockFilterSwitch } from '@/components/common/stock-filter-switch';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 export function ProductsPage() {
+  const { getCloudAssetUrl } = useCloudConfig();
   const navigate = useNavigate();
   const location = useLocation();
   const [viewMode, setViewMode] = useState('grid');
@@ -429,7 +431,7 @@ export function ProductsPage() {
                         {/* Image Placeholder */}
                         <div className="w-2/3 h-2/3 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
                           {product.ImgReferencia ? (
-                            <img src={`${import.meta.env.VITE_CLOUD_API_URL}${product.ImgReferencia}`} alt={product.Descripcion} className="w-full h-full object-cover rounded-lg" />
+                            <img src={getCloudAssetUrl(product.ImgReferencia)} alt={product.Descripcion} className="w-full h-full object-cover rounded-lg" />
 
                           ) : (
                             <ImageIcon className="size-10 opacity-30 text-muted-foreground" />

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { QuantityControl } from '@/components/common/quantity-control';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 const money = (value) => Number(value || 0).toLocaleString('es-MX', {
   minimumFractionDigits: 2,
@@ -18,6 +19,7 @@ const money = (value) => Number(value || 0).toLocaleString('es-MX', {
 
 export function ProductRequestModal({ product, open, initialQuantity = 1, onOpenChange, onAdd }) {
   const [quantity, setQuantity] = useState(1);
+  const { getCloudAssetUrl } = useCloudConfig();
 
   const stock = Number(product?.Existencia || 0);
   const step = product?.Fraccionable ? 0.01 : 1;
@@ -37,7 +39,7 @@ export function ProductRequestModal({ product, open, initialQuantity = 1, onOpen
   };
 
   const imageUrl = product.ImgReferencia
-    ? `${import.meta.env.VITE_CLOUD_API_URL || ''}${product.ImgReferencia}`
+    ? getCloudAssetUrl(product.ImgReferencia)
     : '';
 
   return (

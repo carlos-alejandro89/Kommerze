@@ -12,6 +12,7 @@ import { loadProductRequestItems, saveProductRequestItems, clearProductRequestIt
 import { usePosService } from '@/features/pos/usePosService';
 import { TRANSACTION_TYPES } from '@/features/pos/transaction-types';
 import { useActivation } from '@/providers/ActivationProvider';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 const money = (value) => Number(value || 0).toLocaleString('es-MX', {
   minimumFractionDigits: 2,
@@ -29,6 +30,7 @@ export function ProductRequestSummaryPage() {
   const location = useLocation();
   const posService = usePosService();
   const { store } = useActivation();
+  const { getCloudAssetUrl } = useCloudConfig();
   const [requestItems, setRequestItems] = useState(
     () => location.state?.requestItems ?? loadProductRequestItems(),
   );
@@ -192,7 +194,7 @@ export function ProductRequestSummaryPage() {
                     const stock = Number(product.Existencia || 0);
                     const step = product.Fraccionable ? 0.01 : 1;
                     const imageUrl = product.ImgReferencia
-                      ? `${import.meta.env.VITE_CLOUD_API_URL || ''}${product.ImgReferencia}`
+                      ? getCloudAssetUrl(product.ImgReferencia)
                       : '';
 
                     return (

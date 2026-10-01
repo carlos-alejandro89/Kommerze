@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 import { DialogAlert } from '@/components/common/dialog-alert';
 import { InventoryImportPanel } from '@/features/inventory-import/pages/InventoryImportPage';
 import {
@@ -45,6 +46,7 @@ const settingsInsetClass = 'rounded-2xl border border-[#e3ebf7]/90 bg-white/55 p
 const DEFAULT_CLOUD_API_URL = 'https://kommerze-cloud-api.developers-lab.com';
 
 export function SettingsPage() {
+  const { setCloudApiUrl } = useCloudConfig();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { deviceRole, localServerURL: ctxServerURL } = useActivation();
@@ -156,10 +158,12 @@ export function SettingsPage() {
     }
     setIsLoading(true);
     try {
+      const normalizedCloudAPIURL = cloudAPIURL.trim().replace(/\/+$/, '');
       const current = await ServiceGetKommerzConfig();
-      await ServiceSaveKommerzConfig({ ...(current || {}), cloudApiUrl: cloudAPIURL.trim().replace(/\/+$/, '') });
+      await ServiceSaveKommerzConfig({ ...(current || {}), cloudApiUrl: normalizedCloudAPIURL });
       await ServiceSaveCloudCredentials(email, password);
-      toast.success('Configuración de la Nube guardada. Reinicia Kommerze para aplicar la nueva URL.');
+      setCloudApiUrl(normalizedCloudAPIURL);
+      toast.success('Configuración guardada. Las imágenes usarán la nueva URL; reinicia Kommerze para aplicarla al resto de servicios.');
     } catch (err) {
       toast.error('Error al guardar credenciales: ' + String(err));
     } finally { setIsLoading(false); }

@@ -5,6 +5,7 @@ import { ActivationProvider } from '@/providers/ActivationProvider';
 import { SettingsProvider } from '@/providers/SettingsProvider';
 import { router } from './router';
 import { UpdateManager } from '@/components/UpdateManager';
+import { CloudConfigProvider } from '@/providers/CloudConfigProvider';
 
 /**
  * Root — wraps all global providers and the router.
@@ -12,14 +13,16 @@ import { UpdateManager } from '@/components/UpdateManager';
  */
 export function Root() {
   return (
-    <SettingsProvider>
-      <AuthProvider>
-        <ActivationProvider>
-          <RouterProvider router={router} />
-          <UpdateManager />
-          <Toaster richColors position="top-right" />
-        </ActivationProvider>
-      </AuthProvider>
-    </SettingsProvider>
+    <CloudConfigProvider>
+      <SettingsProvider>
+        <AuthProvider>
+          <ActivationProvider>
+            <RouterProvider router={router} />
+            <UpdateManager />
+            <Toaster richColors position="top-right" />
+          </ActivationProvider>
+        </AuthProvider>
+      </SettingsProvider>
+    </CloudConfigProvider>
   );
 }

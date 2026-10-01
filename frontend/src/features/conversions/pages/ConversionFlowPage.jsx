@@ -6,10 +6,10 @@ import { QuantityControl } from '@/components/common/quantity-control';
 import { StockFilterSwitch } from '@/components/common/stock-filter-switch';
 import { useTurno } from '@/providers/TurnoProvider';
 import { usePosService } from '@/features/pos/usePosService';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 const numeric = value => Number(value || 0);
 const formatNumber = value => numeric(value).toLocaleString('es-MX', { maximumFractionDigits: 3 });
-const imageUrl = path => path ? `${import.meta.env.VITE_CLOUD_API_URL || ''}${path}` : '';
 
 export function ConversionFlowPage() {
   const navigate = useNavigate();
@@ -72,6 +72,6 @@ export function ConversionFlowPage() {
   </div>;
 }
 
-function ProductImage({ src }) { return <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted">{src ? <img src={imageUrl(src)} alt="" className="size-full object-cover" /> : <ImageIcon className="size-5 text-muted-foreground/50" />}</div>; }
-function RouteProduct({ image, name, code, packageName }) { return <div className="flex min-w-0 flex-col items-center text-center"><div className="mb-3 flex size-24 items-center justify-center overflow-hidden rounded-2xl border bg-muted">{image ? <img src={imageUrl(image)} alt="" className="size-full object-cover" /> : <ImageIcon className="size-7 text-muted-foreground/50" />}</div><p className="w-full truncate text-sm font-semibold">{name}</p><p className="mt-1 text-[11px] text-muted-foreground">{code} · {packageName}</p></div>; }
+function ProductImage({ src }) { const { getCloudAssetUrl } = useCloudConfig(); return <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted">{src ? <img src={getCloudAssetUrl(src)} alt="" className="size-full object-cover" /> : <ImageIcon className="size-5 text-muted-foreground/50" />}</div>; }
+function RouteProduct({ image, name, code, packageName }) { const { getCloudAssetUrl } = useCloudConfig(); return <div className="flex min-w-0 flex-col items-center text-center"><div className="mb-3 flex size-24 items-center justify-center overflow-hidden rounded-2xl border bg-muted">{image ? <img src={getCloudAssetUrl(image)} alt={name || ''} className="size-full object-cover" /> : <ImageIcon className="size-7 text-muted-foreground/50" />}</div><p className="w-full truncate text-sm font-semibold">{name}</p><p className="mt-1 text-[11px] text-muted-foreground">{code} · {packageName}</p></div>; }
 function Empty({ title, detail }) { return <div className="flex flex-1 flex-col items-center justify-center text-center"><Package className="size-8 text-muted-foreground/40" /><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>; }

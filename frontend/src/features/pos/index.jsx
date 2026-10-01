@@ -24,12 +24,13 @@ import { useCartState } from './useCartState';
 import { usePosService } from './usePosService';
 import { QuantityControl } from '@/components/common/quantity-control';
 import { TRANSACTION_TYPES } from './transaction-types';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 // ── Constante de imagen placeholder ─────────────────────────────────────────
-const PLACEHOLDER_IMG = 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg';
+const PLACEHOLDER_IMG = '/media/misc/placeholder.svg';
 
 // ── Mapeo de ProductoDto a item del carrito ──────────────────────────────────
-function mapProductoToCartItem(producto) {
+function mapProductoToCartItem(producto, getCloudAssetUrl) {
     return {
         id: producto.Guid,
         sku: producto.Codigo,
@@ -40,7 +41,7 @@ function mapProductoToCartItem(producto) {
         discount: producto.Descuento,
         fraccionable: producto.Fraccionable,
         productoBaseGuid: producto.ProductoBaseGuid,
-        image: producto.ImgReferencia ? `${import.meta.env.VITE_CLOUD_API_URL}${producto.ImgReferencia}` : PLACEHOLDER_IMG,
+        image: producto.ImgReferencia ? getCloudAssetUrl(producto.ImgReferencia) : PLACEHOLDER_IMG,
         caracteristicas: producto.Caracteristicas,
         instruccionesUso: producto.InstruccionesUso,
         informacionProducto: producto.InformacionProducto,
@@ -49,6 +50,7 @@ function mapProductoToCartItem(producto) {
 
 export default function POSPage() {
     const location = useLocation();
+    const { getCloudAssetUrl } = useCloudConfig();
     const { cart, addItem, changeQuantity, updateQuantity, removeItem, clearCart, subtotal, descuento, total } = useCartState();
     const posService = usePosService();
 
@@ -88,7 +90,7 @@ export default function POSPage() {
 
     // ── Agregar producto al carrito ───────────────────────────────────────────
     const addProductToCart = React.useCallback((producto) => {
-        const item = mapProductoToCartItem(producto);
+        const item = mapProductoToCartItem(producto, getCloudAssetUrl);
         const action = addItem(item);
 
         // Flash verde si el producto ya estaba en el carrito
@@ -105,7 +107,7 @@ export default function POSPage() {
         setActiveSuggestion(-1);
         setShowSuggestions(false);
         setTimeout(() => searchInputRef.current?.focus(), 50);
-    }, [addItem, showToast]);
+    }, [addItem, getCloudAssetUrl, showToast]);
 
     // ── Búsqueda con debounce 300ms → sugerencias ─────────────────────────────
     React.useEffect(() => {

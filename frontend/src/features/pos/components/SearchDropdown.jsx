@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { Loader2, PackageSearch, Package } from 'lucide-react';
 import { moneyFormat } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
-const PLACEHOLDER_IMG = 'https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg';
+const PLACEHOLDER_IMG = '/media/misc/placeholder.svg';
 
 /**
  * Devuelve clases de color de semáforo según la existencia disponible.
@@ -37,6 +38,7 @@ function stockLabel(existencia) {
  */
 export function SearchDropdown({ suggestions, isLoading, query, activeIndex = -1, onActiveIndexChange, onSelect, onClose }) {
     const listRef = useRef(null);
+    const { getCloudAssetUrl } = useCloudConfig();
 
     useEffect(() => {
         if (activeIndex < 0) return;
@@ -92,7 +94,7 @@ export function SearchDropdown({ suggestions, isLoading, query, activeIndex = -1
                                     {/* ── Imagen ── */}
                                     <div className="size-10 rounded-lg overflow-hidden shrink-0 bg-slate-100 dark:bg-zinc-800 border border-border/40">
                                         <img
-                                            src={product.ImgReferencia ? `${import.meta.env.VITE_CLOUD_API_URL}${product.ImgReferencia}` : PLACEHOLDER_IMG}
+                                            src={product.ImgReferencia ? getCloudAssetUrl(product.ImgReferencia) : PLACEHOLDER_IMG}
                                             alt={product.Descripcion}
                                             className="w-full h-full object-cover"
                                             onError={(e) => { e.currentTarget.style.opacity = 0; }}

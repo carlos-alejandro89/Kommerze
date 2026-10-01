@@ -1265,7 +1265,12 @@ func (a *App) ServiceLoadCloudCredentials() (*services.CloudCredentials, error) 
 
 // ServiceGetKommerzConfig devuelve la configuración del dispositivo al frontend.
 func (a *App) ServiceGetKommerzConfig() (*services.KommerzConfig, error) {
-	return services.LoadKommerzConfig()
+	cfg, err := services.LoadKommerzConfig()
+	if err != nil {
+		return nil, err
+	}
+	cfg.CloudAPIURL = cfg.EffectiveCloudAPIURL()
+	return cfg, nil
 }
 
 // ServiceSaveKommerzConfig persiste la configuración del dispositivo.

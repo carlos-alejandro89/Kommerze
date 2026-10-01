@@ -46,9 +46,9 @@ export function ProductDetailsSheet({
                   -{itemSelected.discount}% descuento
                 </Badge>
                 <img
-                  src={toAbsoluteUrl('https://bitcontrol.tiendasayer.com/public/img/productos/sayer-generic-product.jpg')}
+                  src={itemSelected.image || toAbsoluteUrl('/media/misc/placeholder.svg')}
                   className="w-full h-full object-contain p-4"
-                  alt="image"
+                  alt={itemSelected.name || 'Producto'}
                 />
 
                 <Card className="absolute items-center justify-center bg-light w-[75px] h-[45px] overflow-hidden rounded-sm bottom-4 right-4">

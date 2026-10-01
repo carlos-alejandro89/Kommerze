@@ -5,11 +5,13 @@ import { ArrowRight, Cloud, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { ServiceConfigureCloud, ServiceGetKommerzConfig } from '../../../../wailsjs/go/main/App';
 import { toast } from 'sonner';
 import logo from '@/assets/Softi.png';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 
 const DEFAULT_API_URL = 'https://kommerze-cloud-api.developers-lab.com';
 
 export function CloudSetupPage() {
   const navigate = useNavigate();
+  const { setCloudApiUrl } = useCloudConfig();
   const [form, setForm] = useState({ cloudEmail: '', cloudPassword: '', cloudApiUrl: DEFAULT_API_URL });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,7 @@ export function CloudSetupPage() {
     try {
       const result = await ServiceConfigureCloud(form.cloudEmail, form.cloudPassword, form.cloudApiUrl);
       if (!result?.success) throw new Error(result?.message || result?.errors?.join(', ') || 'Conexión rechazada');
+      setCloudApiUrl(form.cloudApiUrl);
       toast.success('Conexión Cloud establecida');
       navigate('/device-setup/sync', { replace: true });
     } catch (error) {
