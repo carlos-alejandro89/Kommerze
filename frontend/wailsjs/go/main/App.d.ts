@@ -222,6 +222,8 @@ export function SyncNivelesEmpaque():Promise<string>;
 
 export function SyncPerfiles():Promise<string>;
 
+export function SyncPermisos():Promise<string>;
+
 export function SyncProductos():Promise<string>;
 
 export function SyncReglasConversionProducto():Promise<string>;

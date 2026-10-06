@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { RowActionButton, RowActionsMenu } from '@/components/common/row-actions-menu';
+import { useAuth } from '@/providers/AuthProvider';
 
 /* ── Constantes ── */
 const PAGE_SIZE = 15;
@@ -165,6 +166,7 @@ function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
 /* ════════════════════════════════════════════════════════════ */
 export function HistoryPage() {
   const navigate = useNavigate();
+  const { can } = useAuth();
   const {
     consultarTransacciones, cancelarVenta, generarDocumentoVenta, imprimirRecibo, enviarRecibo,
     obtenerMotivosCancelacionCFDI, cancelarCFDIVenta, obtenerAcuseCancelacionPDF,
@@ -794,20 +796,20 @@ export function HistoryPage() {
                               disabled={procesandoAccion}
                               onToggle={() => setActionMenuOpen(current => current === actionKey ? null : actionKey)}
                             >
-                                  <RowActionButton label="Ver detalle" icon={Eye} onClick={() => { setActionMenuOpen(null); setModalVer(t); }} />
-                                  <RowActionButton label="Ver documento" icon={FileDown} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerDocumento(t); }} tone="text-blue-600 hover:bg-blue-500/10 dark:text-blue-400" />
-                                  <RowActionButton label="Imprimir" icon={Printer} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleImprimir(t); }} tone="text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" />
-                                  <RowActionButton label="Enviar por correo" icon={Mail} onClick={() => { setActionMenuOpen(null); abrirEnvio(t); }} tone="text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400" />
-                                  {!esCotizacion && t.Facturada && (
+                                  {can('historial_ventas.ver_detalle') && <RowActionButton label="Ver detalle" icon={Eye} onClick={() => { setActionMenuOpen(null); setModalVer(t); }} />}
+                                  {can('historial_ventas.ver_documento') && <RowActionButton label="Ver documento" icon={FileDown} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerDocumento(t); }} tone="text-blue-600 hover:bg-blue-500/10 dark:text-blue-400" />}
+                                  {can('historial_ventas.imprimir') && <RowActionButton label="Imprimir" icon={Printer} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleImprimir(t); }} tone="text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" />}
+                                  {can('historial_ventas.enviar_comprobante') && <RowActionButton label="Enviar por correo" icon={Mail} onClick={() => { setActionMenuOpen(null); abrirEnvio(t); }} tone="text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400" />}
+                                  {!esCotizacion && t.Facturada && can('historial_ventas.ver_factura') && (
                                     <RowActionButton label="Ver factura" icon={FileCheck2} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerFactura(t); }} tone="text-teal-600 hover:bg-teal-500/10 dark:text-teal-400" />
                                   )}
-								  {!esCotizacion && esCancelada && (t.AcuseDisponible || t.acuseDisponible) && (
+								  {!esCotizacion && esCancelada && can('historial_ventas.ver_acuse') && (t.AcuseDisponible || t.acuseDisponible) && (
 									<RowActionButton label="Ver acuse" icon={ShieldCheck} disabled={procesandoAccion} onClick={() => { setActionMenuOpen(null); handleVerAcuse(t); }} tone="text-amber-600 hover:bg-amber-500/10 dark:text-amber-400" />
 								  )}
-								  {!esCotizacion && !t.Facturada && !esCancelada && (
+								  {!esCotizacion && !t.Facturada && !esCancelada && can('historial_ventas.facturar') && (
                                     <RowActionButton label="Facturar venta" icon={ReceiptText} onClick={() => navigate('/pos/facturacion', { state: { pedidoGuid: requirePedidoGuid(t) } })} tone="text-sky-600 hover:bg-sky-500/10 dark:text-sky-400" />
                                   )}
-								  {!esCotizacion && !esCancelada && (
+								  {!esCotizacion && !esCancelada && can('historial_ventas.cancelar') && (
                                     <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => abrirCancelacion(t)} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                                   )}
                                 {esCotizacion && (

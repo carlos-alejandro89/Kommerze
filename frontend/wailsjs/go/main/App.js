@@ -434,6 +434,10 @@ export function SyncPerfiles() {
   return window['go']['main']['App']['SyncPerfiles']();
 }
 
+export function SyncPermisos() {
+  return window['go']['main']['App']['SyncPermisos']();
+}
+
 export function SyncProductos() {
   return window['go']['main']['App']['SyncProductos']();
 }

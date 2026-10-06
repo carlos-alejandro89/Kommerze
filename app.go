@@ -441,6 +441,17 @@ func (a *App) SyncPerfiles() (string, error) {
 	return "Sincronizado", nil
 }
 
+func (a *App) SyncPermisos() (string, error) {
+	if a.services.Sync == nil {
+		return "", fmt.Errorf("sincronización no disponible en modo Caja")
+	}
+	_, err := a.services.Sync.SyncPermisos()
+	if err != nil {
+		return "Error al sincronizar", err
+	}
+	return "Sincronizado", nil
+}
+
 func (a *App) SyncRolesFiscales() (string, error) {
 	if a.services.Sync == nil {
 		return "", fmt.Errorf("sincronización no disponible en modo Caja")

@@ -55,20 +55,20 @@ function useMenuDarkMode() {
 }
 
 const MODULES = [
-  { id: 'ventas', title: 'Ventas', subtitle: 'Captura y consulta de ventas', icon: ShoppingBag, color: '#0876f9', to: '/pos' },
-  { id: 'productos', title: 'Productos', subtitle: 'Catálogo y control de productos', icon: Package, color: '#12b85a', to: '/products', serverOnly: true },
-  { id: 'clientes', title: 'Clientes', subtitle: 'Catálogo y gestión de clientes', icon: Users, color: '#7645df', to: '/clients' },
-  { id: 'transferencias', title: 'Transferencias', subtitle: 'Seguimiento a envío y recepción de productos', icon: ArrowLeftRight, color: '#12aeb4', to: '/transfers' },
+  { id: 'ventas', title: 'Ventas', subtitle: 'Captura y consulta de ventas', icon: ShoppingBag, color: '#0876f9', to: '/pos', permission: 'ventas.acceder' },
+  { id: 'productos', title: 'Productos', subtitle: 'Catálogo y control de productos', icon: Package, color: '#12b85a', to: '/products', serverOnly: true, permission: 'productos.acceder' },
+  { id: 'clientes', title: 'Clientes', subtitle: 'Catálogo y gestión de clientes', icon: Users, color: '#7645df', to: '/clients', permission: 'clientes.acceder' },
+  { id: 'transferencias', title: 'Transferencias', subtitle: 'Seguimiento a envío y recepción de productos', icon: ArrowLeftRight, color: '#12aeb4', to: '/transfers', permission: 'transferencias.acceder' },
 
-  { id: 'compras', title: 'Compras', subtitle: 'Historial y nuevas compras', icon: ShoppingCart, color: '#168bea', to: '/purchases/history' },
-  { id: 'proveedores', title: 'Proveedores', subtitle: 'Alta y datos fiscales de proveedores', icon: Handshake, color: '#ff8a28', to: '/suppliers' },
-  { id: 'auditorias', title: 'Auditorías', subtitle: 'Conteos y auditorías de inventario', icon: PackageCheck, color: '#df2864', to: '/auditoria', serverOnly: true },
+  { id: 'compras', title: 'Compras', subtitle: 'Historial y nuevas compras', icon: ShoppingCart, color: '#168bea', to: '/purchases/history', permission: 'compras.acceder' },
+  { id: 'proveedores', title: 'Proveedores', subtitle: 'Alta y datos fiscales de proveedores', icon: Handshake, color: '#ff8a28', to: '/suppliers', permission: 'proveedores.acceder' },
+  { id: 'auditorias', title: 'Auditorías', subtitle: 'Conteos y auditorías de inventario', icon: PackageCheck, color: '#df2864', to: '/auditoria', serverOnly: true, permission: 'auditorias.acceder' },
 
-  { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard' },
-  { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura' },
-  { id: 'sucursales', title: 'Operación de sucursal', subtitle: 'Inicio, seguimiento y cierre de operaciones.', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true },
-  { id: 'conversiones', title: 'Conversiones', subtitle: 'Transformación entre presentaciones', icon: Repeat2, color: '#30b9ce', to: '/conversions' },
-  { id: 'configuracion', title: 'Configuración', subtitle: 'Parámetros del sistema', icon: Settings, color: '#607996', to: '/settings' },
+  { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard', permission: 'reportes.acceder' },
+  { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura', permission: 'cajas.acceder' },
+  { id: 'sucursales', title: 'Operación de sucursal', subtitle: 'Inicio, seguimiento y cierre de operaciones.', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true, permission: 'operacion_sucursal.acceder' },
+  { id: 'conversiones', title: 'Conversiones', subtitle: 'Transformación entre presentaciones', icon: Repeat2, color: '#30b9ce', to: '/conversions', permission: 'conversiones.acceder' },
+  { id: 'configuracion', title: 'Configuración', subtitle: 'Parámetros del sistema', icon: Settings, color: '#607996', to: '/settings', permission: 'configuracion.acceder' },
 ];
 
 const ACTIVITY_META = {
@@ -185,7 +185,7 @@ export function MainMenuV2() {
   const navigate = useNavigate();
   const searchRef = useRef(null);
   const userMenuRef = useRef(null);
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const { isCaja, store, license } = useActivation();
   const [search, setSearch] = useState('');
   const [now, setNow] = useState(new Date());
@@ -210,10 +210,11 @@ export function MainMenuV2() {
     const query = search.trim().toLowerCase();
     return MODULES.filter(module => {
       if (module.serverOnly && isCaja) return false;
+      if (module.permission && !can(module.permission)) return false;
       if (!query) return true;
       return `${module.title} ${module.subtitle}`.toLowerCase().includes(query);
     });
-  }, [isCaja, search]);
+  }, [can, isCaja, search]);
 
   useEffect(() => {
     const onShortcut = event => {

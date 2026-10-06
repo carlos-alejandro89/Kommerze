@@ -4,7 +4,7 @@ import * as React from 'react';
 import {
   Database, RefreshCw, Users, Package, History,
   Search, LayoutGrid, AlertCircle, CheckCircle2, Clock,
-  Info, ArrowRight, ListOrdered,
+  Info, ArrowRight, ListOrdered, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActivation } from '@/providers/ActivationProvider';
@@ -15,7 +15,7 @@ import {
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago,
   SyncSatUsosCfdi, SyncSatRegimenFiscal, SyncNivelesEmpaque,
   SyncEmpresas, SyncSucursales, SyncSucursalProductos,
-  SyncPerfiles, SyncUsuarios, SyncTiposPedido,
+  SyncPerfiles, SyncPermisos, SyncUsuarios, SyncTiposPedido,
   SyncTiposAutorizacion, SyncEstatus, SyncRolesFiscales, SyncClientes,
   ServiceGetSucursalGuid,
 } from "../../../../wailsjs/go/main/App";
@@ -44,6 +44,7 @@ const STAGES = [
       { id: 21, name: 'SAT Unidades de Medida',  endpoint: '/catalogos/sat/unidades-medida/get',   icon: LayoutGrid, sync: SyncSatUnidadesMedida },
       { id: 3,  name: 'Empaques',                 endpoint: '/catalogos/empaques/get',              icon: Database,   sync: SyncEmpaques },
       { id: 14, name: 'Perfiles',                 endpoint: '/catalogos/perfiles/get',              icon: Users,      sync: SyncPerfiles },
+      { id: 24, name: 'Permisos por rol',         endpoint: '/permisos/roles/configuracion',         icon: ShieldCheck, sync: SyncPermisos },
       { id: 19, name: 'Roles fiscales',           endpoint: '/catalogos/roles-fiscales/get',        icon: Users,      sync: SyncRolesFiscales },
       { id: 15, name: 'Tipos de Pedido',          endpoint: '/catalogos/tipos-pedido/get',          icon: LayoutGrid, sync: SyncTiposPedido },
       { id: 16, name: 'Tipos de Autorización',    endpoint: '/catalogos/tipos-autorizacion/get',    icon: LayoutGrid, sync: SyncTiposAutorizacion },

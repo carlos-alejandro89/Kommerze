@@ -7,7 +7,7 @@ import {
   SyncSatMotivosCancelacion,
   SyncProductos, SyncSatFormasPago, SyncSatMetodosPago, SyncSatUsosCfdi,
   SyncSatRegimenFiscal, SyncNivelesEmpaque, SyncEmpresas, SyncSucursales,
-  SyncPerfiles, SyncUsuarios, SyncTiposPedido, SyncTiposAutorizacion,
+  SyncPerfiles, SyncPermisos, SyncUsuarios, SyncTiposPedido, SyncTiposAutorizacion,
   SyncEstatus, SyncRolesFiscales, SyncClientes,
 } from '../../../../wailsjs/go/main/App';
 
@@ -17,7 +17,7 @@ const CATALOGS = [
   ['Motivos de cancelación SAT', SyncSatMotivosCancelacion, true],
   ['Claves SAT de productos', SyncSatProductos], ['Líneas', SyncLineas], ['Marcas', SyncMarcas],
   ['Unidades de medida SAT', SyncSatUnidadesMedida], ['Empaques', SyncEmpaques],
-  ['Perfiles', SyncPerfiles], ['Roles fiscales', SyncRolesFiscales], ['Tipos de pedido', SyncTiposPedido],
+  ['Perfiles', SyncPerfiles], ['Permisos por rol', SyncPermisos], ['Roles fiscales', SyncRolesFiscales], ['Tipos de pedido', SyncTiposPedido],
   ['Tipos de autorización', SyncTiposAutorizacion], ['Estatus', SyncEstatus],
   ['Empresas', SyncEmpresas], ['Usuarios', SyncUsuarios], ['Clientes y datos fiscales', SyncClientes],
   ['Sucursales', SyncSucursales], ['Productos', SyncProductos], ['Niveles de empaque', SyncNivelesEmpaque],

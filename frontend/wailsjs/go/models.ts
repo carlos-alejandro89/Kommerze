@@ -1548,7 +1548,7 @@ export namespace models {
 	        this.dataBase64 = source["dataBase64"];
 	    }
 	}
-	export class Perfil {
+	export class PermisoSistema {
 	    ID: number;
 	    Guid: number[];
 	    // Go type: time
@@ -1557,10 +1557,15 @@ export namespace models {
 	    UpdatedAt: any;
 	    // Go type: gorm
 	    DeletedAt: any;
-	    NombrePerfil: string;
+	    moduloId: number;
+	    clave: string;
+	    nombre: string;
+	    descripcion: string;
+	    orden: number;
+	    activo: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new Perfil(source);
+	        return new PermisoSistema(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1570,7 +1575,12 @@ export namespace models {
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
 	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
-	        this.NombrePerfil = source["NombrePerfil"];
+	        this.moduloId = source["moduloId"];
+	        this.clave = source["clave"];
+	        this.nombre = source["nombre"];
+	        this.descripcion = source["descripcion"];
+	        this.orden = source["orden"];
+	        this.activo = source["activo"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1591,6 +1601,159 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class ModuloSistema {
+	    ID: number;
+	    Guid: number[];
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    clave: string;
+	    nombre: string;
+	    descripcion: string;
+	    orden: number;
+	    activo: boolean;
+	    permisos?: PermisoSistema[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ModuloSistema(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.clave = source["clave"];
+	        this.nombre = source["nombre"];
+	        this.descripcion = source["descripcion"];
+	        this.orden = source["orden"];
+	        this.activo = source["activo"];
+	        this.permisos = this.convertValues(source["permisos"], PermisoSistema);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PerfilPermiso {
+	    ID: number;
+	    Guid: number[];
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    perfilId: number;
+	    permisoId: number;
+	    permiso: PermisoSistema;
+	    permitido: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PerfilPermiso(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.perfilId = source["perfilId"];
+	        this.permisoId = source["permisoId"];
+	        this.permiso = this.convertValues(source["permiso"], PermisoSistema);
+	        this.permitido = source["permitido"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Perfil {
+	    ID: number;
+	    Guid: number[];
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    nombre: string;
+	    descripcion: string;
+	    activo: boolean;
+	    permisos?: PerfilPermiso[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Perfil(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Guid = source["Guid"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.nombre = source["nombre"];
+	        this.descripcion = source["descripcion"];
+	        this.activo = source["activo"];
+	        this.permisos = this.convertValues(source["permisos"], PerfilPermiso);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	export class TipoPedido {
 	    ID: number;
 	    Guid: number[];
@@ -1649,11 +1812,11 @@ export namespace models {
 	    DeletedAt: any;
 	    Nombre: string;
 	    CorreoElectronico: string;
-	    Password: string;
 	    CorreoConfirmado: boolean;
 	    Telefono: string;
 	    PerfilID: number;
 	    Perfil: Perfil;
+	    permisos: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Usuario(source);
@@ -1668,11 +1831,11 @@ export namespace models {
 	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
 	        this.Nombre = source["Nombre"];
 	        this.CorreoElectronico = source["CorreoElectronico"];
-	        this.Password = source["Password"];
 	        this.CorreoConfirmado = source["CorreoConfirmado"];
 	        this.Telefono = source["Telefono"];
 	        this.PerfilID = source["PerfilID"];
 	        this.Perfil = this.convertValues(source["Perfil"], Perfil);
+	        this.permisos = source["permisos"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

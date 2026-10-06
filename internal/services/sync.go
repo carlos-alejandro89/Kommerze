@@ -475,6 +475,34 @@ func (s *SyncService) SyncPerfiles() ([]any, error) {
 	return result.Data, nil
 }
 
+func (s *SyncService) SyncPermisos() ([]dto.PermisosSyncDto, error) {
+	resp, err := s.client.Get(fmt.Sprintf("%s/permisos/roles/configuracion", s.apiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error consultando permisos: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("el catálogo de permisos respondió %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Success bool                  `json:"success"`
+		Mensaje string                `json:"mensaje"`
+		Data    []dto.PermisosSyncDto `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("error decodificando permisos: %w", err)
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("no se pudieron obtener los permisos: %s", result.Mensaje)
+	}
+	if err := s.repo.SavePermisos(result.Data); err != nil {
+		return nil, fmt.Errorf("error sincronizando permisos: %w", err)
+	}
+	return result.Data, nil
+}
+
 func (s *SyncService) SyncRolesFiscales() ([]any, error) {
 	resp, err := s.client.Get(fmt.Sprintf("%s/catalogos/roles-fiscales/get", s.apiBaseURL))
 	if err != nil {

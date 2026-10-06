@@ -28,6 +28,12 @@ func (s *AuthService) LoginService(username, password string) (*models.Usuario, 
 		return nil, errors.New("usuario o contraseña incorrectos")
 	}
 
+	permissions, err := s.userRepo.FindPermissionKeysByProfile(user.PerfilID)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudieron cargar los permisos del perfil: %w", err)
+	}
+	user.Permisos = permissions
+
 	return user, nil
 }
 

@@ -756,11 +756,23 @@ func (c *CatalogosRepository) SavePerfiles(data []any) error {
 		}
 
 		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
+		activo := true
+		if activoRemoto, existe := fMap["activo"]; existe {
+			if valor, ok := activoRemoto.(bool); ok {
+				activo = valor
+			}
+		}
+		descripcion := ""
+		if descripcionRemota, existe := fMap["descripcion"]; existe && descripcionRemota != nil {
+			descripcion = strings.TrimSpace(fmt.Sprintf("%v", descripcionRemota))
+		}
 		perfil := models.Perfil{
 			BaseModel: models.BaseModel{
 				Guid: guid,
 			},
 			NombrePerfil: fmt.Sprintf("%v", fMap["nombrePerfil"]),
+			Descripcion:  descripcion,
+			Activo:       activo,
 		}
 
 		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&perfil).Error; err != nil {
@@ -768,6 +780,95 @@ func (c *CatalogosRepository) SavePerfiles(data []any) error {
 		}
 	}
 	return nil
+}
+
+func (c *CatalogosRepository) SavePermisos(data []dto.PermisosSyncDto) error {
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		for _, rolRemoto := range data {
+			rolGuid, err := uuid.Parse(strings.TrimSpace(rolRemoto.RolGuid))
+			if err != nil {
+				return fmt.Errorf("GUID de perfil inválido: %w", err)
+			}
+
+			var perfil models.Perfil
+			if err := tx.Where("guid = ?", rolGuid).First(&perfil).Error; err != nil {
+				return fmt.Errorf("perfil %q no encontrado; sincronice Perfiles primero: %w", rolRemoto.Rol, err)
+			}
+			if err := tx.Model(&perfil).Updates(map[string]any{
+				"perfil":      strings.TrimSpace(rolRemoto.Rol),
+				"descripcion": strings.TrimSpace(rolRemoto.Descripcion),
+				"activo":      rolRemoto.Activo,
+			}).Error; err != nil {
+				return fmt.Errorf("error actualizando perfil %q: %w", rolRemoto.Rol, err)
+			}
+
+			for _, moduloRemoto := range rolRemoto.Modulos {
+				moduloGuid, err := uuid.Parse(strings.TrimSpace(moduloRemoto.Guid))
+				if err != nil {
+					return fmt.Errorf("GUID de módulo %q inválido: %w", moduloRemoto.Clave, err)
+				}
+				modulo := models.ModuloSistema{
+					BaseModel:   models.BaseModel{Guid: moduloGuid},
+					Clave:       strings.TrimSpace(moduloRemoto.Clave),
+					Nombre:      strings.TrimSpace(moduloRemoto.Nombre),
+					Descripcion: strings.TrimSpace(moduloRemoto.Descripcion),
+					Orden:       moduloRemoto.Orden,
+					Activo:      true,
+				}
+				if err := tx.Clauses(clause.OnConflict{
+					Columns: []clause.Column{{Name: "guid"}},
+					DoUpdates: clause.AssignmentColumns([]string{
+						"clave", "nombre", "descripcion", "orden", "activo", "updated_at", "deleted_at",
+					}),
+				}).Create(&modulo).Error; err != nil {
+					return fmt.Errorf("error sincronizando módulo %q: %w", moduloRemoto.Clave, err)
+				}
+				if err := tx.Where("guid = ?", moduloGuid).First(&modulo).Error; err != nil {
+					return fmt.Errorf("error recuperando módulo %q: %w", moduloRemoto.Clave, err)
+				}
+
+				for _, permisoRemoto := range moduloRemoto.Permisos {
+					permisoGuid, err := uuid.Parse(strings.TrimSpace(permisoRemoto.Guid))
+					if err != nil {
+						return fmt.Errorf("GUID de permiso %q inválido: %w", permisoRemoto.Clave, err)
+					}
+					permiso := models.PermisoSistema{
+						BaseModel:   models.BaseModel{Guid: permisoGuid},
+						ModuloID:    modulo.ID,
+						Clave:       strings.TrimSpace(permisoRemoto.Clave),
+						Nombre:      strings.TrimSpace(permisoRemoto.Nombre),
+						Descripcion: strings.TrimSpace(permisoRemoto.Descripcion),
+						Orden:       permisoRemoto.Orden,
+						Activo:      true,
+					}
+					if err := tx.Clauses(clause.OnConflict{
+						Columns: []clause.Column{{Name: "guid"}},
+						DoUpdates: clause.AssignmentColumns([]string{
+							"modulo_id", "clave", "nombre", "descripcion", "orden", "activo", "updated_at", "deleted_at",
+						}),
+					}).Create(&permiso).Error; err != nil {
+						return fmt.Errorf("error sincronizando permiso %q: %w", permisoRemoto.Clave, err)
+					}
+					if err := tx.Where("guid = ?", permisoGuid).First(&permiso).Error; err != nil {
+						return fmt.Errorf("error recuperando permiso %q: %w", permisoRemoto.Clave, err)
+					}
+
+					asignacion := models.PerfilPermiso{
+						PerfilID:  perfil.ID,
+						PermisoID: permiso.ID,
+						Permitido: permisoRemoto.Permitido,
+					}
+					if err := tx.Clauses(clause.OnConflict{
+						Columns:   []clause.Column{{Name: "perfil_id"}, {Name: "permiso_id"}},
+						DoUpdates: clause.AssignmentColumns([]string{"permitido", "updated_at", "deleted_at"}),
+					}).Create(&asignacion).Error; err != nil {
+						return fmt.Errorf("error asignando permiso %q al perfil %q: %w", permisoRemoto.Clave, rolRemoto.Rol, err)
+					}
+				}
+			}
+		}
+		return nil
+	})
 }
 
 func (c *CatalogosRepository) SaveRolesFiscales(data []any) error {
@@ -868,44 +969,80 @@ func normalizeSyncRFC(value string) string {
 }
 
 func (c *CatalogosRepository) SaveUsuarios(data []any) error {
-	for _, fila := range data {
-		fMap, ok := fila.(map[string]any)
+	return c.db.Transaction(func(tx *gorm.DB) error {
+		var perfiles []models.Perfil
+		if err := tx.Find(&perfiles).Error; err != nil {
+			return fmt.Errorf("error consultando perfiles locales: %w", err)
+		}
+
+		perfilIDPorGuid := make(map[uuid.UUID]uint, len(perfiles))
+		for _, perfil := range perfiles {
+			perfilIDPorGuid[perfil.Guid] = perfil.ID
+		}
+
+		for _, fila := range data {
+			fMap, ok := fila.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			usuarioGuid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", fMap["guid"])))
+			if err != nil {
+				return fmt.Errorf("GUID de usuario inválido: %w", err)
+			}
+
+			perfilGuid, err := perfilGuidUsuarioSync(fMap)
+			if err != nil {
+				return fmt.Errorf("usuario %s: %w", usuarioGuid, err)
+			}
+			perfilID, existe := perfilIDPorGuid[perfilGuid]
+			if !existe {
+				return fmt.Errorf("usuario %s: no existe localmente el perfil con GUID %s; sincronice perfiles antes que usuarios", usuarioGuid, perfilGuid)
+			}
+
+			usuario := models.Usuario{
+				BaseModel:         models.BaseModel{Guid: usuarioGuid},
+				Nombre:            fmt.Sprintf("%v", fMap["nombre"]),
+				CorreoElectronico: fmt.Sprintf("%v", fMap["correoElectronico"]),
+				Password:          fmt.Sprintf("%v", fMap["password"]),
+				Telefono:          fmt.Sprintf("%v", fMap["telefono"]),
+				CorreoConfirmado:  fmt.Sprintf("%v", fMap["correoConfirmado"]) == "true",
+				PerfilID:          perfilID,
+			}
+
+			if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&usuario).Error; err != nil {
+				return fmt.Errorf("error insertando usuario: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func perfilGuidUsuarioSync(data map[string]any) (uuid.UUID, error) {
+	for _, key := range []string{"perfilGuid", "PerfilGuid"} {
+		if raw, ok := data[key]; ok && raw != nil {
+			if guid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", raw))); err == nil {
+				return guid, nil
+			}
+		}
+	}
+
+	for _, key := range []string{"perfil", "Perfil"} {
+		perfil, ok := data[key].(map[string]any)
 		if !ok {
 			continue
 		}
-
-		guid, _ := uuid.Parse(fmt.Sprintf("%v", fMap["guid"]))
-		correoConfirmado := fmt.Sprintf("%v", fMap["correoConfirmado"]) == "true"
-
-		usuario := models.Usuario{
-			BaseModel: models.BaseModel{
-				Guid: guid,
-			},
-			Nombre:            fmt.Sprintf("%v", fMap["nombre"]),
-			CorreoElectronico: fmt.Sprintf("%v", fMap["correoElectronico"]),
-			Password:          fmt.Sprintf("%v", fMap["password"]),
-			Telefono:          fmt.Sprintf("%v", fMap["telefono"]),
-			CorreoConfirmado:  correoConfirmado,
-		}
-
-		// Resolver FK de perfil usando el perfilId numérico del cloud.
-		// Buscamos el perfil local cuyo ID coincida con el perfilId recibido.
-		if perfilIdRaw, ok := fMap["perfilId"]; ok {
-			perfilIdFloat, _ := perfilIdRaw.(float64)
-			perfilIdLocal := uint(perfilIdFloat)
-			if perfilIdLocal > 0 {
-				var perfil models.Perfil
-				if err := c.db.First(&perfil, perfilIdLocal).Error; err == nil {
-					usuario.PerfilID = perfil.ID
+		for _, guidKey := range []string{"guid", "Guid"} {
+			if raw, ok := perfil[guidKey]; ok && raw != nil {
+				guid, err := uuid.Parse(strings.TrimSpace(fmt.Sprintf("%v", raw)))
+				if err == nil {
+					return guid, nil
 				}
 			}
 		}
-
-		if err := c.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "guid"}}, UpdateAll: true}).Create(&usuario).Error; err != nil {
-			return fmt.Errorf("error insertando usuario: %w", err)
-		}
 	}
-	return nil
+
+	return uuid.Nil, fmt.Errorf("el payload no contiene perfilGuid ni perfil.guid")
 }
 
 func (c *CatalogosRepository) SaveTiposPedido(data []any) error {

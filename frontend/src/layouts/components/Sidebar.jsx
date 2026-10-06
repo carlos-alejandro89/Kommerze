@@ -26,7 +26,7 @@ function buildNavGroups(items) {
 }
 
 export function Sidebar({ open, onToggle }) {
-  const { logout } = useAuth();
+  const { logout, can } = useAuth();
   const { store, license, isCaja, deviceName } = useActivation();
   const navigate = useNavigate();
 
@@ -34,6 +34,7 @@ export function Sidebar({ open, onToggle }) {
   const filteredItems = MAIN_NAV.filter((item) => {
     if (item.serverOnly && isCaja) return false;
     if (item.cajaOnly && !isCaja) return false;
+    if (item.permission && !can(item.permission)) return false;
     return true;
   });
 

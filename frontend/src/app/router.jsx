@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { AuthGuard } from '@/components/AuthGuard';
+import { PermissionGuard } from '@/components/PermissionGuard';
 import { DeviceGuard } from '@/components/DeviceGuard';
 import { AuditoriaGuard } from '@/components/AuditoriaGuard';
 import { TurnoGuard } from '@/components/TurnoGuard';
@@ -62,12 +63,22 @@ function SuspensePage({ children }) {
   return <Suspense fallback={<ScreenLoader />}>{children}</Suspense>;
 }
 
+function AuthorizedPage({ permission, children }) {
+  return (
+    <PermissionGuard permission={permission}>
+      <SuspensePage>{children}</SuspensePage>
+    </PermissionGuard>
+  );
+}
+
 // Guard de turno para el POS — verifica jornada + turno abierto antes de renderizar
 function PosGuard({ children }) {
   return (
-    <TurnoGuard>
-      <SuspensePage>{children}</SuspensePage>
-    </TurnoGuard>
+    <PermissionGuard permission="ventas.acceder">
+      <TurnoGuard>
+        <SuspensePage>{children}</SuspensePage>
+      </TurnoGuard>
+    </PermissionGuard>
   );
 }
 
@@ -148,7 +159,7 @@ export const router = createBrowserRouter(
         },
         {
           path: '/dashboard',
-          element: <SuspensePage><DashboardPage /></SuspensePage>,
+          element: <AuthorizedPage permission="reportes.acceder"><DashboardPage /></AuthorizedPage>,
         },
         {
           path: '/pos',
@@ -168,81 +179,81 @@ export const router = createBrowserRouter(
         },
         {
           path: '/pos/facturacion',
-          element: <SuspensePage><FacturacionPage /></SuspensePage>,
+          element: <AuthorizedPage permission="facturacion.acceder"><FacturacionPage /></AuthorizedPage>,
         },
         {
           path: '/products',
-          element: <SuspensePage><ProductsPage /></SuspensePage>,
+          element: <AuthorizedPage permission="productos.acceder"><ProductsPage /></AuthorizedPage>,
         },
         {
           path: '/products/new',
-          element: <SuspensePage><CreateProductPage /></SuspensePage>,
+          element: <AuthorizedPage permission="productos.crear"><CreateProductPage /></AuthorizedPage>,
         },
         {
           path: '/products/request-summary',
-          element: <SuspensePage><ProductRequestSummaryPage /></SuspensePage>,
+          element: <AuthorizedPage permission="productos.crear_solicitud"><ProductRequestSummaryPage /></AuthorizedPage>,
         },
         {
           path: '/products/request-confirmation',
-          element: <SuspensePage><ProductRequestConfirmationPage /></SuspensePage>,
+          element: <AuthorizedPage permission="productos.crear_solicitud"><ProductRequestConfirmationPage /></AuthorizedPage>,
         },
         {
           path: '/history',
-          element: <SuspensePage><HistoryPage /></SuspensePage>,
+          element: <AuthorizedPage permission="historial_ventas.acceder"><HistoryPage /></AuthorizedPage>,
         },
         {
           path: '/transfers',
-          element: <SuspensePage><TransfersPage /></SuspensePage>,
+          element: <AuthorizedPage permission="transferencias.acceder"><TransfersPage /></AuthorizedPage>,
         },
         {
           path: '/conversions',
-          element: <SuspensePage><ConversionsPage /></SuspensePage>,
+          element: <AuthorizedPage permission="conversiones.acceder"><ConversionsPage /></AuthorizedPage>,
         },
         {
           path: '/conversions/new',
-          element: <SuspensePage><ConversionFlowPage /></SuspensePage>,
+          element: <AuthorizedPage permission="conversiones.crear"><ConversionFlowPage /></AuthorizedPage>,
         },
         {
           path: '/clients',
-          element: <SuspensePage><ClientsPage /></SuspensePage>,
+          element: <AuthorizedPage permission="clientes.acceder"><ClientsPage /></AuthorizedPage>,
         },
         {
           path: '/clients/new',
-          element: <SuspensePage><ClientFormPage /></SuspensePage>,
+          element: <AuthorizedPage permission="clientes.crear"><ClientFormPage /></AuthorizedPage>,
         },
         {
           path: '/clients/:guid/edit',
-          element: <SuspensePage><ClientFormPage /></SuspensePage>,
+          element: <AuthorizedPage permission="clientes.editar"><ClientFormPage /></AuthorizedPage>,
         },
         {
           path: '/suppliers',
-          element: <SuspensePage><SuppliersDashboardPage /></SuspensePage>,
+          element: <AuthorizedPage permission="proveedores.acceder"><SuppliersDashboardPage /></AuthorizedPage>,
         },
         {
           path: '/suppliers/new',
-          element: <SuspensePage><SuppliersPage /></SuspensePage>,
+          element: <AuthorizedPage permission="proveedores.crear"><SuppliersPage /></AuthorizedPage>,
         },
         {
           path: '/purchases',
-          element: <SuspensePage><PurchasesPage /></SuspensePage>,
+          element: <AuthorizedPage permission="compras.crear"><PurchasesPage /></AuthorizedPage>,
         },
         {
           path: '/purchases/history',
-          element: <SuspensePage><PurchaseHistoryPage /></SuspensePage>,
+          element: <AuthorizedPage permission="compras.acceder"><PurchaseHistoryPage /></AuthorizedPage>,
         },
         {
           path: '/purchases/completed',
-          element: <SuspensePage><PurchaseCompletedPage /></SuspensePage>,
+          element: <AuthorizedPage permission="compras.crear"><PurchaseCompletedPage /></AuthorizedPage>,
         },
         {
           path: '/settings',
-          element: <SuspensePage><SettingsPage /></SuspensePage>,
+          element: <AuthorizedPage permission="configuracion.acceder"><SettingsPage /></AuthorizedPage>,
         },
         {
           path: '/sync',
           element: (
             <ServerOnlyGuard>
-              <SuspensePage><SyncPage /></SuspensePage>
+              <AuthorizedPage permission="configuracion.sincronizar"><SyncPage /></AuthorizedPage>
             </ServerOnlyGuard>
           ),
         },
@@ -250,24 +261,24 @@ export const router = createBrowserRouter(
           path: '/inventario/importar-json',
           element: (
             <ServerOnlyGuard>
-              <SuspensePage><InventoryImportPage /></SuspensePage>
+              <AuthorizedPage permission="configuracion.importar_inventario"><InventoryImportPage /></AuthorizedPage>
             </ServerOnlyGuard>
           ),
         },
         // ── Operaciones de Caja y Sucursal ──────────────────────────────
         {
           path: '/caja/apertura',
-          element: <SuspensePage><AperturaCajaPage /></SuspensePage>,
+          element: <AuthorizedPage permission="cajas.abrir"><AperturaCajaPage /></AuthorizedPage>,
         },
         {
           path: '/caja/cierre',
-          element: <SuspensePage><CierreCajaPage /></SuspensePage>,
+          element: <AuthorizedPage permission="cajas.cerrar"><CierreCajaPage /></AuthorizedPage>,
         },
         {
           path: '/sucursal/cortes',
           element: (
             <ServerOnlyGuard>
-              <SuspensePage><CortesSucursalPage /></SuspensePage>
+              <AuthorizedPage permission="operacion_sucursal.acceder"><CortesSucursalPage /></AuthorizedPage>
             </ServerOnlyGuard>
           ),
         },
@@ -275,7 +286,7 @@ export const router = createBrowserRouter(
           path: '/auditoria',
           element: (
             <ServerOnlyGuard>
-              <SuspensePage><AuditoriaPage /></SuspensePage>
+              <AuthorizedPage permission="auditorias.acceder"><AuditoriaPage /></AuthorizedPage>
             </ServerOnlyGuard>
           ),
         },

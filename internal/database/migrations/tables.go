@@ -34,6 +34,9 @@ func MigrateTables(db *gorm.DB) error {
 		&models.Sucursal{},
 		&models.Caja{},
 		&models.Perfil{},
+		&models.ModuloSistema{},
+		&models.PermisoSistema{},
+		&models.PerfilPermiso{},
 		&models.Usuario{},
 		&models.TipoAutorizacion{},
 
