@@ -8,6 +8,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -19,6 +22,16 @@ type syncCloudResponse struct {
 	Success  bool   `json:"success"`
 	Mensaje  string `json:"mensaje"`
 	HttpCode int    `json:"httpCode"`
+}
+
+// respaldoInventarioPayload representa el inventario local en el contrato que
+// espera KommerzeCloudAPI al cerrar una operacion de sucursal.
+type respaldoInventarioPayload struct {
+	NivelGuid           string  `json:"nivelGuid"`
+	PrecioCompra        float64 `json:"precioCompra"`
+	PrecioVenta         float64 `json:"precioVenta"`
+	PorcentajeDescuento float64 `json:"porcentajeDescuento"`
+	Existencia          float64 `json:"existencia"`
 }
 
 func cloudDecimal(value decimal.Decimal) float64 { return value.InexactFloat64() }
@@ -90,7 +103,7 @@ func (s *SyncService) syncOperacionSucursal(op models.OperacionSucursal) error {
 	iniciarPayload := map[string]any{
 		"sucursalGuid":           suc.Guid.String(),
 		"usuarioAperturaGuid":    usuarioGuid,
-		"fechaInicio":            op.FechaInicio.Format(time.RFC3339),
+		"fechaInicio":            op.FechaInicio.UTC().Format(time.RFC3339),
 		"valorInicialInventario": cloudDecimal(op.ValorInicialInventario),
 		"guid":                   op.Guid.String(),
 	}
@@ -120,8 +133,8 @@ func (s *SyncService) syncOperacionSucursal(op models.OperacionSucursal) error {
 			"operacionGuid":          op.Guid.String(),
 			"usuarioCierreGuid":      usuarioCierreGuid,
 			"estatusGuid":            estatusGuid,
-			"fechaInicio":            op.FechaInicio.Format(time.RFC3339),
-			"fechaFin":               op.FechaFin.Format(time.RFC3339),
+			"fechaInicio":            op.FechaInicio.UTC().Format(time.RFC3339),
+			"fechaFin":               op.FechaFin.UTC().Format(time.RFC3339),
 			"valorInicialInventario": cloudDecimal(op.ValorInicialInventario),
 			"valorCompras":           cloudDecimal(op.ValorCompras),
 			"valorVentas":            cloudDecimal(op.ValorVentas),
@@ -146,6 +159,13 @@ func (s *SyncService) syncOperacionSucursal(op models.OperacionSucursal) error {
 
 		if err := s.cloudPut("sucursales/operaciones/finalizar", finalizarPayload); err != nil {
 			return fmt.Errorf("finalizar operacion sucursal: %w", err)
+		}
+
+		// El respaldo pertenece al cierre de la sucursal, no al cierre de una
+		// caja. Se ejecuta despues de confirmar el cierre en Cloud y antes de
+		// marcar la operacion como sincronizada para conservar el reintento.
+		if err := s.respaldarInventarioSucursal(suc.Guid.String()); err != nil {
+			return fmt.Errorf("respaldar inventario de sucursal: %w", err)
 		}
 	}
 
@@ -172,7 +192,7 @@ func (s *SyncService) syncOperacionCajero(op models.OperacionCajero) error {
 		"operacionSucursalGuid": opSuc.Guid.String(),
 		"responsableCajaGuid":   responsableGuid,
 		"caja":                  op.CajaNombre,
-		"fechaInicio":           op.FechaInicio.Format(time.RFC3339),
+		"fechaInicio":           op.FechaInicio.UTC().Format(time.RFC3339),
 		"fondoCajaApertura":     cloudDecimal(op.FondoCajaApertura),
 		"guidOperacionCajero":   op.Guid.String(),
 	}
@@ -194,7 +214,7 @@ func (s *SyncService) syncOperacionCajero(op models.OperacionCajero) error {
 		finalizarPayload := map[string]any{
 			"operacionCajaGuid":    op.Guid.String(),
 			"estatusGuid":          estatusGuid,
-			"fechaFin":             op.FechaFin.Format(time.RFC3339),
+			"fechaFin":             op.FechaFin.UTC().Format(time.RFC3339),
 			"fondoCajaCierre":      cloudDecimal(op.FondoCajaCierre),
 			"retirosEfectivo":      cloudDecimal(op.RetirosEfectivo),
 			"ingresoEfectivo":      cloudDecimalPointer(op.IngresoEfectivo),
@@ -225,32 +245,72 @@ func (s *SyncService) cloudPut(endpoint string, payload any) error {
 	return s.cloudRequest(http.MethodPut, endpoint, payload)
 }
 
+func (s *SyncService) respaldarInventarioSucursal(sucursalGuid string) error {
+	var inventario []models.SucursalProducto
+	if err := s.db.Preload("Nivel").Find(&inventario).Error; err != nil {
+		return fmt.Errorf("no se pudo consultar el inventario local: %w", err)
+	}
+	if len(inventario) == 0 {
+		return fmt.Errorf("el inventario local no contiene articulos para respaldar")
+	}
+
+	payload := make([]respaldoInventarioPayload, 0, len(inventario))
+	for _, item := range inventario {
+		if item.Nivel.Guid.String() == "00000000-0000-0000-0000-000000000000" {
+			return fmt.Errorf("el nivel de empaque %d no tiene un identificador valido", item.NivelID)
+		}
+		payload = append(payload, respaldoInventarioPayload{
+			NivelGuid:           item.Nivel.Guid.String(),
+			PrecioCompra:        cloudDecimal(item.PrecioCompra),
+			PrecioVenta:         cloudDecimal(item.PrecioVenta),
+			PorcentajeDescuento: cloudDecimal(item.Descuento),
+			Existencia:          cloudDecimal(item.Existencia),
+		})
+	}
+
+	endpoint := fmt.Sprintf("sucursales/inventario/backup/%s", sucursalGuid)
+	return s.cloudPost(endpoint, payload)
+}
+
 func (s *SyncService) cloudRequest(method, endpoint string, payload any) error {
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(s.apiBaseURL, "/"), strings.TrimLeft(endpoint, "/"))
 	body, err := json.Marshal(payload)
 	if err != nil {
+		s.logCloudSyncFailure(method, url, []byte(fmt.Sprintf("%+v", payload)), 0, nil, err)
 		return err
 	}
 
-	url := fmt.Sprintf("%s/%s", s.apiBaseURL, endpoint)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
+		s.logCloudSyncFailure(method, url, body, 0, nil, err)
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		s.logCloudSyncFailure(method, url, body, 0, nil, err)
 		return fmt.Errorf("error HTTP %s %s: %w", method, url, err)
 	}
 	defer resp.Body.Close()
 	responseBody, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
+		s.logCloudSyncFailure(method, url, body, resp.StatusCode, responseBody, readErr)
 		return fmt.Errorf("no se pudo leer la respuesta cloud: %w", readErr)
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		var cloudResp syncCloudResponse
 		_ = json.Unmarshal(responseBody, &cloudResp)
+		// Los endpoints de inicio representan un upsert por Guid. Algunas
+		// versiones anteriores del Cloud respondian 409 cuando el registro ya
+		// existia; para el sincronizador ese estado ya satisface el alta y debe
+		// permitir continuar con el cierre pendiente.
+		if resp.StatusCode == http.StatusConflict &&
+			strings.Contains(strings.ToLower(cloudResp.Mensaje), "registrada previamente") {
+			return nil
+		}
+		s.logCloudSyncFailure(method, url, body, resp.StatusCode, responseBody, nil)
 		return fmt.Errorf("cloud respondió %d: %s", resp.StatusCode, cloudResp.Mensaje)
 	}
 	if len(responseBody) > 0 {
@@ -261,6 +321,7 @@ func (s *SyncService) cloudRequest(method, endpoint string, payload any) error {
 				if json.Unmarshal(successRaw, &success) == nil && !success {
 					var cloudResp syncCloudResponse
 					_ = json.Unmarshal(responseBody, &cloudResp)
+					s.logCloudSyncFailure(method, url, body, resp.StatusCode, responseBody, nil)
 					return fmt.Errorf("cloud rechazó la operación: %s", cloudResp.Mensaje)
 				}
 			}
@@ -268,6 +329,48 @@ func (s *SyncService) cloudRequest(method, endpoint string, payload any) error {
 	}
 
 	return nil
+}
+
+func (s *SyncService) logCloudSyncFailure(method, url string, payload []byte, statusCode int, response []byte, requestErr error) {
+	status := "sin respuesta HTTP"
+	if statusCode > 0 {
+		status = fmt.Sprintf("%d %s", statusCode, http.StatusText(statusCode))
+	}
+	responseText := strings.TrimSpace(string(response))
+	if responseText == "" {
+		responseText = "<sin cuerpo de respuesta>"
+	}
+	errorText := "<sin error de transporte>"
+	if requestErr != nil {
+		errorText = requestErr.Error()
+	}
+
+	entry := fmt.Sprintf(
+		"[%s] [SyncCloudError]\nMetodo: %s\nURL: %s\nPayload: %s\nEstado: %s\nRespuesta: %s\nError: %s\n---\n",
+		time.Now().Format(time.RFC3339), method, url, string(payload), status, responseText, errorText,
+	)
+	log.Print(entry)
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Printf("[SyncCloudError] no se pudo localizar la carpeta de logs: %v", err)
+		return
+	}
+	logsDir := filepath.Join(configDir, "Kommerze", "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		log.Printf("[SyncCloudError] no se pudo crear la carpeta de logs: %v", err)
+		return
+	}
+	logPath := filepath.Join(logsDir, "sync-operaciones.log")
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		log.Printf("[SyncCloudError] no se pudo abrir %s: %v", logPath, err)
+		return
+	}
+	defer file.Close()
+	if _, err := file.WriteString(entry); err != nil {
+		log.Printf("[SyncCloudError] no se pudo escribir %s: %v", logPath, err)
+	}
 }
 
 func (s *SyncService) marcarSyncOperacionSucursal(id uint) error {
