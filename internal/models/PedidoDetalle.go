@@ -27,14 +27,15 @@ type PedidoDetalle struct {
 }
 
 // CalcularPrecioBase aplica al precio de venta el porcentaje que la sucursal
-// conserva después del descuento asociado a su comisión de ventas y redondea
-// cualquier fracción al entero superior inmediato.
+// conserva después del descuento asociado a su comisión de ventas. El redondeo
+// al entero superior solo aplica cuando la comisión es menor a 100%; con una
+// comisión de 100% se conserva exactamente el mismo precio de venta.
 func CalcularPrecioBase(precioVenta, comisionVentas decimal.Decimal) decimal.Decimal {
 	porcentaje := comisionVentas
 	if porcentaje.IsNegative() {
 		porcentaje = decimal.Zero
-	} else if porcentaje.GreaterThan(decimal.NewFromInt(100)) {
-		porcentaje = decimal.NewFromInt(100)
+	} else if porcentaje.GreaterThanOrEqual(decimal.NewFromInt(100)) {
+		return precioVenta
 	}
 	return precioVenta.Mul(porcentaje).Div(decimal.NewFromInt(100)).Ceil()
 }
