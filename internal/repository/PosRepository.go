@@ -101,7 +101,7 @@ func (r *PosRepository) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *ui
 				coalesce(f.folio, 0) as factura_folio,
 				coalesce(ef.rfc, '') as receptor_rfc,
 				(coalesce(f.archivo_xml_cancelacion, '') <> '' or coalesce(f.archivo_pdf_cancelacion, '') <> '') as acuse_disponible,
-				sum((pd.cantidad * pd.precio_venta) - ((pd.cantidad * pd.precio_venta) * coalesce(pd.descuento, 0) / 100)) as monto_transaccion
+				sum((pd.cantidad * pd.precio_venta) - coalesce(pd.descuento, 0)) as monto_transaccion
 				from pedidos p
 				join tipos_pedido tp on p.tipo_pedido_id = tp.id
 				left join clientes c on p.cliente_id = c.id
@@ -259,6 +259,7 @@ func (r *PosRepository) ConsultarTransferencias() ([]dto.TransferenciaDto, error
 			pd.cantidad::double precision as cantidad,
 			pd.precio_venta::double precision as precio_venta,
 			pd.descuento::double precision as descuento,
+			pd.porcentaje_descuento::double precision as porcentaje_descuento,
 			((pd.cantidad * pd.precio_venta) - pd.descuento)::double precision as importe
 		from traspasos t
 		join pedidos p on p.id = t.pedido_id and p.deleted_at is null
@@ -853,24 +854,25 @@ func (r *PosRepository) ConfirmarTransaccion(
 				return fmt.Errorf("no se encontró el precio de compra vigente para el nivel %s", guid)
 			}
 
+			bruto := item.Price.Mul(item.Quantity)
+			descuentoImporte := bruto.Mul(item.Discount).Div(decimal.NewFromInt(100))
 			detalle := models.PedidoDetalle{
-				PedidoID:     pedido.ID,
-				NivelID:      nivelID,
-				Cantidad:     item.Quantity,
-				PrecioBase:   models.CalcularPrecioBase(item.Price, comisionVentas),
-				PrecioVenta:  item.Price,
-				PrecioCompra: precioCompra,
-				TasaIVA:      decimal.NewFromFloat(16.0),
-				TasaISR:      decimal.NewFromFloat(0.0),
-				Descuento:    item.Discount,
+				PedidoID:            pedido.ID,
+				NivelID:             nivelID,
+				Cantidad:            item.Quantity,
+				PrecioBase:          models.CalcularPrecioBase(item.Price, comisionVentas),
+				PrecioVenta:         item.Price,
+				PrecioCompra:        precioCompra,
+				TasaIVA:             decimal.NewFromFloat(16.0),
+				TasaISR:             decimal.NewFromFloat(0.0),
+				Descuento:           descuentoImporte,
+				PorcentajeDescuento: item.Discount,
 			}
 
 			if err := tx.Create(&detalle).Error; err != nil {
 				return err
 			}
-			bruto := item.Price.Mul(item.Quantity)
-			descuento := bruto.Mul(item.Discount).Div(decimal.NewFromInt(100))
-			totalPedido = totalPedido.Add(bruto.Sub(descuento))
+			totalPedido = totalPedido.Add(bruto.Sub(descuentoImporte))
 		}
 
 		//Registrar Pagos
@@ -1091,17 +1093,18 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 	var pedidoDetalleDto []dto.PedidoDetalleRequestDto
 	for _, d := range detalles {
 		pedidoDetalleDto = append(pedidoDetalleDto, dto.PedidoDetalleRequestDto{
-			NivelGuid:     d.Nivel.Guid.String(),
-			Cantidad:      d.Cantidad.InexactFloat64(),
-			PrecioCompra:  d.PrecioCompra.InexactFloat64(),
-			PrecioBase:    d.PrecioBase.InexactFloat64(),
-			PrecioVenta:   d.PrecioVenta.InexactFloat64(),
-			Descuento:     d.Descuento.InexactFloat64(),
-			TrasladoIVA:   d.TrasladoIVA.InexactFloat64(),
-			TasaIVA:       d.TasaIVA.InexactFloat64(),
-			RetencionISR:  d.RetencionISR.InexactFloat64(),
-			TasaISR:       d.TasaISR.InexactFloat64(),
-			InfoAdicional: d.InfoAdicional,
+			NivelGuid:           d.Nivel.Guid.String(),
+			Cantidad:            d.Cantidad.InexactFloat64(),
+			PrecioCompra:        d.PrecioCompra.InexactFloat64(),
+			PrecioBase:          d.PrecioBase.InexactFloat64(),
+			PrecioVenta:         d.PrecioVenta.InexactFloat64(),
+			Descuento:           d.Descuento.InexactFloat64(),
+			PorcentajeDescuento: d.PorcentajeDescuento.InexactFloat64(),
+			TrasladoIVA:         d.TrasladoIVA.InexactFloat64(),
+			TasaIVA:             d.TasaIVA.InexactFloat64(),
+			RetencionISR:        d.RetencionISR.InexactFloat64(),
+			TasaISR:             d.TasaISR.InexactFloat64(),
+			InfoAdicional:       d.InfoAdicional,
 		})
 	}
 

@@ -215,7 +215,7 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 	if err := o.db.Raw(`
 		SELECT COALESCE(SUM(
 			(pd.precio_venta * pd.cantidad) -
-			((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			COALESCE(pd.descuento, 0)
 		), 0) AS total,
 		       COUNT(DISTINCT p.id) AS ventas
 		FROM pedido_detalle pd
@@ -240,7 +240,7 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 		SELECT date_trunc('hour', p.fecha) AS hora,
 		       COALESCE(SUM(
 			   (pd.precio_venta * pd.cantidad) -
-			   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+			   COALESCE(pd.descuento, 0)
 		   ), 0) AS total
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
@@ -286,7 +286,7 @@ func (o *OperacionesSucursalRepository) ObtenerResumenVentasOperacion(sucursalID
 			END AS tipo,
 			p.folio,
 			p.fecha,
-			COALESCE(SUM(pd.precio_venta * pd.cantidad), 0)::double precision AS valor,
+			COALESCE(SUM((pd.precio_venta * pd.cantidad) - COALESCE(pd.descuento, 0)), 0)::double precision AS valor,
 			COALESCE(sd.nombre_sucursal, tp.nombre, '') AS detalle
 		FROM pedidos p
 		LEFT JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
@@ -369,14 +369,14 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
 				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS ventas_brutas,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
-				THEN (pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+				THEN (pd.precio_venta * pd.cantidad) - COALESCE(pd.descuento, 0)
 				ELSE 0 END), 0) AS ventas,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
 				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS compras,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
 				THEN pd.precio_venta * pd.cantidad ELSE 0 END), 0) AS bajas,
 			COALESCE(SUM(CASE WHEN tp.guid::text = ?
-				THEN (pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100 ELSE 0 END), 0) AS descuentos
+				THEN COALESCE(pd.descuento, 0) ELSE 0 END), 0) AS descuentos
 		FROM pedido_detalle pd
 		INNER JOIN pedidos p ON p.id = pd.pedido_id
 		INNER JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id
@@ -528,11 +528,11 @@ func (o *OperacionesSucursalRepository) CalcularAcumuladosDia(operacion models.O
 			SELECT p.id pedido_id,
 			       COALESCE(SUM(
 				   (pd.precio_venta * pd.cantidad) -
-				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+				   COALESCE(pd.descuento, 0)
 			   ), 0) total,
 			       COALESCE(SUM(
 				   (pd.precio_base * pd.cantidad) -
-				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.porcentaje_descuento, 0) / 100)
 			   ), 0) total_precio_base
 			FROM pedidos p
 			JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL

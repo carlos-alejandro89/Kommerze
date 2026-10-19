@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { usePosService } from '@/features/pos/usePosService';
 import { EventsOn } from '../../../../wailsjs/runtime/runtime';
 import { ModalSolicitarDescuento } from '../components/ModalSolicitarDescuento';
-import { ModalConvertirVenta } from '../components/ModalConvertirVenta';
 import { ModalVerTransaccion } from '../components/ModalVerTransaccion';
 import { toast } from 'sonner';
 import { TRANSACTION_TYPES, isTransactionType } from '@/features/pos/transaction-types';
@@ -181,7 +180,6 @@ export function HistoryPage() {
 
   // Modales
   const [modalDescuento, setModalDescuento] = useState(null); // row | null
-  const [modalVenta, setModalVenta]         = useState(null); // row | null
   const [modalVer, setModalVer]             = useState(null); // row | null
   const [ventaCancelar, setVentaCancelar]   = useState(null);
   const [motivosCancelacion, setMotivosCancelacion] = useState([]);
@@ -375,10 +373,10 @@ export function HistoryPage() {
 
   /* ── Handlers modales ── */
   const handleSolicitarDescuento = (row) => setModalDescuento(row);
-  const handleConvertirVenta     = (row) => setModalVenta(row);
-  const handleModalClose         = ()    => { setModalDescuento(null); setModalVenta(null); cargar(); };
+  const handleConvertirVenta     = (row) => navigate(`/history/quotes/${row.ID}/convert`, { state: { row, returnTo: '/history', successTo: '/history' } });
+  const handleModalClose         = ()    => { setModalDescuento(null); cargar(); };
 
-  const modalAbierto = !!modalDescuento || !!modalVenta;
+  const modalAbierto = !!modalDescuento;
 
   const pedidoGuid = (row) => row?.PedidoGuid || row?.pedidoGuid || row?.pedido_guid || row?.Guid || row?.guid || '';
 
@@ -812,7 +810,7 @@ export function HistoryPage() {
 								  {!esCotizacion && !esCancelada && can('historial_ventas.cancelar') && (
                                     <RowActionButton label="Cancelar venta" icon={Ban} onClick={() => abrirCancelacion(t)} tone="text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                                   )}
-                                {esCotizacion && (
+                                {esCotizacion && can('ventas.acceder') && (
                                   <CotizacionAcciones
                                     row={t}
                                     onSolicitarDescuento={handleSolicitarDescuento}
@@ -1019,12 +1017,6 @@ export function HistoryPage() {
       {modalDescuento && (
         <ModalSolicitarDescuento
           row={modalDescuento}
-          onClose={handleModalClose}
-        />
-      )}
-      {modalVenta && (
-        <ModalConvertirVenta
-          row={modalVenta}
           onClose={handleModalClose}
         />
       )}

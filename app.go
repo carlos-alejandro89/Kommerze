@@ -194,7 +194,7 @@ func (a *App) comprasService() interface {
 // cotizacionService devuelve la implementacion correcta segun el modo del dispositivo.
 func (a *App) cotizacionService() interface {
 	SolicitarAutorizacion(string, string, string, string, string, []dto.ItemDescuentoDto) (*dto.ResponseDto, error)
-	ConvertirAVenta(uint, []dto.PagosAplicadosDto, *uint) (*dto.ResponseDto, error)
+	ConvertirAVenta(uint, []dto.PagosAplicadosDto, *uint, string) (*dto.ResponseDto, error)
 	ObtenerDetalleCotizacion(uint) (*dto.CotizacionDetalleDto, error)
 } {
 	if a.services.CajaProxy != nil {
@@ -769,8 +769,9 @@ func (a *App) ServiceCotizacionConvertirAVenta(
 	pedidoID uint,
 	pagos []dto.PagosAplicadosDto,
 	sucursalOrigenID *uint,
+	clienteGuid string,
 ) (*dto.ResponseDto, error) {
-	return a.cotizacionService().ConvertirAVenta(pedidoID, pagos, sucursalOrigenID)
+	return a.cotizacionService().ConvertirAVenta(pedidoID, pagos, sucursalOrigenID, clienteGuid)
 }
 
 func (a *App) ServiceCotizacionObtenerDetalle(pedidoID uint) (*dto.CotizacionDetalleDto, error) {

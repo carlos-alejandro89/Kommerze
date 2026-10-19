@@ -24,8 +24,6 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useTurno } from '@/providers/TurnoProvider';
 import { toast } from 'sonner';
-import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
-import { TRANSACTION_TYPES } from '../transaction-types';
 
 // ── Configuración visual por estatus de autorización ─────────────────────────
 const STATUS_CONFIG = {
@@ -93,7 +91,6 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
     const [pedidoGuid, setPedidoGuid] = React.useState(null);
     const [pedidoId, setPedidoId] = React.useState(null);
     const [pedidoFolio, setPedidoFolio] = React.useState(null);
-    const [showConvertirModal, setShowConvertirModal] = React.useState(false);
 
     const [statusAutorizacion, setStatusAutorizacion] = React.useState('sin_solicitud');
     const [obsAutorizacion, setObsAutorizacion] = React.useState('');
@@ -247,36 +244,6 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
             setErrorMsg(err?.message || String(err) || 'Error al procesar la solicitud.');
             console.error('[PanelSolicitarDescuento]', err);
         }
-    };
-
-    // ── Cierre de modal de conversión y limpieza de checkout ─────────────────
-    const handleConvertirVentaClose = () => {
-        setShowConvertirModal(false);
-
-        // Persistir folio y tipo de operación para cart-order-placed
-        localStorage.setItem('folio', JSON.stringify(pedidoFolio));
-        localStorage.setItem('operationTypeGuid', TRANSACTION_TYPES.VENTA.guid); // Convertido a Venta
-
-        const totalNeto = cart.reduce((sum, item) => {
-            const pct = getPct(item.id);
-            const price = item.price;
-            const disc = pct > 0 ? (price * pct / 100) : 0;
-            return sum + (price - disc) * item.quantity;
-        }, 0);
-
-        localStorage.setItem('pagosAplicados', JSON.stringify([{
-            ID: 1,
-            Nombre: 'Efectivo',
-            Monto: totalNeto.toFixed(2),
-        }]));
-
-        // Limpiar el carrito de compras del POS
-        localStorage.removeItem('cart');
-        localStorage.removeItem('validCart');
-        localStorage.removeItem('sucursal');
-
-        // Redirigir a la pantalla de transacción exitosa
-        navigate('/pos/order-placed');
     };
 
     // ── Calcular totales del preview ─────────────────────────────────────────
@@ -579,7 +546,13 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
                     {statusAutorizacion === 'autorizada' && (
                         <Button
                             id="btn-convertir-venta-pos"
-                            onClick={() => setShowConvertirModal(true)}
+                            onClick={() => navigate(`/history/quotes/${pedidoId}/convert`, {
+                                state: {
+                                    row: { ID: pedidoId, Folio: pedidoFolio, EstatusAutorizacion: statusAutorizacion },
+                                    returnTo: '/pos/transaction',
+                                    successTo: '/pos/order-placed',
+                                },
+                            })}
                             className="w-full h-11 rounded-xl text-sm font-bold gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 active:scale-[0.98]"
                         >
                             <ShoppingCart className="size-4" />
@@ -621,17 +594,6 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
                 </div>
             )}
 
-            {/* Modal de conversión de cotización a venta */}
-            {showConvertirModal && (
-                <ModalConvertirVenta
-                    row={{
-                        ID: pedidoId,
-                        Folio: pedidoFolio,
-                        EstatusAutorizacion: statusAutorizacion,
-                    }}
-                    onClose={handleConvertirVentaClose}
-                />
-            )}
         </div>
     );
 }

@@ -451,10 +451,12 @@ export namespace dto {
 	    nivelGuid: string;
 	    nivelCodigo: string;
 	    producto: string;
+	    imgReferencia: string;
 	    unidadMedida: string;
 	    cantidad: number;
 	    precioVenta: number;
 	    descuento: number;
+	    porcentajeDescuento: number;
 	    subtotal: number;
 	
 	    static createFrom(source: any = {}) {
@@ -466,10 +468,12 @@ export namespace dto {
 	        this.nivelGuid = source["nivelGuid"];
 	        this.nivelCodigo = source["nivelCodigo"];
 	        this.producto = source["producto"];
+	        this.imgReferencia = source["imgReferencia"];
 	        this.unidadMedida = source["unidadMedida"];
 	        this.cantidad = source["cantidad"];
 	        this.precioVenta = source["precioVenta"];
 	        this.descuento = source["descuento"];
+	        this.porcentajeDescuento = source["porcentajeDescuento"];
 	        this.subtotal = source["subtotal"];
 	    }
 	}
@@ -498,7 +502,11 @@ export namespace dto {
 	    PedidoGuid: string;
 	    Folio: number;
 	    Fecha: string;
+	    ClienteGuid: string;
 	    RazonSocial: string;
+	    ClienteRFC: string;
+	    ClienteCorreo: string;
+	    ClienteTelefono: string;
 	    EstatusAutorizacion: string;
 	    DescuentosSolicitados: ItemDescuentoDto[];
 	    DescuentosAutorizados: ItemDescuentoDto[];
@@ -519,7 +527,11 @@ export namespace dto {
 	        this.PedidoGuid = source["PedidoGuid"];
 	        this.Folio = source["Folio"];
 	        this.Fecha = source["Fecha"];
+	        this.ClienteGuid = source["ClienteGuid"];
 	        this.RazonSocial = source["RazonSocial"];
+	        this.ClienteRFC = source["ClienteRFC"];
+	        this.ClienteCorreo = source["ClienteCorreo"];
+	        this.ClienteTelefono = source["ClienteTelefono"];
 	        this.EstatusAutorizacion = source["EstatusAutorizacion"];
 	        this.DescuentosSolicitados = this.convertValues(source["DescuentosSolicitados"], ItemDescuentoDto);
 	        this.DescuentosAutorizados = this.convertValues(source["DescuentosAutorizados"], ItemDescuentoDto);
@@ -684,6 +696,7 @@ export namespace dto {
 	    Cantidad: number;
 	    PrecioConIVA: number;
 	    Descuento: number;
+	    PorcentajeDescuento: number;
 	    Total: number;
 	
 	    static createFrom(source: any = {}) {
@@ -698,6 +711,7 @@ export namespace dto {
 	        this.Cantidad = source["Cantidad"];
 	        this.PrecioConIVA = source["PrecioConIVA"];
 	        this.Descuento = source["Descuento"];
+	        this.PorcentajeDescuento = source["PorcentajeDescuento"];
 	        this.Total = source["Total"];
 	    }
 	}
@@ -1394,6 +1408,7 @@ export namespace dto {
 	    cantidad: number;
 	    precioVenta: number;
 	    descuento: number;
+	    porcentajeDescuento: number;
 	    importe: number;
 	
 	    static createFrom(source: any = {}) {
@@ -1409,6 +1424,7 @@ export namespace dto {
 	        this.cantidad = source["cantidad"];
 	        this.precioVenta = source["precioVenta"];
 	        this.descuento = source["descuento"];
+	        this.porcentajeDescuento = source["porcentajeDescuento"];
 	        this.importe = source["importe"];
 	    }
 	}

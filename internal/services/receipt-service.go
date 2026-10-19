@@ -376,7 +376,7 @@ func (s *ReceiptService) BuildReceipt(pedidoGuid string) (reportmodels.Receipt, 
 	}
 	for _, row := range rows {
 		bruto := row.Cantidad * row.Precio
-		descuento := bruto * row.Descuento / 100
+		descuento := row.Descuento
 		r.Items = append(r.Items, reportmodels.ReceiptItem{
 			Codigo: row.Codigo, Descripcion: row.Descripcion,
 			Cantidad: row.Cantidad, Precio: row.Precio, Importe: bruto - descuento,

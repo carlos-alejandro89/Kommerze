@@ -921,6 +921,12 @@ export function FacturacionPage() {
                       <p className="mt-1 truncate text-[10px] text-muted-foreground">
                         {item.Codigo} · {item.Unidad}
                       </p>
+                      {Number(item.Descuento || 0) > 0 && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+                          <span className="font-semibold text-emerald-600">Descuento −{money(item.Descuento)}</span>
+                          {Number(item.PorcentajeDescuento || 0) > 0 && <span className="rounded-md bg-blue-500/10 px-1.5 py-0.5 font-bold text-blue-600">{Number(item.PorcentajeDescuento).toFixed(2)}%</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <span className="text-center text-xs font-semibold tabular-nums">

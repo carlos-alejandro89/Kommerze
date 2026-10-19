@@ -196,9 +196,10 @@ export function usePosService() {
      * @param {number} pedidoID
      * @param {PagosAplicadosDto[]} pagos
      * @param {number|null} sucursalOrigenID
+     * @param {string} clienteGuid
      */
-    const convertirCotizacionAVenta = (pedidoID, pagos, sucursalOrigenID = null) =>
-        ServiceCotizacionConvertirAVenta(pedidoID, pagos, sucursalOrigenID);
+    const convertirCotizacionAVenta = (pedidoID, pagos, sucursalOrigenID = null, clienteGuid = '') =>
+        ServiceCotizacionConvertirAVenta(pedidoID, pagos, sucursalOrigenID, clienteGuid);
 
     /**
      * Obtiene el detalle completo de una cotización incluyendo estado de autorización.

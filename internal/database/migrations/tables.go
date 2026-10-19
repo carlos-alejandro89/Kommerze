@@ -86,6 +86,19 @@ func MigrateTables(db *gorm.DB) error {
 		return fmt.Errorf("no se pudo completar el monto recibido de pagos históricos: %w", err)
 	}
 
+	// Antes de PorcentajeDescuento, pedido_detalle.descuento almacenaba el
+	// porcentaje. La migración conserva ese dato en la nueva columna y convierte
+	// descuento a su equivalente monetario. La condición hace el ajuste idempotente.
+	if err := db.Exec(`
+		UPDATE pedido_detalle
+		SET porcentaje_descuento = descuento,
+			descuento = (cantidad * precio_venta) * descuento / 100
+		WHERE COALESCE(porcentaje_descuento, 0) = 0
+		  AND COALESCE(descuento, 0) <> 0
+	`).Error; err != nil {
+		return fmt.Errorf("no se pudieron homologar los descuentos históricos: %w", err)
+	}
+
 	// Solo puede existir una regla activa por combinación. El índice parcial
 	// permite conservar el historial de reglas desactivadas o eliminadas.
 	if err := db.Exec(`

@@ -653,11 +653,12 @@ func (c *CajaProxyService) SolicitarAutorizacion(
 	return &result, nil
 }
 
-func (c *CajaProxyService) ConvertirAVenta(pedidoID uint, pagos []dto.PagosAplicadosDto, sucursalOrigenID *uint) (*dto.ResponseDto, error) {
+func (c *CajaProxyService) ConvertirAVenta(pedidoID uint, pagos []dto.PagosAplicadosDto, sucursalOrigenID *uint, clienteGuid string) (*dto.ResponseDto, error) {
 	body := map[string]any{
 		"pedidoId":         pedidoID,
 		"pagosAplicados":   pagos,
 		"sucursalOrigenId": sucursalOrigenID,
+		"clienteGuid":      clienteGuid,
 	}
 	var result dto.ResponseDto
 	if err := c.post("/local/cotizaciones/convertir-venta", body, &result); err != nil {

@@ -56,7 +56,7 @@ export function ServiceConsultarProductosConvertibles(arg1:string):Promise<Array
 
 export function ServiceConsultarTransferencias():Promise<Array<dto.TransferenciaDto>>;
 
-export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.PagosAplicadosDto>,arg3:any):Promise<dto.ResponseDto>;
+export function ServiceCotizacionConvertirAVenta(arg1:number,arg2:Array<dto.PagosAplicadosDto>,arg3:any,arg4:string):Promise<dto.ResponseDto>;
 
 export function ServiceCotizacionObtenerDetalle(arg1:number):Promise<dto.CotizacionDetalleDto>;
 

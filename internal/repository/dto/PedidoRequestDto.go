@@ -32,18 +32,19 @@ type PagoRequestDto struct {
 }
 
 type PedidoDetalleRequestDto struct {
-	NivelGuid     string  `json:"nivelGuid"`
-	Cantidad      float64 `json:"cantidad"`
-	PrecioCompra  float64 `json:"precioCompra"`
-	PrecioBase    float64 `json:"precioBase"`
-	PrecioVenta   float64 `json:"precioVenta"`
-	PrecioVenta2  float64 `json:"precioVenta2"`
-	Descuento     float64 `json:"descuento"`
-	TrasladoIVA   float64 `json:"trasladoIVA"`
-	TasaIVA       float64 `json:"tasaIVA"`
-	RetencionISR  float64 `json:"retencionISR"`
-	TasaISR       float64 `json:"tasaISR"`
-	InfoAdicional string  `json:"infoAdicional"`
+	NivelGuid           string  `json:"nivelGuid"`
+	Cantidad            float64 `json:"cantidad"`
+	PrecioCompra        float64 `json:"precioCompra"`
+	PrecioBase          float64 `json:"precioBase"`
+	PrecioVenta         float64 `json:"precioVenta"`
+	PrecioVenta2        float64 `json:"precioVenta2"`
+	Descuento           float64 `json:"descuento"`
+	PorcentajeDescuento float64 `json:"porcentajeDescuento"`
+	TrasladoIVA         float64 `json:"trasladoIVA"`
+	TasaIVA             float64 `json:"tasaIVA"`
+	RetencionISR        float64 `json:"retencionISR"`
+	TasaISR             float64 `json:"tasaISR"`
+	InfoAdicional       string  `json:"infoAdicional"`
 }
 
 type TraspasoRequestDto struct {

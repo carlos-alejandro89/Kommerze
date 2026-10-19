@@ -102,8 +102,8 @@ export function ServiceConsultarTransferencias() {
   return window['go']['main']['App']['ServiceConsultarTransferencias']();
 }
 
-export function ServiceCotizacionConvertirAVenta(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ServiceCotizacionConvertirAVenta'](arg1, arg2, arg3);
+export function ServiceCotizacionConvertirAVenta(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ServiceCotizacionConvertirAVenta'](arg1, arg2, arg3, arg4);
 }
 
 export function ServiceCotizacionObtenerDetalle(arg1) {

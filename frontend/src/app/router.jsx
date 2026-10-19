@@ -38,6 +38,7 @@ const ProductRequestSummaryPage = lazy(() => import('@/features/products/pages/P
 const ProductRequestConfirmationPage = lazy(() => import('@/features/products/pages/ProductRequestConfirmationPage').then(m => ({ default: m.ProductRequestConfirmationPage })));
 const CreateProductPage = lazy(() => import('@/features/products/pages/CreateProductPage').then(m => ({ default: m.CreateProductPage })));
 const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ConvertQuotationPage = lazy(() => import('@/features/history/pages/ConvertQuotationPage').then(m => ({ default: m.ConvertQuotationPage })));
 const TransfersPage = lazy(() => import('@/features/transfers/pages/TransfersPage').then(m => ({ default: m.TransfersPage })));
 const ClientsPage = lazy(() => import('@/features/clients/pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
 const ClientFormPage = lazy(() => import('@/features/clients/pages/ClientFormPage').then(m => ({ default: m.ClientFormPage })));
@@ -200,6 +201,10 @@ export const router = createBrowserRouter(
         {
           path: '/history',
           element: <AuthorizedPage permission="historial_ventas.acceder"><HistoryPage /></AuthorizedPage>,
+        },
+        {
+          path: '/history/quotes/:pedidoId/convert',
+          element: <AuthorizedPage permission="ventas.acceder"><ConvertQuotationPage /></AuthorizedPage>,
         },
         {
           path: '/transfers',

@@ -399,7 +399,7 @@ func (s *FacturacionService) PrepararFactura(pedidoGuid string) (*dto.Facturacio
 
 	inputs := make([]satSaleLineInput, len(detalles))
 	for index, d := range detalles {
-		inputs[index] = satSaleLineInput{Quantity: d.Cantidad, GrossUnit: d.PrecioVenta, DiscountPercent: d.Descuento, TaxRate: d.TasaIVA}
+		inputs[index] = satSaleLineInput{Quantity: d.Cantidad, GrossUnit: d.PrecioVenta, DiscountPercent: d.PorcentajeDescuento, TaxRate: d.TasaIVA}
 	}
 	invoiceCalc, err := calculateSATInvoice(inputs)
 	if err != nil {
@@ -407,7 +407,7 @@ func (s *FacturacionService) PrepararFactura(pedidoGuid string) (*dto.Facturacio
 	}
 	for index, d := range detalles {
 		calc := invoiceCalc.Lines[index]
-		result.Conceptos = append(result.Conceptos, dto.FacturacionConceptoDto{Codigo: d.Nivel.Codigo, Descripcion: d.Nivel.Producto.Descripcion, Unidad: d.Nivel.Empaque.NombreEmpaque, Cantidad: calc.Quantity.InexactFloat64(), PrecioConIVA: d.PrecioVenta.InexactFloat64(), Descuento: d.Descuento.InexactFloat64(), Total: satCurrency(calc.TotalWithTax).InexactFloat64()})
+		result.Conceptos = append(result.Conceptos, dto.FacturacionConceptoDto{Codigo: d.Nivel.Codigo, Descripcion: d.Nivel.Producto.Descripcion, Unidad: d.Nivel.Empaque.NombreEmpaque, Cantidad: calc.Quantity.InexactFloat64(), PrecioConIVA: d.PrecioVenta.InexactFloat64(), Descuento: d.Descuento.InexactFloat64(), PorcentajeDescuento: d.PorcentajeDescuento.InexactFloat64(), Total: satCurrency(calc.TotalWithTax).InexactFloat64()})
 	}
 	result.Subtotal = satNumber(invoiceCalc.Subtotal)
 	result.Descuentos = satNumber(invoiceCalc.Discounts)
@@ -481,7 +481,7 @@ func (s *FacturacionService) EmitirFactura(req dto.EmitirFacturacionRequestDto) 
 	}
 	inputs := make([]satSaleLineInput, len(detalles))
 	for index, d := range detalles {
-		inputs[index] = satSaleLineInput{Quantity: d.Cantidad, GrossUnit: d.PrecioVenta, DiscountPercent: d.Descuento, TaxRate: d.TasaIVA}
+		inputs[index] = satSaleLineInput{Quantity: d.Cantidad, GrossUnit: d.PrecioVenta, DiscountPercent: d.PorcentajeDescuento, TaxRate: d.TasaIVA}
 	}
 	invoiceCalc, err := calculateSATInvoice(inputs)
 	if err != nil {
@@ -682,11 +682,11 @@ func (s *FacturacionService) GenerarFacturacionGlobal(operacionID uint) (*dto.Re
 			SELECT p.id pedido_id, p.folio,
 			       COALESCE(SUM(
 				   (pd.precio_venta * pd.cantidad) -
-				   ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+				   COALESCE(pd.descuento, 0)
 			   ), 0) total,
 			       COALESCE(SUM(
 				   (pd.precio_base * pd.cantidad) -
-				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)
+				   ((pd.precio_base * pd.cantidad) * COALESCE(pd.porcentaje_descuento, 0) / 100)
 			   ), 0) total_precio_base
 			FROM pedidos p
 			JOIN pedido_detalle pd ON pd.pedido_id=p.id AND pd.deleted_at IS NULL
@@ -1021,8 +1021,8 @@ func (s *FacturacionService) generarReportesJornada(operacion models.OperacionSu
 		SELECT LPAD(p.folio::text, 7, '0') folio, p.fecha,
 		       COALESCE(c.razon_social, 'PÚBLICO EN GENERAL') cliente,
 		       SUM(pd.precio_venta * pd.cantidad)::double precision total_bruto,
-		       SUM((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100)::double precision descuento,
-		       SUM((pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100))::double precision total_neto
+		       SUM(COALESCE(pd.descuento, 0))::double precision descuento,
+		       SUM((pd.precio_venta * pd.cantidad) - COALESCE(pd.descuento, 0))::double precision total_neto
 		FROM pedidos p
 		JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
 		JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.guid::text = ? AND tp.deleted_at IS NULL
@@ -1030,7 +1030,7 @@ func (s *FacturacionService) generarReportesJornada(operacion models.OperacionSu
 		LEFT JOIN clientes c ON c.id = p.cliente_id AND c.deleted_at IS NULL
 		WHERE p.sucursal_origen_id = ? AND p.fecha BETWEEN ? AND ? AND p.deleted_at IS NULL
 		GROUP BY p.id, p.folio, p.fecha, c.razon_social
-		HAVING SUM((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100) > 0
+		HAVING SUM(COALESCE(pd.descuento, 0)) > 0
 		ORDER BY p.fecha, p.folio
 	`, models.TipoPedidoVentaGuid, operacion.SucursalID, operacion.FechaInicio, fechaFin).Scan(&descuentos.Rows).Error; err != nil {
 		return nil, fmt.Errorf("no se pudo preparar el reporte de descuentos: %w", err)
@@ -1136,7 +1136,7 @@ func (s *FacturacionService) prepararReporteFinanciero(operacion models.Operacio
 
 	if err := s.db.Raw(`
 		SELECT LPAD(p.folio::text, 7, '0') folio, COALESCE(c.razon_social, 'PÚBLICO EN GENERAL') cliente,
-		       p.fecha, SUM((pd.precio_venta * pd.cantidad) - ((pd.precio_venta * pd.cantidad) * COALESCE(pd.descuento, 0) / 100))::double precision total
+		       p.fecha, SUM((pd.precio_venta * pd.cantidad) - COALESCE(pd.descuento, 0))::double precision total
 		FROM pedidos p
 		JOIN pedido_detalle pd ON pd.pedido_id = p.id AND pd.deleted_at IS NULL
 		JOIN tipos_pedido tp ON tp.id = p.tipo_pedido_id AND tp.guid::text = ? AND tp.deleted_at IS NULL
@@ -1696,7 +1696,7 @@ func (s *FacturacionService) ObtenerFacturaPDF(pedidoGuid string) (*dto.Facturac
 	}
 	inputs := make([]satSaleLineInput, len(detalles))
 	for index, detalle := range detalles {
-		inputs[index] = satSaleLineInput{Quantity: detalle.Cantidad, GrossUnit: detalle.PrecioVenta, DiscountPercent: detalle.Descuento, TaxRate: detalle.TasaIVA}
+		inputs[index] = satSaleLineInput{Quantity: detalle.Cantidad, GrossUnit: detalle.PrecioVenta, DiscountPercent: detalle.PorcentajeDescuento, TaxRate: detalle.TasaIVA}
 	}
 	calculo, err := calculateSATInvoice(inputs)
 	if err != nil {

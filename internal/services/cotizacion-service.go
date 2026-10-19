@@ -298,7 +298,8 @@ func (s *CotizacionService) guardarTransferenciaEntrante(evento *dto.Transferenc
 			detalle := models.PedidoDetalle{
 				PedidoID: pedido.ID, NivelID: nivel.ID,
 				Cantidad: decimal.NewFromFloat(item.Cantidad), PrecioCompra: decimal.NewFromFloat(item.PrecioCompra),
-				PrecioBase: models.CalcularPrecioBase(precioVenta, origen.ComisionVentas), PrecioVenta: precioVenta, Descuento: decimal.NewFromFloat(item.Descuento),
+				PrecioBase: models.CalcularPrecioBase(precioVenta, origen.ComisionVentas), PrecioVenta: precioVenta,
+				Descuento: decimal.NewFromFloat(item.Descuento), PorcentajeDescuento: decimal.NewFromFloat(item.PorcentajeDescuento),
 				TrasladoIVA: decimal.NewFromFloat(item.TrasladoIVA), TasaIVA: decimal.NewFromFloat(item.TasaIVA),
 				RetencionISR: decimal.NewFromFloat(item.RetencionISR), TasaISR: decimal.NewFromFloat(item.TasaISR),
 				InfoAdicional: item.InfoAdicional,
@@ -361,15 +362,15 @@ func (s *CotizacionService) aplicarResolucion(res *dto.ResolucionCotizacionDto) 
 				return fmt.Errorf("buscando pedido: %w", err)
 			}
 			for _, item := range res.Items {
-				// PedidoDetalle.Descuento almacena porcentaje, igual que en Ventas.
 				if err := tx.Exec(`UPDATE pedido_detalle pd
-						SET descuento = ?
+						SET porcentaje_descuento = ?,
+							descuento = (pd.cantidad * pd.precio_venta) * ? / 100
 						FROM nivel_empaque ne
 						WHERE pd.nivel_id = ne.id
 						  AND ne.guid = ?
 						  AND pd.pedido_id = ?
 						  AND pd.deleted_at IS NULL`,
-					item.DescuentoAutorizado, item.NivelGuid, pedido.ID).Error; err != nil {
+					item.DescuentoAutorizado, item.DescuentoAutorizado, item.NivelGuid, pedido.ID).Error; err != nil {
 					return fmt.Errorf("actualizando descuento autorizado: %w", err)
 				}
 			}
@@ -494,6 +495,7 @@ func (s *CotizacionService) ConvertirAVenta(
 	pedidoID uint,
 	pagos []dto.PagosAplicadosDto,
 	sucursalOrigenID *uint,
+	clienteGuid string,
 ) (*dto.ResponseDto, error) {
 	var venta models.Pedido
 	var cotizacionAplicadaID uint
@@ -541,9 +543,17 @@ func (s *CotizacionService) ConvertirAVenta(
 		if sucursalOrigenID != nil {
 			sucursalVentaID = sucursalOrigenID
 		}
+		clienteVentaID := cotizacion.ClienteID
+		if strings.TrimSpace(clienteGuid) != "" {
+			var cliente models.Cliente
+			if err := tx.Where("guid = ?", strings.TrimSpace(clienteGuid)).First(&cliente).Error; err != nil {
+				return fmt.Errorf("cliente seleccionado no encontrado: %w", err)
+			}
+			clienteVentaID = &cliente.ID
+		}
 		venta = models.Pedido{
 			EstatusID:         &estatusCompletado,
-			ClienteID:         cotizacion.ClienteID,
+			ClienteID:         clienteVentaID,
 			OperacionCajeroID: cotizacion.OperacionCajeroID,
 			TipoPedidoID:      &tipoPedidoVenta,
 			Folio:             folio,
@@ -575,30 +585,31 @@ func (s *CotizacionService) ConvertirAVenta(
 		}
 		totalPedido := decimal.Zero
 		for _, detalleCotizacion := range detalles {
-			descuentoPorcentaje := detalleCotizacion.Descuento
+			descuentoPorcentaje := detalleCotizacion.PorcentajeDescuento
 			if autorizado, ok := descuentosAutorizados[detalleCotizacion.Nivel.Guid.String()]; ok {
 				descuentoPorcentaje = autorizado
 			}
+			bruto := detalleCotizacion.PrecioVenta.Mul(detalleCotizacion.Cantidad)
+			descuentoImporte := bruto.Mul(descuentoPorcentaje).Div(decimal.NewFromInt(100))
 			detalleVenta := models.PedidoDetalle{
-				PedidoID:      venta.ID,
-				NivelID:       detalleCotizacion.NivelID,
-				Cantidad:      detalleCotizacion.Cantidad,
-				PrecioCompra:  detalleCotizacion.PrecioCompra,
-				PrecioBase:    detalleCotizacion.PrecioBase,
-				PrecioVenta:   detalleCotizacion.PrecioVenta,
-				Descuento:     descuentoPorcentaje,
-				TrasladoIVA:   detalleCotizacion.TrasladoIVA,
-				TasaIVA:       detalleCotizacion.TasaIVA,
-				RetencionISR:  detalleCotizacion.RetencionISR,
-				TasaISR:       detalleCotizacion.TasaISR,
-				InfoAdicional: detalleCotizacion.InfoAdicional,
+				PedidoID:            venta.ID,
+				NivelID:             detalleCotizacion.NivelID,
+				Cantidad:            detalleCotizacion.Cantidad,
+				PrecioCompra:        detalleCotizacion.PrecioCompra,
+				PrecioBase:          detalleCotizacion.PrecioBase,
+				PrecioVenta:         detalleCotizacion.PrecioVenta,
+				Descuento:           descuentoImporte,
+				PorcentajeDescuento: descuentoPorcentaje,
+				TrasladoIVA:         detalleCotizacion.TrasladoIVA,
+				TasaIVA:             detalleCotizacion.TasaIVA,
+				RetencionISR:        detalleCotizacion.RetencionISR,
+				TasaISR:             detalleCotizacion.TasaISR,
+				InfoAdicional:       detalleCotizacion.InfoAdicional,
 			}
 			if err := tx.Create(&detalleVenta).Error; err != nil {
 				return fmt.Errorf("copiando detalle de cotizacion: %w", err)
 			}
-			bruto := detalleCotizacion.PrecioVenta.Mul(detalleCotizacion.Cantidad)
-			descuento := bruto.Mul(descuentoPorcentaje).Div(decimal.NewFromInt(100))
-			totalPedido = totalPedido.Add(bruto.Sub(descuento))
+			totalPedido = totalPedido.Add(bruto.Sub(descuentoImporte))
 		}
 		totalPedido = totalPedido.Round(2)
 		aplicado := decimal.Zero
@@ -663,16 +674,20 @@ func (s *CotizacionService) ConvertirAVenta(
 			return fmt.Errorf("los pagos aplicados ($%s) no cubren el total de la venta ($%s)", aplicado.StringFixed(2), totalPedido.StringFixed(2))
 		}
 
-		// Descontar stock por la venta nueva; la cotizacion no se modifica.
+		// Aplicar exactamente la misma validación y consumo de inventario de una
+		// venta normal. El repositorio bloquea las existencias involucradas,
+		// resuelve empaques/concentradores y valida todo antes de descontar; si un
+		// artículo no existe o no alcanza, la transacción completa se revierte.
+		productosVenta := make([]dto.PedidoProductoDto, 0, len(detalles))
 		for _, d := range detalles {
-			var sp models.SucursalProducto
-			if err := tx.Where("nivel_id = ?", d.NivelID).First(&sp).Error; err != nil {
-				continue // si no hay registro de sucursal_producto, omitir
-			}
-			sp.Existencia = sp.Existencia.Sub(d.Cantidad)
-			if err := tx.Save(&sp).Error; err != nil {
-				return fmt.Errorf("actualizando existencia: %w", err)
-			}
+			productosVenta = append(productosVenta, dto.PedidoProductoDto{
+				ID:       d.Nivel.Guid.String(),
+				Quantity: d.Cantidad,
+			})
+		}
+		posRepository := repository.NewPosRepository(tx, nil, "", nil)
+		if err := posRepository.ActualizarExistencias(productosVenta, tx); err != nil {
+			return fmt.Errorf("no fue posible convertir la cotizacion por inventario insuficiente: %w", err)
 		}
 
 		if err := tx.Model(&models.Pedido{}).
@@ -729,7 +744,7 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 	for _, d := range detalles {
 		qty := d.Cantidad.InexactFloat64()
 		price := d.PrecioVenta.InexactFloat64()
-		discountPercent := d.Descuento.InexactFloat64()
+		discountPercent := d.PorcentajeDescuento.InexactFloat64()
 		if pedido.EstatusAutorizacion == "autorizada" {
 			if autorizado, ok := porcentajeAutorizadoPorNivel[d.Nivel.Guid.String()]; ok {
 				discountPercent = autorizado
@@ -740,14 +755,16 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 		subtotal += qty * price
 		totalDescuento += discountAmount
 		items = append(items, dto.CotizacionItemDto{
-			NivelGuid:    d.Nivel.Guid.String(),
-			NivelCodigo:  d.Nivel.Codigo,
-			Producto:     d.Nivel.Producto.Descripcion,
-			UnidadMedida: d.Nivel.Empaque.NombreEmpaque,
-			Cantidad:     qty,
-			PrecioVenta:  price,
-			Descuento:    discountAmount,
-			Subtotal:     sub,
+			NivelGuid:           d.Nivel.Guid.String(),
+			NivelCodigo:         d.Nivel.Codigo,
+			Producto:            d.Nivel.Producto.Descripcion,
+			ImgReferencia:       d.Nivel.ImgReferencia,
+			UnidadMedida:        d.Nivel.Empaque.NombreEmpaque,
+			Cantidad:            qty,
+			PrecioVenta:         price,
+			Descuento:           discountAmount,
+			PorcentajeDescuento: discountPercent,
+			Subtotal:            sub,
 		})
 	}
 
@@ -755,13 +772,35 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 	if pedido.Cliente.RazonSocial != "" {
 		razonSocial = pedido.Cliente.RazonSocial
 	}
+	clienteResumen := dto.ClienteDto{
+		Guid:        pedido.Cliente.Guid.String(),
+		RazonSocial: razonSocial,
+		Correo:      pedido.Cliente.Correo,
+		Telefono:    pedido.Cliente.Telefono,
+	}
+	if pedido.ClienteID != nil {
+		_ = s.db.Raw(`
+			SELECT c.guid, c.razon_social, COALESCE(f.rfc, '') AS rfc, c.correo, c.telefono
+			FROM clientes c
+			LEFT JOIN LATERAL (
+				SELECT ef.rfc FROM cliente_entidad_fiscal cef
+				JOIN entidades_fiscales ef ON ef.id = cef.entidad_fiscal_id AND ef.deleted_at IS NULL
+				WHERE cef.cliente_id = c.id AND cef.deleted_at IS NULL ORDER BY cef.id LIMIT 1
+			) f ON TRUE
+			WHERE c.id = ? AND c.deleted_at IS NULL`, *pedido.ClienteID).
+			Scan(&clienteResumen).Error
+	}
 
 	detalle := &dto.CotizacionDetalleDto{
 		ID:                    pedido.ID,
 		PedidoGuid:            pedido.Guid.String(),
 		Folio:                 pedido.Folio,
 		Fecha:                 pedido.Fecha.Format(time.RFC3339),
-		RazonSocial:           razonSocial,
+		ClienteGuid:           clienteResumen.Guid,
+		RazonSocial:           clienteResumen.RazonSocial,
+		ClienteRFC:            clienteResumen.RFC,
+		ClienteCorreo:         clienteResumen.Correo,
+		ClienteTelefono:       clienteResumen.Telefono,
 		EstatusAutorizacion:   pedido.EstatusAutorizacion,
 		DescuentosSolicitados: descuentosSolicitados,
 		DescuentosAutorizados: descuentosAutorizados,

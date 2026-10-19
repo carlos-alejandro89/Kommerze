@@ -20,13 +20,14 @@ type FacturacionEntidadDto struct {
 }
 
 type FacturacionConceptoDto struct {
-	Codigo       string  `json:"Codigo"`
-	Descripcion  string  `json:"Descripcion"`
-	Unidad       string  `json:"Unidad"`
-	Cantidad     float64 `json:"Cantidad"`
-	PrecioConIVA float64 `json:"PrecioConIVA"`
-	Descuento    float64 `json:"Descuento"`
-	Total        float64 `json:"Total"`
+	Codigo              string  `json:"Codigo"`
+	Descripcion         string  `json:"Descripcion"`
+	Unidad              string  `json:"Unidad"`
+	Cantidad            float64 `json:"Cantidad"`
+	PrecioConIVA        float64 `json:"PrecioConIVA"`
+	Descuento           float64 `json:"Descuento"`
+	PorcentajeDescuento float64 `json:"PorcentajeDescuento"`
+	Total               float64 `json:"Total"`
 }
 
 type FacturacionPreparacionDto struct {

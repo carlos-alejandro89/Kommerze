@@ -226,6 +226,7 @@ export function ModalVerTransaccion({ row, onClose }) {
                       const requested = detalle?.DescuentosSolicitados?.find(discount => discount.nivelGuid === item.nivelGuid);
                       const authorized = detalle?.DescuentosAutorizados?.find(discount => discount.nivelGuid === item.nivelGuid);
                       const discountValue = Number(item.descuento || 0);
+                      const discountPercent = Number(item.porcentajeDescuento || authorized?.descuentoAutorizado || requested?.descuentoSolicitado || 0);
 
                       return (
                         <tr key={`${item.nivelGuid}-${index}`} className="transition-colors hover:bg-blue-50/40 dark:hover:bg-white/[.035]">
@@ -249,10 +250,9 @@ export function ModalVerTransaccion({ row, onClose }) {
                           <td className="px-4 py-3.5 text-right text-xs tabular-nums">{formatMXN(item.precioVenta)}</td>
                           <td className="px-4 py-3.5 text-right">
                             {discountValue > 0 || requested ? (
-                              <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                <Percent className="size-3" />
-                                {authorized?.descuentoAutorizado ?? requested?.descuentoSolicitado ?? formatMXN(discountValue)}
-                                {(authorized || requested) && '%'}
+                              <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                <span>−{formatMXN(discountValue)}</span>
+                                {discountPercent > 0 && <span className="inline-flex items-center gap-0.5 rounded bg-white/70 px-1 py-0.5 text-[9px] text-blue-600"><Percent className="size-2.5" />{discountPercent.toFixed(2)}%</span>}
                               </div>
                             ) : <span className="text-xs text-muted-foreground">—</span>}
                           </td>

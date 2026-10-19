@@ -931,12 +931,13 @@ func (l *LocalServerService) handleConvertirVenta(w http.ResponseWriter, r *http
 		PedidoID         uint                    `json:"pedidoId"`
 		PagosAplicados   []dto.PagosAplicadosDto `json:"pagosAplicados"`
 		SucursalOrigenID *uint                   `json:"sucursalOrigenId"`
+		ClienteGuid      string                  `json:"clienteGuid"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Cuerpo invalido")
 		return
 	}
-	result, err := l.cotizacion.ConvertirAVenta(body.PedidoID, body.PagosAplicados, body.SucursalOrigenID)
+	result, err := l.cotizacion.ConvertirAVenta(body.PedidoID, body.PagosAplicados, body.SucursalOrigenID, body.ClienteGuid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

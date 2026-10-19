@@ -11,11 +11,12 @@ type PedidoDetalle struct {
 	NivelID uint
 	Nivel   NivelEmpaque `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 
-	Cantidad     decimal.Decimal `gorm:"type:decimal(18,6);not null"`
-	PrecioCompra decimal.Decimal `gorm:"type:decimal(18,6);not null"`
-	PrecioBase   decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
-	PrecioVenta  decimal.Decimal `gorm:"type:decimal(18,6);not null"`
-	Descuento    decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
+	Cantidad            decimal.Decimal `gorm:"type:decimal(18,6);not null"`
+	PrecioCompra        decimal.Decimal `gorm:"type:decimal(18,6);not null"`
+	PrecioBase          decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
+	PrecioVenta         decimal.Decimal `gorm:"type:decimal(18,6);not null"`
+	Descuento           decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
+	PorcentajeDescuento decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 
 	TrasladoIVA decimal.Decimal `gorm:"type:decimal(18,6);default:0"`
 	TasaIVA     decimal.Decimal `gorm:"type:decimal(18,6);not null;default:0"`
