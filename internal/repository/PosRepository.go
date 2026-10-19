@@ -11,6 +11,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -740,6 +742,13 @@ func (r *PosRepository) ConfirmarTransaccion(
 		if tipoGuid != models.TipoPedidoVentaGuid && tipoGuid != models.TipoPedidoCotizacionGuid && tipoGuid != models.TipoPedidoTraspasoGuid {
 			return fmt.Errorf("tipo de transacción no permitido: %s", tipo.Nombre)
 		}
+		if sucursalOrigen == nil || *sucursalOrigen == 0 {
+			return fmt.Errorf("la sucursal origen es requerida para registrar %s", strings.ToLower(tipo.Nombre))
+		}
+		var sucursal models.Sucursal
+		if err := tx.Select("id").Where("id = ? AND deleted_at IS NULL", *sucursalOrigen).First(&sucursal).Error; err != nil {
+			return fmt.Errorf("la sucursal origen seleccionada no existe: %w", err)
+		}
 		estatusNombre := "Pendiente"
 		if tipoGuid == models.TipoPedidoVentaGuid {
 			estatusNombre = "Completado"
@@ -784,8 +793,11 @@ func (r *PosRepository) ConfirmarTransaccion(
 			return err
 		}
 
-		// Diccionario
+		// Diccionarios de nivel e inventario. El precio de compra del detalle
+		// debe conservar el costo vigente al momento de la venta; no es el
+		// precio cobrado al cliente.
 		dicNiveles := make(map[uuid.UUID]uint)
+		preciosCompra := make(map[uint]decimal.Decimal)
 
 		var guids []uuid.UUID
 		for _, item := range itemsPedido {
@@ -803,6 +815,22 @@ func (r *PosRepository) ConfirmarTransaccion(
 		for _, item := range nivelesEmpaque {
 			dicNiveles[item.Guid] = item.ID
 		}
+
+		nivelesIDs := make([]uint, 0, len(nivelesEmpaque))
+		for _, nivel := range nivelesEmpaque {
+			nivelesIDs = append(nivelesIDs, nivel.ID)
+		}
+		if len(nivelesIDs) > 0 {
+			var inventario []models.SucursalProducto
+			if err := tx.Select("nivel_id", "precio_compra").
+				Where("nivel_id IN ?", nivelesIDs).
+				Find(&inventario).Error; err != nil {
+				return fmt.Errorf("no se pudo obtener el precio de compra del inventario: %w", err)
+			}
+			for _, item := range inventario {
+				preciosCompra[item.NivelID] = item.PrecioCompra
+			}
+		}
 		comisionVentas := decimal.Zero
 		if sucursalOrigen != nil {
 			var sucursal models.Sucursal
@@ -816,14 +844,22 @@ func (r *PosRepository) ConfirmarTransaccion(
 		totalPedido := decimal.Zero
 		for _, item := range itemsPedido {
 			guid, _ := uuid.Parse(fmt.Sprintf("%v", item.ID))
+			nivelID, existeNivel := dicNiveles[guid]
+			if !existeNivel {
+				return fmt.Errorf("no se encontró el nivel de empaque %s", guid)
+			}
+			precioCompra, existeInventario := preciosCompra[nivelID]
+			if !existeInventario {
+				return fmt.Errorf("no se encontró el precio de compra vigente para el nivel %s", guid)
+			}
 
 			detalle := models.PedidoDetalle{
 				PedidoID:     pedido.ID,
-				NivelID:      dicNiveles[guid],
+				NivelID:      nivelID,
 				Cantidad:     item.Quantity,
 				PrecioBase:   models.CalcularPrecioBase(item.Price, comisionVentas),
 				PrecioVenta:  item.Price,
-				PrecioCompra: item.Price,
+				PrecioCompra: precioCompra,
 				TasaIVA:      decimal.NewFromFloat(16.0),
 				TasaISR:      decimal.NewFromFloat(0.0),
 				Descuento:    item.Discount,
@@ -1127,14 +1163,17 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 		return
 	}
 
-	resp, err := r.cloudHTTPClient.Post(r.cloudAPIURL+"/pedidos/registrar", "application/json", bytes.NewBuffer(payload))
+	url := r.cloudAPIURL + "/pedidos/registrar"
+	resp, err := r.cloudHTTPClient.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
+		r.logPedidoSyncFailure(pedidoID, http.MethodPost, url, payload, 0, nil, err)
 		r.emitPedidoSyncStatus(pedidoID, false, "No se pudo conectar con el servidor: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		r.logPedidoSyncFailure(pedidoID, http.MethodPost, url, payload, resp.StatusCode, body, nil)
 		r.emitPedidoSyncStatus(pedidoID, false, fmt.Sprintf("Cloud respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(body))))
 		return
 	}
@@ -1158,6 +1197,47 @@ func (r *PosRepository) CloudSync(pedidoID uint) {
 		return
 	}
 	r.emitPedidoSyncStatus(pedidoID, true, "Sincronizado correctamente")
+}
+
+func (r *PosRepository) logPedidoSyncFailure(pedidoID uint, method, url string, payload []byte, statusCode int, response []byte, requestErr error) {
+	status := "sin respuesta HTTP"
+	if statusCode > 0 {
+		status = fmt.Sprintf("%d %s", statusCode, http.StatusText(statusCode))
+	}
+	responseText := strings.TrimSpace(string(response))
+	if responseText == "" {
+		responseText = "<sin cuerpo de respuesta>"
+	}
+	errorText := "<sin error de transporte>"
+	if requestErr != nil {
+		errorText = requestErr.Error()
+	}
+	entry := fmt.Sprintf(
+		"[%s] [PedidoSyncError]\nPedidoID: %d\nMetodo: %s\nURL: %s\nPayload: %s\nEstado: %s\nRespuesta: %s\nError: %s\n---\n",
+		time.Now().Format(time.RFC3339), pedidoID, method, url, string(payload), status, responseText, errorText,
+	)
+	log.Print(entry)
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Printf("[PedidoSyncError] no se pudo localizar la carpeta de logs: %v", err)
+		return
+	}
+	logsDir := filepath.Join(configDir, "Kommerze", "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		log.Printf("[PedidoSyncError] no se pudo crear la carpeta de logs: %v", err)
+		return
+	}
+	logPath := filepath.Join(logsDir, "sync-operaciones.log")
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		log.Printf("[PedidoSyncError] no se pudo abrir %s: %v", logPath, err)
+		return
+	}
+	defer file.Close()
+	if _, err := file.WriteString(entry); err != nil {
+		log.Printf("[PedidoSyncError] no se pudo escribir %s: %v", logPath, err)
+	}
 }
 
 func (r *PosRepository) emitPedidoSyncStatus(pedidoID uint, success bool, message string) {

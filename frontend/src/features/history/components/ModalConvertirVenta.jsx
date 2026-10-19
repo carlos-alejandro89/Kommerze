@@ -1,351 +1,150 @@
-import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { X, ShoppingCart, AlertCircle, Loader2, CreditCard, Banknote, CheckCircle2, ArrowRightLeft, DollarSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { usePosService } from '@/features/pos/usePosService';
+import * as React from 'react';
+import { AlertCircle, CheckCircle2, Loader2, ReceiptText, ShoppingCart, WalletCards } from 'lucide-react';
 import { toast } from 'sonner';
+import { EventsOn } from '../../../../wailsjs/runtime/runtime';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { PaymentMethodSelector } from '@/features/pos/components/PaymentMethodSelector';
+import { ItemPagos } from '@/features/pos/components/item-pagos';
+import { PinpadWaitingDialog } from '@/features/pos/components/PinpadWaitingDialog';
+import { isCardPayment } from '@/features/pos/components/payment-method-utils';
+import { usePosService } from '@/features/pos/usePosService';
+import { useActivation } from '@/providers/ActivationProvider';
 
-/**
- * ModalConvertirVenta
- * Sheet lateral para convertir una cotización en una venta real.
- * Muestra los ítems con descuentos autorizados aplicados y el flujo de pago.
- */
+const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+const netPaySaleTransaction = payload => {
+  const service = window?.go?.main?.App?.NetPaySaleTransaction;
+  if (typeof service !== 'function') throw new Error('El servicio de NetPay no está disponible.');
+  return service(payload);
+};
+const cardPaymentType = data => {
+  const value = String(data?.cardType ?? data?.CardType ?? data?.raw?.card_type ?? data?.raw?.cardType ?? '').trim().toUpperCase();
+  if (value === 'C') return { Clave: '04', Nombre: 'Tarjeta de crédito' };
+  if (value === 'D') return { Clave: '28', Nombre: 'Tarjeta de débito' };
+  return {};
+};
+
 export function ModalConvertirVenta({ row, onClose }) {
-  const { obtenerDetalleCotizacion, convertirCotizacionAVenta, obtenerFormasPago } = usePosService();
+  const posService = usePosService();
+  const { store } = useActivation();
+  const paymentGuid = React.useRef(crypto.randomUUID());
+  const pendingPinpad = React.useRef(null);
+  const pinpadTimeout = React.useRef(null);
+  const [detalle, setDetalle] = React.useState(null);
+  const [formasPago, setFormasPago] = React.useState([]);
+  const [paymentMethod, setPaymentMethod] = React.useState(null);
+  const [pagos, setPagos] = React.useState([]);
+  const [pinpadEnabled, setPinpadEnabled] = React.useState(false);
+  const [pinpadDialog, setPinpadDialog] = React.useState({ open: false, amount: 0, status: 'waiting', message: '' });
+  const [loading, setLoading] = React.useState(true);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
 
-  const [detalle, setDetalle]       = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState(null);
-  const [montoRecibido, setMontoRecibido] = useState('');
-  const [formasPago, setFormasPago] = useState([]);
-  const [formaSeleccionada, setFormaSeleccionada] = useState(null);
-
-  /* ── Cargar detalle y formas de pago ── */
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    
+  React.useEffect(() => {
+    let active = true;
     Promise.all([
-      obtenerDetalleCotizacion(row.ID),
-      obtenerFormasPago().catch(() => ({ success: false, data: [] }))
-    ])
-      .then(([detRes, fpRes]) => {
-        if (cancelled) return;
-        setDetalle(detRes);
-        
-        // Procesar formas de pago
-        const rawFp = fpRes?.data || [];
-        // Filtrar métodos comunes
-        const commonClaves = new Set(['01', '03', '04', '28', '29']);
-        let list = rawFp.filter(fp => commonClaves.has(String(fp.Clave || '').trim()));
-        if (list.length === 0) {
-          list = [
-            { ID: 1, Nombre: 'Efectivo', Clave: '01', Descripcion: 'Pago en efectivo' },
-            { ID: 2, Nombre: 'Tarjeta', Clave: '28', Descripcion: 'Pago con tarjeta de crédito/débito' },
-            { ID: 3, Nombre: 'Transferencia', Clave: '03', Descripcion: 'Pago electrónico' },
-          ];
-        }
-        setFormasPago(list);
-        
-        // Seleccionar efectivo (01) por defecto
-        const cashFp = list.find(fp => String(fp.Clave).trim() === '01') || list[0];
-        setFormaSeleccionada(cashFp);
-      })
-      .catch(e => {
-        if (!cancelled) setError(e?.message ?? String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-      
-    return () => { cancelled = true; };
+      posService.obtenerDetalleCotizacion(row.ID),
+      posService.obtenerFormasPago(),
+      posService.obtenerConfiguracionDispositivo().catch(() => null),
+    ]).then(([quotation, paymentResponse, config]) => {
+      if (!active) return;
+      setDetalle(quotation);
+      const methods = paymentResponse?.data || [];
+      setFormasPago(methods);
+      setPaymentMethod(methods.find(method => String(method.Clave).trim() === '01')?.ID ?? methods[0]?.ID ?? null);
+      const credentials = Boolean(String(config?.netPayUser || '').trim() && String(config?.netPayPassword || '').trim() && String(config?.netPayStoreId || '').trim() && String(config?.netPayDeviceSerial || '').trim());
+      setPinpadEnabled(config?.terminalCobro === 'pinpad' && credentials);
+      if (!methods.length) setError('No hay formas de pago sincronizadas.');
+    }).catch(reason => setError(reason?.message || String(reason))).finally(() => active && setLoading(false));
+    return () => { active = false; };
   }, [row.ID]);
 
-  /* ── Totales con descuentos autorizados ── */
-  const totales = useMemo(() => {
-    if (!detalle) return { subtotal: 0, totalDescuento: 0, total: 0 };
-    return {
-      subtotal:       detalle.Subtotal        ?? 0,
-      totalDescuento: detalle.TotalDescuento  ?? 0,
-      total:          detalle.Total           ?? 0,
-    };
-  }, [detalle]);
+  React.useEffect(() => {
+    const unsubscribe = EventsOn('netpay_payment_response', data => {
+      const pending = pendingPinpad.current;
+      if (!pending) return;
+      const guid = data?.paymentGuid ?? data?.PaymentGuid ?? data?.raw?.paymentGuid;
+      if (guid && guid !== paymentGuid.current) return;
+      const approved = String(data?.responseCode ?? data?.ResponseCode ?? '') === '00';
+      const message = data?.message ?? data?.Message ?? (approved ? 'Pago aprobado correctamente' : 'Pago no aprobado');
+      pendingPinpad.current = null;
+      setPinpadDialog(current => ({ ...current, open: true, status: approved ? 'success' : 'error', message }));
+      clearTimeout(pinpadTimeout.current);
+      pinpadTimeout.current = setTimeout(() => setPinpadDialog({ open: false, amount: 0, status: 'waiting', message: '' }), approved ? 2200 : 3200);
+      if (approved) {
+        const type = cardPaymentType(data);
+        const brand = String(data?.cardTypeName ?? data?.CardTypeName ?? data?.raw?.cardTypeName ?? data?.raw?.card_type_name ?? '').trim();
+        const normalized = { ...pending, ...type, TipoTarjeta: type.Nombre || pending.Nombre, MarcaTarjeta: brand, Referencia: type.Nombre || pending.Nombre, NetPay: data?.raw ?? data };
+        setPagos(current => current.some(item => item.ID == normalized.ID) ? current.map(item => item.ID == normalized.ID ? normalized : item) : [...current, normalized]);
+      }
+      paymentGuid.current = crypto.randomUUID();
+    });
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); clearTimeout(pinpadTimeout.current); };
+  }, []);
 
-  const monto    = parseFloat(montoRecibido) || 0;
-  const cambio   = Math.max(0, monto - totales.total);
-  const falta    = totales.total > 0 ? Math.max(0, totales.total - monto) : 0;
+  const totals = React.useMemo(() => ({ subtotal: Number(detalle?.Subtotal || 0), discount: Number(detalle?.TotalDescuento || 0), total: Number(detalle?.Total || 0) }), [detalle]);
+  const paid = pagos.reduce((sum, payment) => sum + Number(payment.Monto || 0), 0);
+  const pending = Math.max(0, Number((totals.total - paid).toFixed(2)));
+  const change = pagos.reduce((sum, payment) => sum + Number(payment.Cambio || 0), 0);
 
-  const handleSelectFormaPago = (fp) => {
-    setFormaSeleccionada(fp);
-    // Para cualquier método que no sea Efectivo (01), auto-llenamos el monto exacto
-    if (String(fp.Clave || '').trim() !== '01') {
-      setMontoRecibido(totales.total.toFixed(2));
-    } else {
-      setMontoRecibido('');
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (falta > 0) { setError(`Falta $${falta.toFixed(2)} para completar el pago.`); return; }
-    const esEfectivo = String(formaSeleccionada?.Clave || '').trim() === '01';
-    if (!esEfectivo && monto > totales.total + 0.001) {
-      setError('Los medios de pago distintos de efectivo no pueden superar el total de la venta.');
+  const addPayment = async payment => {
+    setError('');
+    if (pinpadEnabled && isCardPayment(payment)) {
+      try {
+        if (pending <= 0) return toast.info('La venta ya está cubierta');
+        const normalized = { ...payment, Monto: pending.toFixed(2), MontoRecibido: pending.toFixed(2), Cambio: '0.00' };
+        const result = await netPaySaleTransaction({ serialNumber: '', amount: pending.toFixed(2), storeId: '', folioNumber: String(row.Folio || Date.now()), msi: '00', traceability: { paymentGuid: paymentGuid.current, idSucursal: String(store?.ID || store?.Guid || store?.guid || 'N/A') } });
+        if (!result?.success) throw new Error(result?.message || result?.errors?.[0] || 'No fue posible procesar el pago');
+        pendingPinpad.current = { ...normalized, Referencia: 'Pago con tarjeta', NetPaySolicitud: result.data };
+        setPinpadDialog({ open: true, amount: pending, status: 'waiting', message: '' });
+      } catch (reason) { pendingPinpad.current = null; toast.error(reason?.message || 'No fue posible procesar el pago con tarjeta'); }
       return;
     }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const pagos = [{
-        ID: formaSeleccionada?.ID || 1,
-        Nombre: formaSeleccionada?.Nombre || 'Efectivo',
-        Monto: totales.total,
-        MontoRecibido: monto,
-        Cambio: esEfectivo ? cambio : 0,
-      }];
-      const res = await convertirCotizacionAVenta(row.ID, pagos, null);
-      if (res?.success === false) { setError(res.message || 'Error al procesar la venta'); return; }
-      toast.success('Venta generada exitosamente.');
-      onClose();
-    } catch (e) {
-      setError(e?.message ?? String(e));
-    } finally {
-      setSubmitting(false);
-    }
+    const received = Number(payment.MontoRecibido ?? payment.Monto ?? 0);
+    if (!Number.isFinite(received) || received <= 0) return toast.error('Ingresa un monto válido mayor que cero');
+    const otherPayments = pagos.filter(item => item.ID != payment.ID).reduce((sum, item) => sum + Number(item.Monto || 0), 0);
+    const available = Math.max(0, Number((totals.total - otherPayments).toFixed(2)));
+    if (available <= 0) return toast.info('La venta ya está cubierta');
+    const cash = String(payment.Clave || '').trim() === '01';
+    if (!cash && received > available + 0.001) return toast.error(`Este medio de pago no puede superar ${money.format(available)}`);
+    const normalized = { ...payment, Monto: (cash ? Math.min(received, available) : received).toFixed(2), MontoRecibido: received.toFixed(2), Cambio: (cash ? Math.max(0, received - available) : 0).toFixed(2) };
+    setPagos(current => current.some(item => item.ID == normalized.ID) ? current.map(item => item.ID == normalized.ID ? normalized : item) : [...current, normalized]);
   };
 
-  const formatMXN = (n) => `$${(n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+  const submit = async () => {
+    if (!pagos.length || pending > 0.001) return setError(`Falta aplicar ${money.format(pending)} para completar el pago.`);
+    setSubmitting(true); setError('');
+    try {
+      const response = await posService.convertirCotizacionAVenta(row.ID, pagos, null);
+      if (response?.success === false) throw new Error(response.message || 'No fue posible crear la venta');
+      toast.success('Venta creada. La cotización original se conservó sin cambios.');
+      onClose();
+    } catch (reason) { setError(reason?.message || String(reason)); } finally { setSubmitting(false); }
+  };
 
-  /* ── Render ── */
-  return createPortal(
-    <div className="fixed inset-0 z-[var(--z-layer-modal)] flex items-start justify-end">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Sheet */}
-      <div className="relative flex h-full w-full max-w-[480px] flex-col bg-background border-l border-border shadow-2xl animate-slide-in-right">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                <ShoppingCart className="size-4 text-primary" />
-              </div>
-              <h2 className="text-base font-bold text-foreground">Convertir a Venta</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1 ml-10">
-              Cotización #{String(row.Folio).padStart(4, '0')} — {row.RazonSocial || 'Público General'}
-            </p>
-          </div>
-          <button onClick={onClose} className="flex size-8 items-center justify-center rounded-lg hover:bg-muted transition-colors">
-            <X className="size-4 text-muted-foreground" />
-          </button>
+  return <>
+    <Dialog open onOpenChange={open => !open && !submitting && onClose()}>
+      <DialogContent className="w-[min(96vw,1040px)] max-w-none max-h-[90vh] overflow-hidden rounded-2xl p-0" onEscapeKeyDown={event => submitting && event.preventDefault()}>
+        <DialogHeader className="mb-0 border-b bg-muted/25 px-6 py-5"><div className="flex items-center gap-3 pr-8"><div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart className="size-5" /></div><div><DialogTitle className="text-xl">Crear venta desde cotización</DialogTitle><DialogDescription className="mt-1">Cotización #{String(row.Folio || '').padStart(6, '0')} · Se conservará el documento original.</DialogDescription></div></div></DialogHeader>
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="min-h-0 overflow-y-auto border-b p-6 lg:border-b-0 lg:border-r">
+            {loading ? <div className="flex h-64 items-center justify-center"><Loader2 className="size-7 animate-spin text-primary" /></div> : <div className="space-y-5">
+              <div className="rounded-xl border bg-muted/20 p-4"><p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cliente</p><p className="mt-1 font-semibold">{detalle?.RazonSocial || row.RazonSocial || 'Público General'}</p></div>
+              {row.EstatusAutorizacion === 'autorizada' && <div className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-700"><CheckCircle2 className="mt-0.5 size-4" /><div><p className="text-xs font-bold">Descuentos autorizados</p><p className="text-xs opacity-80">{detalle?.AutorizadoPor || 'Autorización registrada'}</p></div></div>}
+              <div><div className="mb-3 flex items-center gap-2"><ReceiptText className="size-4 text-primary" /><h3 className="text-sm font-bold">Productos de la cotización</h3></div><div className="overflow-hidden rounded-xl border">{(detalle?.Items || []).map(item => <div key={item.nivelGuid} className="flex items-start justify-between gap-3 border-b px-4 py-3 last:border-0"><div className="min-w-0"><p className="truncate text-sm font-semibold">{item.producto || item.nivelCodigo}</p><p className="text-xs text-muted-foreground">{item.cantidad} × {money.format(item.precioVenta)}</p></div><div className="text-right"><p className="text-sm font-bold tabular-nums">{money.format(item.subtotal)}</p>{Number(item.descuento) > 0 && <p className="text-[11px] text-emerald-600">-{money.format(item.descuento)}</p>}</div></div>)}</div></div>
+              <div className="space-y-2 rounded-xl border bg-muted/20 p-4 text-sm"><div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{money.format(totals.subtotal)}</span></div>{totals.discount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuentos</span><span>-{money.format(totals.discount)}</span></div>}<div className="flex justify-between border-t pt-3 text-base font-bold"><span>Total</span><span className="text-primary">{money.format(totals.total)}</span></div></div>
+            </div>}
+          </section>
+          <section className="min-h-0 overflow-y-auto p-6">
+            <div className="mb-5"><div className="flex items-center gap-2"><WalletCards className="size-4 text-primary" /><h3 className="text-sm font-bold">Formas de pago</h3></div><p className="mt-1 text-xs text-muted-foreground">Puedes combinar varios métodos de pago, igual que en el flujo principal de Ventas.</p></div>
+            {!!error && <div className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"><AlertCircle className="size-4 shrink-0" />{error}</div>}
+            {!loading && <PaymentMethodSelector formaPago={formasPago} paymentMethod={paymentMethod} onSelect={setPaymentMethod} onAddPayment={addPayment} saldoPendiente={pending} pinpadEnabled={pinpadEnabled} />}
+            <div className="mt-6 rounded-xl border bg-muted/15 p-4"><div className="mb-3 flex items-center justify-between"><h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pagos aplicados</h4><span className="text-xs text-muted-foreground">{pagos.length}</span></div><div className="space-y-2">{pagos.length ? pagos.map(payment => <ItemPagos key={payment.ID} pago={payment} handleDeletePaymentItem={id => setPagos(current => current.filter(item => item.ID !== id))} />) : <p className="py-5 text-center text-xs text-muted-foreground">Aún no has agregado pagos.</p>}</div><div className="mt-4 space-y-2 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Aplicado</span><span className="font-semibold">{money.format(paid)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Pendiente</span><span className={pending > 0 ? 'font-bold text-amber-600' : 'font-bold text-emerald-600'}>{money.format(pending)}</span></div>{change > 0 && <div className="flex justify-between text-emerald-600"><span>Cambio</span><span className="font-bold">{money.format(change)}</span></div>}</div></div>
+          </section>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-              <AlertCircle className="size-4 text-red-500 shrink-0" />
-              <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          {/* Badge de autorización */}
-          {row.EstatusAutorizacion === 'autorizada' && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Descuentos autorizados</p>
-                <p className="text-xs text-muted-foreground">por {detalle?.AutorizadoPor || '—'}</p>
-              </div>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Ítems */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Ítems</p>
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-muted/30 border-b border-border">
-                        <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Producto</th>
-                        <th className="px-3 py-2 text-right font-semibold text-muted-foreground">P.Unit</th>
-                        <th className="px-3 py-2 text-center font-semibold text-muted-foreground w-32">Descuento</th>
-                        <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {(detalle?.Items ?? []).map(item => {
-                        const descSol = detalle?.DescuentosSolicitados?.find(d => d.nivelGuid === item.nivelGuid);
-                        const descAut = detalle?.DescuentosAutorizados?.find(d => d.nivelGuid === item.nivelGuid);
-                        const solicitadoPct = descSol?.descuentoSolicitado ?? 0;
-                        const autorizadoPct = descAut?.descuentoAutorizado ?? 0;
-
-                        return (
-                          <tr key={item.nivelGuid} className="hover:bg-muted/10">
-                            <td className="px-3 py-2.5">
-                              <div className="font-medium text-foreground truncate max-w-[160px]">{item.producto || item.nivelCodigo}</div>
-                              <div className="text-muted-foreground/70">×{item.cantidad}</div>
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono text-foreground tabular-nums">
-                              {formatMXN(item.precioVenta)}
-                            </td>
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                              {solicitadoPct > 0 ? (
-                                <div className="space-y-0.5">
-                                  <div className="text-[10px] text-muted-foreground">
-                                    Solicitado: <span className="font-semibold">{solicitadoPct}%</span>
-                                  </div>
-                                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                                    Autorizado: <span>{autorizadoPct}%</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground/50 text-[11px]">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono font-semibold text-foreground tabular-nums">
-                              {formatMXN(item.subtotal)}
-                              {item.descuento > 0 && (
-                                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
-                                  −{formatMXN(item.descuento)}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Totales */}
-              <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-2">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Subtotal</span>
-                  <span className="font-mono">{formatMXN(totales.subtotal)}</span>
-                </div>
-                {totales.totalDescuento > 0 && (
-                  <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
-                    <span>Descuento total</span>
-                    <span className="font-mono font-semibold">−{formatMXN(totales.totalDescuento)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm font-bold text-foreground border-t border-border pt-2 mt-1">
-                  <span>Total a pagar</span>
-                  <span className="font-mono text-primary">{formatMXN(totales.total)}</span>
-                </div>
-              </div>
-
-              {/* Forma de pago */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Método de Pago</p>
-                <div className="space-y-4">
-                  {/* Grid de métodos de pago */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {formasPago.map(fp => {
-                      const ClaveStr = String(fp.Clave || '').trim();
-                      const isSelected = formaSeleccionada?.ID === fp.ID;
-                      
-                      // Resolver ícono
-                      let Icon = DollarSign;
-                      if (ClaveStr === '01') Icon = Banknote;
-                      else if (ClaveStr === '03') Icon = ArrowRightLeft;
-                      else if (ClaveStr === '04' || ClaveStr === '28' || ClaveStr === '29') Icon = CreditCard;
-
-                      // Nombre
-                      const name = fp.Nombre === 'Efectivo' ? 'Efectivo' :
-                                   fp.Nombre === 'Tarjeta' ? 'Tarjeta' :
-                                   fp.Nombre === 'Transferencia' ? 'Transferencia' : fp.Nombre;
-
-                      return (
-                        <button
-                          key={fp.ID}
-                          type="button"
-                          onClick={() => handleSelectFormaPago(fp)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-3 rounded-xl border-2 gap-2 text-center transition-all duration-200",
-                            isSelected
-                              ? "border-primary bg-primary/5 text-primary shadow-sm"
-                              : "border-border hover:border-border/80 bg-surface text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <Icon className="size-5" />
-                          <span className="text-xs font-bold whitespace-nowrap">{name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Input de monto recibido */}
-                  <div className="relative">
-                    <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={montoRecibido}
-                      onChange={e => setMontoRecibido(e.target.value)}
-                      placeholder={`Monto recibido (mín. ${formatMXN(totales.total)})`}
-                      className="w-full rounded-lg border border-border bg-surface pl-9 pr-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
-                    />
-                  </div>
-
-                  {monto > 0 && (
-                    <div className={cn(
-                      'flex items-center justify-between rounded-lg border px-4 py-3 text-sm font-semibold',
-                      falta > 0
-                        ? 'border-red-500/20 bg-red-500/5 text-red-600 dark:text-red-400'
-                        : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400',
-                    )}>
-                      <span className="flex items-center gap-1.5">
-                        <CreditCard className="size-4" />
-                        {falta > 0 ? 'Falta' : 'Cambio'}
-                      </span>
-                      <span className="font-mono text-base">
-                        {falta > 0 ? formatMXN(falta) : formatMXN(cambio)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-border p-4 flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-40"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || loading || falta > 0 || totales.total === 0}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors',
-              'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed',
-            )}
-          >
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <ShoppingCart className="size-4" />}
-            {submitting ? 'Procesando…' : 'Confirmar Venta'}
-          </button>
-        </div>
-      </div>
-    </div>
-  , document.body);
+        <div className="flex items-center justify-between gap-3 border-t bg-background px-6 py-4"><p className="hidden text-xs text-muted-foreground sm:block">Se generará una venta nueva vinculada a estos datos.</p><div className="ml-auto flex gap-3"><Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button><Button onClick={submit} disabled={loading || submitting || totals.total <= 0 || pending > 0.001}>{submitting ? <Loader2 className="size-4 animate-spin" /> : <ShoppingCart className="size-4" />}{submitting ? 'Creando venta…' : 'Crear venta'}</Button></div></div>
+      </DialogContent>
+    </Dialog>
+    <PinpadWaitingDialog open={pinpadDialog.open} amount={pinpadDialog.amount} status={pinpadDialog.status} message={pinpadDialog.message} onOpenChange={open => { if (!open) { pendingPinpad.current = null; setPinpadDialog(current => ({ ...current, open: false })); } }} />
+  </>;
 }

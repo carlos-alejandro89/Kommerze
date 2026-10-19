@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime';
 import { useAuth } from '@/providers/AuthProvider';
+import { useActivation } from '@/providers/ActivationProvider';
 import { useTurno } from '@/providers/TurnoProvider';
 import { toast } from 'sonner';
 import { ModalConvertirVenta } from '@/features/history/components/ModalConvertirVenta';
@@ -74,6 +75,7 @@ const STATUS_CONFIG = {
 export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { store } = useActivation();
     const { turnoActivo } = useTurno();
 
     const [collapsed, setCollapsed] = React.useState(false);
@@ -165,13 +167,15 @@ export function PanelSolicitarDescuento({ cart, sucursalGuid, posService }) {
         const tipoCotizacion = JSON.parse(localStorage.getItem('operationType') || 'null');
         const selectedClient = JSON.parse(localStorage.getItem('selectedClient') || 'null');
         if (!tipoCotizacion) throw new Error('No se encontró el tipo de cotización sincronizado');
+        const sucursalOrigenID = store?.ID ?? store?.id;
+        if (!sucursalOrigenID) throw new Error('No se pudo identificar la sucursal activa');
         const itemsPedido = buildItemsPedido();
 
         const result = await posService.confirmarTransaccion(
             tipoCotizacion,
             [],           // sin pagos (cotización no requiere pago inmediato)
             itemsPedido,
-            null,         // sin sucursal origen
+            sucursalOrigenID,
             null,         // sin sucursal destino
             turnoActivo?.ID ?? turnoActivo?.id ?? null,
             selectedClient?.Guid || '',

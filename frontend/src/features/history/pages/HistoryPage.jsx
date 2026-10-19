@@ -124,7 +124,7 @@ function AuthBadge({ estatus }) {
 /* ── Botones de acción contextuales para cotizaciones ── */
 function CotizacionAcciones({ row, onSolicitarDescuento, onConvertirVenta }) {
   if (!isTransactionType(row, TRANSACTION_TYPES.COTIZACION)) return null;
-  if (row.Estatus === 'Completada' || row.Estatus === 'Completado') return null;
+  if (['Completada', 'Completado', 'Aplicada'].includes(row.Estatus)) return null;
 
   const auth = row.EstatusAutorizacion || '';
 

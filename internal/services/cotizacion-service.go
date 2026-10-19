@@ -21,7 +21,10 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+const estatusCotizacionAplicadaGuid = "c7e4a912-5f8b-4a71-93de-1f6b2c8d9e30"
 
 // CotizacionService gestiona el ciclo de vida de las cotizaciones:
 // solicitud de autorizacion de descuentos, recepcion de resoluciones via WebSocket
@@ -358,15 +361,17 @@ func (s *CotizacionService) aplicarResolucion(res *dto.ResolucionCotizacionDto) 
 				return fmt.Errorf("buscando pedido: %w", err)
 			}
 			for _, item := range res.Items {
-				// Buscar el nivel por guid y actualizar el descuento del detalle
-				tx.Exec(`UPDATE pedido_detalle pd
-						SET descuento = pd.cantidad * pd.precio_venta * ? / 100
+				// PedidoDetalle.Descuento almacena porcentaje, igual que en Ventas.
+				if err := tx.Exec(`UPDATE pedido_detalle pd
+						SET descuento = ?
 						FROM nivel_empaque ne
 						WHERE pd.nivel_id = ne.id
 						  AND ne.guid = ?
 						  AND pd.pedido_id = ?
 						  AND pd.deleted_at IS NULL`,
-					item.DescuentoAutorizado, item.NivelGuid, pedido.ID)
+					item.DescuentoAutorizado, item.NivelGuid, pedido.ID).Error; err != nil {
+					return fmt.Errorf("actualizando descuento autorizado: %w", err)
+				}
 			}
 		}
 
@@ -483,34 +488,37 @@ func (s *CotizacionService) SolicitarAutorizacion(
 	return dto.NewResponseDto(true, "Solicitud de autorizacion enviada correctamente", nil, nil), nil
 }
 
-// ConvertirAVenta convierte una cotizacion (Pendiente o Autorizada) en una Venta.
-// Ejecuta en una sola transaccion: actualiza estatus, registra pagos, descuenta stock.
+// ConvertirAVenta crea una venta nueva a partir de una cotizacion (Pendiente o
+// Autorizada). La cotizacion original y su detalle permanecen intactos.
 func (s *CotizacionService) ConvertirAVenta(
 	pedidoID uint,
 	pagos []dto.PagosAplicadosDto,
 	sucursalOrigenID *uint,
 ) (*dto.ResponseDto, error) {
-	var pedido models.Pedido
+	var venta models.Pedido
+	var cotizacionAplicadaID uint
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. Cargar pedido con estatus actual
-		if err := tx.Preload("Estatus").Preload("Cliente").Preload("TipoPedido").
-			First(&pedido, pedidoID).Error; err != nil {
+		var cotizacion models.Pedido
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Estatus").Preload("Cliente").Preload("TipoPedido").
+			First(&cotizacion, pedidoID).Error; err != nil {
 			return fmt.Errorf("pedido no encontrado: %w", err)
 		}
 
-		// 2. Validar que es una cotizacion y que puede convertirse
-		if pedido.TipoPedidoID == nil || pedido.TipoPedido.Guid.String() != models.TipoPedidoCotizacionGuid {
+		if cotizacion.TipoPedidoID == nil || cotizacion.TipoPedido.Guid.String() != models.TipoPedidoCotizacionGuid {
 			return fmt.Errorf("el pedido no es una cotizacion")
 		}
-		if pedido.EstatusAutorizacion == "solicitada" {
+		if cotizacion.Estatus.Guid.String() == estatusCotizacionAplicadaGuid {
+			return fmt.Errorf("la cotizacion ya fue aplicada a una venta y no puede utilizarse nuevamente")
+		}
+		if cotizacion.EstatusAutorizacion == "solicitada" {
 			return fmt.Errorf("la cotizacion tiene una solicitud de autorizacion pendiente")
 		}
-		if pedido.EstatusAutorizacion == "rechazada" {
+		if cotizacion.EstatusAutorizacion == "rechazada" {
 			return fmt.Errorf("la cotizacion fue rechazada por el autorizador")
 		}
 
-		// 3. Resolver Venta y Completado desde los catálogos sincronizados.
 		var tipoVenta models.TipoPedido
 		if err := tx.Where("guid = ?", models.TipoPedidoVentaGuid).First(&tipoVenta).Error; err != nil {
 			return fmt.Errorf("tipo de pedido Venta no encontrado: %w", err)
@@ -519,30 +527,77 @@ func (s *CotizacionService) ConvertirAVenta(
 		if err := tx.Where("LOWER(nombre) = LOWER(?)", "Completado").First(&estatusVenta).Error; err != nil {
 			return fmt.Errorf("estatus Completado no encontrado: %w", err)
 		}
+		var estatusCotizacionAplicada models.Estatus
+		if err := tx.Where("guid = ?", estatusCotizacionAplicadaGuid).First(&estatusCotizacionAplicada).Error; err != nil {
+			return fmt.Errorf("estatus Aplicada no encontrado: %w", err)
+		}
+		var folio int
+		if err := tx.Raw("SELECT nextval(?)", "consecutivo_folio_pedido").Scan(&folio).Error; err != nil {
+			return fmt.Errorf("obteniendo folio de la venta: %w", err)
+		}
 		tipoPedidoVenta := tipoVenta.ID
 		estatusCompletado := estatusVenta.ID
-
-		pedido.TipoPedidoID = &tipoPedidoVenta
-		pedido.EstatusID = &estatusCompletado
-		pedido.SucursalOrigenID = sucursalOrigenID
-
-		if err := pedido.AsignarCodigoFacturacion(tx); err != nil {
+		sucursalVentaID := cotizacion.SucursalOrigenID
+		if sucursalOrigenID != nil {
+			sucursalVentaID = sucursalOrigenID
+		}
+		venta = models.Pedido{
+			EstatusID:         &estatusCompletado,
+			ClienteID:         cotizacion.ClienteID,
+			OperacionCajeroID: cotizacion.OperacionCajeroID,
+			TipoPedidoID:      &tipoPedidoVenta,
+			Folio:             folio,
+			Fecha:             time.Now(),
+			EsCredito:         false,
+			Sync:              false,
+			Comentarios:       cotizacion.Comentarios,
+			SucursalOrigenID:  sucursalVentaID,
+		}
+		if err := venta.AsignarCodigoFacturacion(tx); err != nil {
 			return err
 		}
-		if err := tx.Select("TipoPedidoID", "EstatusID", "SucursalOrigenID", "CodigoFacturacion").Updates(&pedido).Error; err != nil {
-			return fmt.Errorf("actualizando pedido: %w", err)
+		if err := tx.Create(&venta).Error; err != nil {
+			return fmt.Errorf("creando venta desde cotizacion: %w", err)
 		}
 
-		// 4. Cargar el detalle para validar el total y reutilizarlo al descontar stock.
 		var detalles []models.PedidoDetalle
-		if err := tx.Preload("Nivel").Where("pedido_id = ? AND deleted_at IS NULL", pedido.ID).
+		if err := tx.Preload("Nivel").Where("pedido_id = ? AND deleted_at IS NULL", cotizacion.ID).
 			Find(&detalles).Error; err != nil {
 			return fmt.Errorf("cargando detalles: %w", err)
 		}
+		descuentosAutorizados := make(map[string]decimal.Decimal)
+		if cotizacion.EstatusAutorizacion == "autorizada" {
+			var itemsAutorizados []dto.ItemDescuentoDto
+			_ = json.Unmarshal([]byte(cotizacion.DescuentosAutorizados), &itemsAutorizados)
+			for _, item := range itemsAutorizados {
+				descuentosAutorizados[item.NivelGuid] = decimal.NewFromFloat(item.DescuentoAutorizado)
+			}
+		}
 		totalPedido := decimal.Zero
-		for _, detalle := range detalles {
-			bruto := detalle.PrecioVenta.Mul(detalle.Cantidad)
-			descuento := bruto.Mul(detalle.Descuento).Div(decimal.NewFromInt(100))
+		for _, detalleCotizacion := range detalles {
+			descuentoPorcentaje := detalleCotizacion.Descuento
+			if autorizado, ok := descuentosAutorizados[detalleCotizacion.Nivel.Guid.String()]; ok {
+				descuentoPorcentaje = autorizado
+			}
+			detalleVenta := models.PedidoDetalle{
+				PedidoID:      venta.ID,
+				NivelID:       detalleCotizacion.NivelID,
+				Cantidad:      detalleCotizacion.Cantidad,
+				PrecioCompra:  detalleCotizacion.PrecioCompra,
+				PrecioBase:    detalleCotizacion.PrecioBase,
+				PrecioVenta:   detalleCotizacion.PrecioVenta,
+				Descuento:     descuentoPorcentaje,
+				TrasladoIVA:   detalleCotizacion.TrasladoIVA,
+				TasaIVA:       detalleCotizacion.TasaIVA,
+				RetencionISR:  detalleCotizacion.RetencionISR,
+				TasaISR:       detalleCotizacion.TasaISR,
+				InfoAdicional: detalleCotizacion.InfoAdicional,
+			}
+			if err := tx.Create(&detalleVenta).Error; err != nil {
+				return fmt.Errorf("copiando detalle de cotizacion: %w", err)
+			}
+			bruto := detalleCotizacion.PrecioVenta.Mul(detalleCotizacion.Cantidad)
+			descuento := bruto.Mul(descuentoPorcentaje).Div(decimal.NewFromInt(100))
 			totalPedido = totalPedido.Add(bruto.Sub(descuento))
 		}
 		totalPedido = totalPedido.Round(2)
@@ -590,7 +645,7 @@ func (s *CotizacionService) ConvertirAVenta(
 				return fmt.Errorf("%s no puede superar el saldo pendiente de $%s", forma.Descripcion, saldoPendiente.StringFixed(2))
 			}
 			pago := models.Pago{
-				PedidoID:      pedido.ID,
+				PedidoID:      venta.ID,
 				FormaID:       uint(p.ID),
 				Monto:         montoAplicado.InexactFloat64(),
 				MontoRecibido: recibido.InexactFloat64(),
@@ -608,7 +663,7 @@ func (s *CotizacionService) ConvertirAVenta(
 			return fmt.Errorf("los pagos aplicados ($%s) no cubren el total de la venta ($%s)", aplicado.StringFixed(2), totalPedido.StringFixed(2))
 		}
 
-		// 6. Descontar stock en sucursal_producto
+		// Descontar stock por la venta nueva; la cotizacion no se modifica.
 		for _, d := range detalles {
 			var sp models.SucursalProducto
 			if err := tx.Where("nivel_id = ?", d.NivelID).First(&sp).Error; err != nil {
@@ -620,6 +675,13 @@ func (s *CotizacionService) ConvertirAVenta(
 			}
 		}
 
+		if err := tx.Model(&models.Pedido{}).
+			Where("id = ?", cotizacion.ID).
+			Update("estatus_id", estatusCotizacionAplicada.ID).Error; err != nil {
+			return fmt.Errorf("marcando cotizacion como aplicada: %w", err)
+		}
+		cotizacionAplicadaID = cotizacion.ID
+
 		return nil
 	})
 
@@ -628,10 +690,11 @@ func (s *CotizacionService) ConvertirAVenta(
 	}
 
 	if s.syncPedido != nil {
-		go s.syncPedido(pedido.ID)
+		go s.syncPedido(venta.ID)
+		go s.syncPedido(cotizacionAplicadaID)
 	}
 
-	return dto.NewResponseDto(true, "Cotizacion convertida a venta correctamente", pedido, nil), nil
+	return dto.NewResponseDto(true, "Venta creada desde la cotizacion correctamente", venta, nil), nil
 }
 
 // ObtenerDetalleCotizacion retorna el detalle completo de una cotizacion con sus descuentos.
@@ -649,16 +712,33 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 		Where("pedido_id = ? AND deleted_at IS NULL", pedidoID).
 		Find(&detalles)
 
+	// El JSON conserva el porcentaje autorizado original y permite interpretar
+	// correctamente cotizaciones creadas antes de corregir su persistencia.
+	var descuentosSolicitados []dto.ItemDescuentoDto
+	var descuentosAutorizados []dto.ItemDescuentoDto
+	_ = json.Unmarshal([]byte(pedido.DescuentosSolicitados), &descuentosSolicitados)
+	_ = json.Unmarshal([]byte(pedido.DescuentosAutorizados), &descuentosAutorizados)
+	porcentajeAutorizadoPorNivel := make(map[string]float64, len(descuentosAutorizados))
+	for _, item := range descuentosAutorizados {
+		porcentajeAutorizadoPorNivel[item.NivelGuid] = item.DescuentoAutorizado
+	}
+
 	// Construir items
 	var items []dto.CotizacionItemDto
 	var subtotal, totalDescuento float64
 	for _, d := range detalles {
 		qty := d.Cantidad.InexactFloat64()
 		price := d.PrecioVenta.InexactFloat64()
-		disc := d.Descuento.InexactFloat64()
-		sub := qty*price - disc
+		discountPercent := d.Descuento.InexactFloat64()
+		if pedido.EstatusAutorizacion == "autorizada" {
+			if autorizado, ok := porcentajeAutorizadoPorNivel[d.Nivel.Guid.String()]; ok {
+				discountPercent = autorizado
+			}
+		}
+		discountAmount := d.PrecioVenta.Mul(d.Cantidad).Mul(decimal.NewFromFloat(discountPercent)).Div(decimal.NewFromInt(100)).InexactFloat64()
+		sub := qty*price - discountAmount
 		subtotal += qty * price
-		totalDescuento += disc
+		totalDescuento += discountAmount
 		items = append(items, dto.CotizacionItemDto{
 			NivelGuid:    d.Nivel.Guid.String(),
 			NivelCodigo:  d.Nivel.Codigo,
@@ -666,16 +746,10 @@ func (s *CotizacionService) ObtenerDetalleCotizacion(pedidoID uint) (*dto.Cotiza
 			UnidadMedida: d.Nivel.Empaque.NombreEmpaque,
 			Cantidad:     qty,
 			PrecioVenta:  price,
-			Descuento:    disc,
+			Descuento:    discountAmount,
 			Subtotal:     sub,
 		})
 	}
-
-	// Deserializar descuentos
-	var descuentosSolicitados []dto.ItemDescuentoDto
-	var descuentosAutorizados []dto.ItemDescuentoDto
-	_ = json.Unmarshal([]byte(pedido.DescuentosSolicitados), &descuentosSolicitados)
-	_ = json.Unmarshal([]byte(pedido.DescuentosAutorizados), &descuentosAutorizados)
 
 	razonSocial := "Publico General"
 	if pedido.Cliente.RazonSocial != "" {

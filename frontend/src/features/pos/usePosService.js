@@ -142,7 +142,7 @@ export function usePosService() {
      * @param {number} tipoOperacion — ID del tipo de pedido
      * @param {PagosAplicadosDto[]} pagosAplicados
      * @param {PedidoProductoDto[]} itemsPedido
-     * @param {number|null} sucursalOrigen — ID de sucursal origen (traspasos)
+     * @param {number} sucursalOrigen — ID de la sucursal que origina la transacción
      * @param {number|null} sucursalDestino — ID de sucursal destino (traspasos)
      * @param {number|null} operacionCajeroID — ID del turno activo del cajero
      * @returns {Promise<ResponseDto>}

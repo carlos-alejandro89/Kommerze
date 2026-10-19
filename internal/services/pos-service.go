@@ -94,7 +94,22 @@ func (s *PosService) ConsultaTransacciones(tipoPedidoID *uint, sucursalID *uint)
 }
 
 func (s *PosService) CancelarVenta(pedidoGuid string) (*dto.ResponseDto, error) {
-	return s.posRepository.CancelarVenta(pedidoGuid)
+	response, err := s.posRepository.CancelarVenta(pedidoGuid)
+	if err != nil || response == nil || !response.Success {
+		return response, err
+	}
+
+	guid, parseErr := uuid.Parse(pedidoGuid)
+	if parseErr != nil {
+		return response, nil
+	}
+	var pedido models.Pedido
+	if queryErr := s.db.Select("id").Where("guid = ?", guid).First(&pedido).Error; queryErr != nil {
+		log.Printf("[PedidoSync] venta cancelada guid=%s, no se pudo iniciar la sincronizacion: %v", pedidoGuid, queryErr)
+		return response, nil
+	}
+	go s.SyncPedido(pedido.ID)
+	return response, nil
 }
 
 func (s *PosService) ConsultarTransferencias() ([]dto.TransferenciaDto, error) {
