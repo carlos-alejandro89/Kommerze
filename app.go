@@ -26,7 +26,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const AppVersion = "1.4.2"
+const AppVersion = "1.5.0"
 
 // App struct
 type App struct {
