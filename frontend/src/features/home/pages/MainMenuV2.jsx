@@ -64,7 +64,7 @@ const MODULES = [
   { id: 'proveedores', title: 'Proveedores', subtitle: 'Alta y datos fiscales de proveedores', icon: Handshake, color: '#ff8a28', to: '/suppliers', permission: 'proveedores.acceder' },
   { id: 'auditorias', title: 'Auditorías', subtitle: 'Conteos y auditorías de inventario', icon: PackageCheck, color: '#df2864', to: '/auditoria', serverOnly: true, permission: 'auditorias.acceder' },
 
-  { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/dashboard', permission: 'reportes.acceder' },
+  { id: 'reportes', title: 'Reportes', subtitle: 'Reportes y análisis del negocio', icon: BarChart3, color: '#4a74db', to: '/reports', permission: 'reportes.acceder' },
   { id: 'cajas', title: 'Cajas', subtitle: 'Apertura y cierre de cajas', icon: WalletCards, color: '#f7b900', to: '/caja/apertura', permission: 'cajas.acceder' },
   { id: 'sucursales', title: 'Operación de sucursal', subtitle: 'Inicio, seguimiento y cierre de operaciones.', icon: Store, color: '#7d4ae5', to: '/sucursal/cortes', serverOnly: true, permission: 'operacion_sucursal.acceder' },
   { id: 'conversiones', title: 'Conversiones', subtitle: 'Transformación entre presentaciones', icon: Repeat2, color: '#30b9ce', to: '/conversions', permission: 'conversiones.acceder' },

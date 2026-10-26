@@ -1,5 +1,4 @@
 import {
-  LayoutDashboard,
   ShoppingCart,
   History,
   Package,
@@ -10,6 +9,8 @@ import {
   Building2,
   Handshake,
   Repeat2,
+  BarChart3,
+  PackageCheck,
 } from 'lucide-react';
 
 /**
@@ -25,11 +26,33 @@ import {
 export const MAIN_NAV = [
   // ── POS General ──────────────────────────────────────────────────────────
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    icon: LayoutDashboard,
-    path: '/dashboard',
+    id: 'reports',
+    title: 'Reportes',
+    icon: BarChart3,
     permission: 'reportes.acceder',
+    children: [
+      {
+        id: 'reports-hub',
+        title: 'Todos los reportes',
+        icon: BarChart3,
+        path: '/reports',
+        permission: 'reportes.acceder',
+      },
+      {
+        id: 'reports-products-sold',
+        title: 'Productos vendidos',
+        icon: PackageCheck,
+        path: '/reports/products-sold',
+        permission: 'reportes.acceder',
+      },
+      {
+        id: 'reports-audit-format',
+        title: 'Formato de auditoría',
+        icon: PackageCheck,
+        path: '/reports/audit-format',
+        permission: 'reportes.acceder',
+      },
+    ],
   },
   {
     id: 'pos',

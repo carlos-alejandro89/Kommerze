@@ -27,7 +27,6 @@ const LocalServerSetupPage = lazy(() => import('@/features/device-setup/pages/Lo
 const DatabaseSetupPage = lazy(() => import('@/features/device-setup/pages/DatabaseSetupPage').then(m => ({ default: m.DatabaseSetupPage })));
 const CloudSetupPage = lazy(() => import('@/features/device-setup/pages/CloudSetupPage').then(m => ({ default: m.CloudSetupPage })));
 const OnboardingSyncPage = lazy(() => import('@/features/device-setup/pages/OnboardingSyncPage').then(m => ({ default: m.OnboardingSyncPage })));
-const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const POSPage = lazy(() => import('@/features/pos/pages/POSPage'));
 const TransactionPage = lazy(() => import('@/features/pos/pages/TransactionPage').then(m => ({ default: m.TransactionPage })));
 const PaymentPage = lazy(() => import('@/features/pos/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
@@ -58,6 +57,9 @@ const MainMenuV2 = lazy(() => import('@/features/home/pages/MainMenuV2').then(m 
 const AuditoriaPage = lazy(() => import('@/features/audit/pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 const ConversionsPage = lazy(() => import('@/features/conversions/pages/ConversionsPage').then(m => ({ default: m.ConversionsPage })));
 const ConversionFlowPage = lazy(() => import('@/features/conversions/pages/ConversionFlowPage').then(m => ({ default: m.ConversionFlowPage })));
+const SoldProductsReportPage = lazy(() => import('@/features/reports/pages/SoldProductsReportPage').then(m => ({ default: m.SoldProductsReportPage })));
+const ReportsHubPage = lazy(() => import('@/features/reports/pages/ReportsHubPage').then(m => ({ default: m.ReportsHubPage })));
+const AuditReportPage = lazy(() => import('@/features/reports/pages/AuditReportPage').then(m => ({ default: m.AuditReportPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -160,7 +162,19 @@ export const router = createBrowserRouter(
         },
         {
           path: '/dashboard',
-          element: <AuthorizedPage permission="reportes.acceder"><DashboardPage /></AuthorizedPage>,
+          element: <Navigate to="/reports" replace />,
+        },
+        {
+          path: '/reports',
+          element: <AuthorizedPage permission="reportes.acceder"><ReportsHubPage /></AuthorizedPage>,
+        },
+        {
+          path: '/reports/products-sold',
+          element: <AuthorizedPage permission="reportes.acceder"><SoldProductsReportPage /></AuthorizedPage>,
+        },
+        {
+          path: '/reports/audit-format',
+          element: <AuthorizedPage permission="reportes.acceder"><AuditReportPage /></AuthorizedPage>,
         },
         {
           path: '/pos',

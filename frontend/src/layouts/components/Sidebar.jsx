@@ -1,5 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, LogOut, Store } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronLeft, ChevronRight, LogOut, Store } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
@@ -29,6 +30,8 @@ export function Sidebar({ open, onToggle }) {
   const { logout, can } = useAuth();
   const { store, license, isCaja, deviceName } = useActivation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [expanded, setExpanded] = useState({});
 
   // Filtrar ítems según rol del dispositivo
   const filteredItems = MAIN_NAV.filter((item) => {
@@ -39,6 +42,15 @@ export function Sidebar({ open, onToggle }) {
   });
 
   const navGroups = buildNavGroups(filteredItems);
+
+  useEffect(() => {
+    const activeParent = filteredItems.find((item) =>
+      item.children?.some((child) => location.pathname.startsWith(child.path)),
+    );
+    if (activeParent) {
+      setExpanded((current) => ({ ...current, [activeParent.id]: true }));
+    }
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -102,6 +114,66 @@ export function Sidebar({ open, onToggle }) {
 
           // ── Ítem de navegación ─────────────────────────────
           const item = entry;
+          if (item.children?.length) {
+            const visibleChildren = item.children.filter(
+              (child) => !child.permission || can(child.permission),
+            );
+            if (!visibleChildren.length) return null;
+            const isActive = visibleChildren.some((child) =>
+              child.path === '/reports'
+                ? location.pathname === child.path
+                : location.pathname.startsWith(child.path),
+            );
+            const isExpanded = expanded[item.id] ?? isActive;
+            return (
+              <div key={item.id} className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!open) {
+                      navigate(visibleChildren[0].path);
+                      return;
+                    }
+                    setExpanded((current) => ({
+                      ...current,
+                      [item.id]: !isExpanded,
+                    }));
+                  }}
+                  className={cn(
+                    'group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-150',
+                    'text-sidebar-muted hover:bg-sidebar-hover-bg hover:text-sidebar-fg',
+                    isActive && 'bg-primary text-white hover:bg-primary hover:text-white',
+                    !open && 'justify-center',
+                  )}
+                  title={!open ? item.title : undefined}
+                  aria-expanded={isExpanded}
+                >
+                  <item.icon className={cn('size-[18px] shrink-0', isActive ? 'text-white' : 'text-sidebar-muted group-hover:text-sidebar-fg')} />
+                  {open && <span className="flex-1 truncate text-left animate-fade-in">{item.title}</span>}
+                  {open && <ChevronDown className={cn('size-4 transition-transform', isExpanded && 'rotate-180')} />}
+                </button>
+                {open && isExpanded && (
+                  <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-2">
+                    {visibleChildren.map((child) => (
+                      <NavLink
+                        key={child.id}
+                        to={child.path}
+                        end={child.path === '/reports'}
+                        className={({ isActive: childActive }) => cn(
+                          'group flex items-center gap-2.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors',
+                          'text-sidebar-muted hover:bg-sidebar-hover-bg hover:text-sidebar-fg',
+                          childActive && 'bg-primary/12 text-primary',
+                        )}
+                      >
+                        <child.icon className="size-4 shrink-0" />
+                        <span className="truncate">{child.title}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
           return (
             <NavLink
               key={item.id}

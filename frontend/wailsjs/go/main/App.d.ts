@@ -78,11 +78,15 @@ export function ServiceEnviarFacturaCorreo(arg1:dto.EnviarFacturaEmailRequestDto
 
 export function ServiceGenerarFacturacionGlobal(arg1:number):Promise<dto.ResponseDto>;
 
+export function ServiceGenerateAuditReport(arg1:models.AuditReportRequest):Promise<models.AuditReportOutput>;
+
 export function ServiceGenerateConversionReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGenerateSaleDocument(arg1:string):Promise<models.DocumentOutput>;
+
+export function ServiceGenerateSoldProductsReport(arg1:string,arg2:string,arg3:number):Promise<models.SoldProductsReportOutput>;
 
 export function ServiceGenerateTransferReport(arg1:string):Promise<models.DocumentOutput>;
 

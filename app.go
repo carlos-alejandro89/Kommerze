@@ -216,6 +216,48 @@ func (a *App) receiptService() interface {
 	return a.services.Receipt
 }
 
+func (a *App) reportsService() interface {
+	BuildSoldProductsReport(string, string, uint) (reportmodels.SoldProductsReport, error)
+	BuildAuditReport(reportmodels.AuditReportRequest) (reportmodels.AuditReport, error)
+} {
+	if a.services.CajaProxy != nil {
+		return a.services.CajaProxy
+	}
+	return a.services.Reports
+}
+
+func (a *App) ServiceGenerateAuditReport(request reportmodels.AuditReportRequest) (*reportmodels.AuditReportOutput, error) {
+	report, err := a.reportsService().BuildAuditReport(request)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderAuditPDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el formato de auditoría: %w", err)
+	}
+	return &reportmodels.AuditReportOutput{
+		Report:    report,
+		PDFBase64: base64.StdEncoding.EncodeToString(pdf),
+		FileName:  fmt.Sprintf("formato-auditoria-%s.pdf", time.Now().Format("2006-01-02-1504")),
+	}, nil
+}
+
+func (a *App) ServiceGenerateSoldProductsReport(fechaInicio, fechaFin string, sucursalID uint) (*reportmodels.SoldProductsReportOutput, error) {
+	report, err := a.reportsService().BuildSoldProductsReport(fechaInicio, fechaFin, sucursalID)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderSoldProductsPDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el reporte de productos vendidos: %w", err)
+	}
+	return &reportmodels.SoldProductsReportOutput{
+		Report:    report,
+		PDFBase64: base64.StdEncoding.EncodeToString(pdf),
+		FileName:  fmt.Sprintf("productos-vendidos-%s-%s.pdf", fechaInicio, fechaFin),
+	}, nil
+}
+
 func (a *App) ServiceGenerateConversionReport(pedidoGuid string) (*reportmodels.DocumentOutput, error) {
 	report, err := a.receiptService().BuildConversionReport(pedidoGuid)
 	if err != nil {

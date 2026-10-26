@@ -1495,6 +1495,121 @@ export namespace dto {
 
 export namespace models {
 	
+	export class AuditReportRow {
+	    Linea: string;
+	    Marca: string;
+	    Codigo: string;
+	    Producto: string;
+	    Empaque: string;
+	    Existencia: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditReportRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Linea = source["Linea"];
+	        this.Marca = source["Marca"];
+	        this.Codigo = source["Codigo"];
+	        this.Producto = source["Producto"];
+	        this.Empaque = source["Empaque"];
+	        this.Existencia = source["Existencia"];
+	    }
+	}
+	export class AuditReport {
+	    Empresa: string;
+	    Sucursal: string;
+	    FechaImpresion: string;
+	    ConExistencia: boolean;
+	    Productos: AuditReportRow[];
+	    TotalProductos: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Empresa = source["Empresa"];
+	        this.Sucursal = source["Sucursal"];
+	        this.FechaImpresion = source["FechaImpresion"];
+	        this.ConExistencia = source["ConExistencia"];
+	        this.Productos = this.convertValues(source["Productos"], AuditReportRow);
+	        this.TotalProductos = source["TotalProductos"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AuditReportOutput {
+	    Report: AuditReport;
+	    PDFBase64: string;
+	    FileName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditReportOutput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Report = this.convertValues(source["Report"], AuditReport);
+	        this.PDFBase64 = source["PDFBase64"];
+	        this.FileName = source["FileName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AuditReportRequest {
+	    SucursalID: number;
+	    LineasIDs: number[];
+	    MarcasIDs: number[];
+	    ConExistencia: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditReportRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.SucursalID = source["SucursalID"];
+	        this.LineasIDs = source["LineasIDs"];
+	        this.MarcasIDs = source["MarcasIDs"];
+	        this.ConExistencia = source["ConExistencia"];
+	    }
+	}
+	
 	export class Caja {
 	    ID: number;
 	    Guid: number[];
@@ -1770,6 +1885,102 @@ export namespace models {
 	}
 	
 	
+	export class SoldProductRow {
+	    Codigo: string;
+	    Producto: string;
+	    Empaque: string;
+	    Cantidad: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SoldProductRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Codigo = source["Codigo"];
+	        this.Producto = source["Producto"];
+	        this.Empaque = source["Empaque"];
+	        this.Cantidad = source["Cantidad"];
+	    }
+	}
+	export class SoldProductsReport {
+	    FechaInicio: string;
+	    FechaFin: string;
+	    Empresa: string;
+	    Sucursal: string;
+	    GeneradoEn: string;
+	    Productos: SoldProductRow[];
+	    TotalProductos: number;
+	    TotalUnidades: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SoldProductsReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.FechaInicio = source["FechaInicio"];
+	        this.FechaFin = source["FechaFin"];
+	        this.Empresa = source["Empresa"];
+	        this.Sucursal = source["Sucursal"];
+	        this.GeneradoEn = source["GeneradoEn"];
+	        this.Productos = this.convertValues(source["Productos"], SoldProductRow);
+	        this.TotalProductos = source["TotalProductos"];
+	        this.TotalUnidades = source["TotalUnidades"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SoldProductsReportOutput {
+	    Report: SoldProductsReport;
+	    PDFBase64: string;
+	    FileName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SoldProductsReportOutput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Report = this.convertValues(source["Report"], SoldProductsReport);
+	        this.PDFBase64 = source["PDFBase64"];
+	        this.FileName = source["FileName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class TipoPedido {
 	    ID: number;
 	    Guid: number[];

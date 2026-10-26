@@ -3,6 +3,7 @@ package services
 import (
 	"BitComercio/internal/models"
 	"BitComercio/internal/repository/dto"
+	reportmodels "BitComercio/internal/usecases/reports/models"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -66,6 +67,7 @@ type LocalServerService struct {
 	receipt             *ReceiptService
 	facturacion         *FacturacionService
 	conversiones        *ConversionService
+	reports             *ReportsService
 	operacionesSucursal *OperacionesSucursalService
 	operacionesCaja     *OperacionesCajaService
 	syncService         *SyncService
@@ -88,7 +90,7 @@ func (l *LocalServerService) syncOperacionesAhora() {
 	}()
 }
 
-func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, conversiones *ConversionService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
+func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat *CatalogosService, clientes *ClientesService, proveedores *ProveedoresService, compras *ComprasService, cotizacion *CotizacionService, receipt *ReceiptService, facturacion *FacturacionService, conversiones *ConversionService, reports *ReportsService, opSucursal *OperacionesSucursalService, opCaja *OperacionesCajaService) *LocalServerService {
 	return &LocalServerService{
 		db:                  db,
 		pos:                 pos,
@@ -101,6 +103,7 @@ func NewLocalServerService(db *gorm.DB, pos *PosService, auth *AuthService, cat 
 		receipt:             receipt,
 		facturacion:         facturacion,
 		conversiones:        conversiones,
+		reports:             reports,
 		operacionesSucursal: opSucursal,
 		operacionesCaja:     opCaja,
 		hub:                 newWsHub(),
@@ -171,6 +174,8 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/recibos", l.handleReceipt)
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
 	mux.HandleFunc("/local/compras/pdf-data", l.handlePurchasePDFData)
+	mux.HandleFunc("/local/reportes/productos-vendidos", l.handleSoldProductsReport)
+	mux.HandleFunc("/local/reportes/formato-auditoria", l.handleAuditReport)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
 	mux.HandleFunc("/local/cotizaciones/detalle", l.handleDetalleCotizacion)
@@ -196,6 +201,42 @@ func (l *LocalServerService) Start(addr string) {
 	if err := l.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Printf("[LocalServer] Error: %v", err)
 	}
+}
+
+func (l *LocalServerService) handleSoldProductsReport(w http.ResponseWriter, r *http.Request) {
+	branchID, err := strconv.ParseUint(r.URL.Query().Get("sucursalId"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "sucursalId inválido")
+		return
+	}
+	report, err := l.reports.BuildSoldProductsReport(
+		r.URL.Query().Get("fechaInicio"),
+		r.URL.Query().Get("fechaFin"),
+		uint(branchID),
+	)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": report})
+}
+
+func (l *LocalServerService) handleAuditReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "método no permitido")
+		return
+	}
+	var request reportmodels.AuditReportRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "filtros inválidos")
+		return
+	}
+	report, err := l.reports.BuildAuditReport(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": report})
 }
 
 func (l *LocalServerService) handleReceipt(w http.ResponseWriter, r *http.Request) {

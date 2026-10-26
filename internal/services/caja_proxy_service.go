@@ -36,6 +36,32 @@ func NewCajaProxyService(serverURL string) *CajaProxyService {
 	}
 }
 
+func (c *CajaProxyService) BuildSoldProductsReport(fechaInicio, fechaFin string, sucursalID uint) (reportmodels.SoldProductsReport, error) {
+	var result struct {
+		Data reportmodels.SoldProductsReport `json:"data"`
+	}
+	path := fmt.Sprintf(
+		"/local/reportes/productos-vendidos?fechaInicio=%s&fechaFin=%s&sucursalId=%d",
+		url.QueryEscape(fechaInicio),
+		url.QueryEscape(fechaFin),
+		sucursalID,
+	)
+	if err := c.get(path, &result); err != nil {
+		return reportmodels.SoldProductsReport{}, err
+	}
+	return result.Data, nil
+}
+
+func (c *CajaProxyService) BuildAuditReport(request reportmodels.AuditReportRequest) (reportmodels.AuditReport, error) {
+	var result struct {
+		Data reportmodels.AuditReport `json:"data"`
+	}
+	if err := c.post("/local/reportes/formato-auditoria", request, &result); err != nil {
+		return reportmodels.AuditReport{}, err
+	}
+	return result.Data, nil
+}
+
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
 func (c *CajaProxyService) get(path string, out any) error {

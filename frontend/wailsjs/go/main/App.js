@@ -146,6 +146,10 @@ export function ServiceGenerarFacturacionGlobal(arg1) {
   return window['go']['main']['App']['ServiceGenerarFacturacionGlobal'](arg1);
 }
 
+export function ServiceGenerateAuditReport(arg1) {
+  return window['go']['main']['App']['ServiceGenerateAuditReport'](arg1);
+}
+
 export function ServiceGenerateConversionReport(arg1) {
   return window['go']['main']['App']['ServiceGenerateConversionReport'](arg1);
 }
@@ -156,6 +160,10 @@ export function ServiceGeneratePurchaseReport(arg1) {
 
 export function ServiceGenerateSaleDocument(arg1) {
   return window['go']['main']['App']['ServiceGenerateSaleDocument'](arg1);
+}
+
+export function ServiceGenerateSoldProductsReport(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceGenerateSoldProductsReport'](arg1, arg2, arg3);
 }
 
 export function ServiceGenerateTransferReport(arg1) {
