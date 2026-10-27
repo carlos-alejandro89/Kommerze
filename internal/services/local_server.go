@@ -175,6 +175,7 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/cotizaciones/pdf-data", l.handleQuotationPDFData)
 	mux.HandleFunc("/local/compras/pdf-data", l.handlePurchasePDFData)
 	mux.HandleFunc("/local/reportes/productos-vendidos", l.handleSoldProductsReport)
+	mux.HandleFunc("/local/reportes/utilidad", l.handleProfitReport)
 	mux.HandleFunc("/local/reportes/formato-auditoria", l.handleAuditReport)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
@@ -210,6 +211,24 @@ func (l *LocalServerService) handleSoldProductsReport(w http.ResponseWriter, r *
 		return
 	}
 	report, err := l.reports.BuildSoldProductsReport(
+		r.URL.Query().Get("fechaInicio"),
+		r.URL.Query().Get("fechaFin"),
+		uint(branchID),
+	)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": report})
+}
+
+func (l *LocalServerService) handleProfitReport(w http.ResponseWriter, r *http.Request) {
+	branchID, err := strconv.ParseUint(r.URL.Query().Get("sucursalId"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "sucursalId inválido")
+		return
+	}
+	report, err := l.reports.BuildProfitReport(
 		r.URL.Query().Get("fechaInicio"),
 		r.URL.Query().Get("fechaFin"),
 		uint(branchID),

@@ -154,6 +154,10 @@ export function ServiceGenerateConversionReport(arg1) {
   return window['go']['main']['App']['ServiceGenerateConversionReport'](arg1);
 }
 
+export function ServiceGenerateProfitReport(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ServiceGenerateProfitReport'](arg1, arg2, arg3);
+}
+
 export function ServiceGeneratePurchaseReport(arg1) {
   return window['go']['main']['App']['ServiceGeneratePurchaseReport'](arg1);
 }

@@ -185,7 +185,7 @@ export function MainMenuV2() {
   const navigate = useNavigate();
   const searchRef = useRef(null);
   const userMenuRef = useRef(null);
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, isSuperAdmin } = useAuth();
   const { isCaja, store, license } = useActivation();
   const [search, setSearch] = useState('');
   const [now, setNow] = useState(new Date());
@@ -236,6 +236,10 @@ export function MainMenuV2() {
           toast.warning('La sincronización sólo está disponible en el Servidor Local');
           return;
         }
+        if (!isSuperAdmin && !can('configuracion.sincronizar')) {
+          toast.warning('Tu perfil no tiene permiso para utilizar la sincronización');
+          return;
+        }
         navigate('/sync');
       } else if (event.key === 'F12') {
         event.preventDefault();
@@ -244,7 +248,7 @@ export function MainMenuV2() {
     };
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, [isCaja, navigate]);
+  }, [can, isCaja, isSuperAdmin, navigate]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);

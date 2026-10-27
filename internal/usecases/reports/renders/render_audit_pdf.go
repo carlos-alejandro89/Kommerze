@@ -68,6 +68,7 @@ func RenderAuditPDF(report reportmodels.AuditReport) ([]byte, error) {
 	y := 46.0
 	currentLine := ""
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	rowIndex := 0
 	for _, row := range report.Productos {
 		lineChanged := row.Linea != currentLine
 		required := 7.0
@@ -92,6 +93,12 @@ func RenderAuditPDF(report reportmodels.AuditReport) ([]byte, error) {
 			drawColumnHeader(y)
 			y += 7
 			currentLine = row.Linea
+			rowIndex = 0
+		}
+
+		if rowIndex%2 == 1 {
+			setRGBFill(pdf, "247,249,253")
+			pdf.Rect(12, y, 192, 7, "F")
 		}
 
 		setRGB(pdf, quotationNavy)
@@ -105,13 +112,10 @@ func RenderAuditPDF(report reportmodels.AuditReport) ([]byte, error) {
 		pdf.SetFont("Arial", "B", 6.8)
 		pdf.SetXY(152.5, y)
 		pdf.CellFormat(24, 7, quantity(row.Existencia), "", 0, "R", false, 0, "")
-		setRGBDraw(pdf, "135,147,168")
-		pdf.Rect(178, y, 26, 7, "D")
-		pdf.Line(12, y+7, 178, y+7)
-		for _, x := range []float64{41, 117, 151, 178} {
-			pdf.Line(x, y, x, y+7)
-		}
+		setRGBDraw(pdf, "190,201,218")
+		pdf.Line(181, y+5.8, 201, y+5.8)
 		y += 7
+		rowIndex++
 	}
 
 	if len(report.Productos) == 0 {

@@ -6,8 +6,14 @@ const AuthContext = createContext(undefined);
 const SUPER_ADMIN_PROFILE_GUID = 'f0e47c96-4708-46b6-a914-1830e2cfd252';
 
 function getProfileGuid(user) {
-  const value = user?.Perfil?.Guid ?? user?.perfil?.guid ?? user?.perfil?.Guid;
-  return typeof value === 'string' ? value.toLowerCase() : '';
+  const value = user?.Perfil?.Guid
+    ?? user?.Perfil?.guid
+    ?? user?.perfil?.Guid
+    ?? user?.perfil?.guid
+    ?? user?.PerfilGuid
+    ?? user?.perfilGuid;
+
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 export function AuthProvider({ children }) {

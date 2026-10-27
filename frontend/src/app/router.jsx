@@ -60,6 +60,7 @@ const ConversionFlowPage = lazy(() => import('@/features/conversions/pages/Conve
 const SoldProductsReportPage = lazy(() => import('@/features/reports/pages/SoldProductsReportPage').then(m => ({ default: m.SoldProductsReportPage })));
 const ReportsHubPage = lazy(() => import('@/features/reports/pages/ReportsHubPage').then(m => ({ default: m.ReportsHubPage })));
 const AuditReportPage = lazy(() => import('@/features/reports/pages/AuditReportPage').then(m => ({ default: m.AuditReportPage })));
+const ProfitReportPage = lazy(() => import('@/features/reports/pages/ProfitReportPage').then(m => ({ default: m.ProfitReportPage })));
 
 // ── Suspense Wrapper ─────────────────────────────────────────────────────────
 function SuspensePage({ children }) {
@@ -175,6 +176,10 @@ export const router = createBrowserRouter(
         {
           path: '/reports/audit-format',
           element: <AuthorizedPage permission="reportes.acceder"><AuditReportPage /></AuthorizedPage>,
+        },
+        {
+          path: '/reports/profit',
+          element: <AuthorizedPage permission="reportes.acceder"><ProfitReportPage /></AuthorizedPage>,
         },
         {
           path: '/pos',

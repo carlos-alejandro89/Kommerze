@@ -24,6 +24,38 @@ type SoldProductsReportOutput struct {
 	FileName  string
 }
 
+type ProfitReportRow struct {
+	Folio     int
+	Fecha     string
+	Codigo    string
+	Producto  string
+	Empaque   string
+	Cantidad  float64
+	Venta     float64
+	Descuento float64
+	Costo     float64
+	Utilidad  float64
+}
+
+type ProfitReport struct {
+	FechaInicio    string
+	FechaFin       string
+	Empresa        string
+	Sucursal       string
+	GeneradoEn     string
+	Productos      []ProfitReportRow
+	TotalVentas    float64
+	TotalDescuento float64
+	TotalCosto     float64
+	TotalUtilidad  float64
+}
+
+type ProfitReportOutput struct {
+	Report    ProfitReport
+	PDFBase64 string
+	FileName  string
+}
+
 type AuditReportRequest struct {
 	SucursalID    uint
 	LineasIDs     []uint

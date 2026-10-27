@@ -82,6 +82,8 @@ export function ServiceGenerateAuditReport(arg1:models.AuditReportRequest):Promi
 
 export function ServiceGenerateConversionReport(arg1:string):Promise<models.DocumentOutput>;
 
+export function ServiceGenerateProfitReport(arg1:string,arg2:string,arg3:number):Promise<models.ProfitReportOutput>;
+
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
 
 export function ServiceGenerateSaleDocument(arg1:string):Promise<models.DocumentOutput>;

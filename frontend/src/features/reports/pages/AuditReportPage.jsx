@@ -20,12 +20,12 @@ function MultiSelect({ label, icon: Icon, options, selected, onChange, valueKey,
 
   return (
     <details className="group relative">
-      <summary className="flex h-11 cursor-pointer list-none items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none hover:border-primary/40">
+      <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-[10px] border border-[#dfe7f2] bg-background px-3 text-[11px] text-foreground outline-none transition hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/10">
         <Icon className="size-4 text-primary" />
-        <span className="min-w-0 flex-1"><span className="text-xs text-muted-foreground">{label}</span><span className="ml-2 font-semibold">{summary}</span></span>
+        <span className="min-w-0 flex-1"><span className="font-bold uppercase tracking-[0.07em] text-muted-foreground">{label}</span><span className="ml-2 font-semibold text-foreground">{summary}</span></span>
         <ChevronDown className="size-4 text-muted-foreground transition group-open:rotate-180" />
       </summary>
-      <div className="absolute z-40 mt-2 max-h-64 w-full min-w-64 overflow-auto rounded-xl border border-border bg-surface p-2 shadow-xl">
+      <div className="absolute z-40 mt-1.5 max-h-64 w-full min-w-64 overflow-auto rounded-xl border border-[#dfe7f2] bg-surface p-1.5 shadow-[0_16px_35px_-18px_rgba(28,70,133,.45)]">
         <button type="button" onClick={() => onChange([])} className="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-muted">Seleccionar todas</button>
         {options.map((item) => {
           const id = Number(read(item, valueKey, valueKey.toLowerCase()));
@@ -117,22 +117,22 @@ export function AuditReportPage() {
   };
 
   return (
-    <div className="p-5 space-y-5 animate-fade-in">
+    <div className="space-y-5 p-6 animate-fade-in">
       <header>
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><ClipboardCheck className="size-4" /> Reportes de inventario</div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Formato de auditoría</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Prepara el inventario agrupado por línea para realizar un conteo físico.</p>
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary"><ClipboardCheck className="size-4" /> Reportes de inventario</div>
+        <h1 className="mt-1 text-[24px] font-bold tracking-[-0.025em] text-foreground">Formato de auditoría</h1>
+        <p className="mt-1 text-[12px] text-muted-foreground">Prepara el inventario agrupado por línea para realizar un conteo físico.</p>
       </header>
 
-      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_260px_auto] lg:items-end">
+      <section className="rounded-[18px] border border-[#e2eaf5] bg-white/80 p-4 shadow-[0_10px_26px_-24px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_230px_auto] lg:items-end">
           <MultiSelect label="Líneas" icon={Layers3} options={lines} selected={selectedLines} onChange={setSelectedLines} valueKey="ID" labelKey="NombreLinea" />
           <MultiSelect label="Marcas" icon={Tags} options={brands} selected={selectedBrands} onChange={setSelectedBrands} valueKey="ID" labelKey="NombreMarca" />
-          <div className="flex h-11 items-center justify-between rounded-xl border border-border bg-background px-3">
-            <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Existencia</p><p className="text-xs font-semibold text-foreground">{withStock ? 'Con existencia' : 'Sin existencia'}</p></div>
+          <div className="flex h-10 items-center justify-between rounded-[10px] border border-[#dfe7f2] bg-background px-3">
+            <div><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Existencia</p><p className="text-[11px] font-semibold text-foreground">{withStock ? 'Con existencia' : 'Sin existencia'}</p></div>
             <Switch checked={withStock} onCheckedChange={setWithStock} aria-label="Cambiar filtro de existencia" />
           </div>
-          <button type="button" disabled={loading || loadingCatalogs} onClick={generate} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+          <button type="button" disabled={loading || loadingCatalogs} onClick={generate} className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-[11px] font-semibold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] hover:bg-primary/90 disabled:opacity-60">
             {loading ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} Generar formato
           </button>
         </div>
@@ -147,7 +147,7 @@ export function AuditReportPage() {
           {rows.length ? Object.entries(grouped).map(([line, items]) => (
             <div key={line}>
               <div className="border-y border-border bg-primary/5 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-primary">{line}</div>
-              <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-5 py-2.5">Código</th><th className="px-5 py-2.5">Producto</th><th className="px-5 py-2.5">Empaque</th><th className="px-5 py-2.5 text-right">Existencia actual</th><th className="w-36 px-5 py-2.5 text-center">Conteo</th></tr></thead><tbody className="divide-y divide-border">{items.map((row, index) => <tr key={`${read(row, 'Codigo', 'codigo')}-${index}`}><td className="px-5 py-3 font-mono text-xs text-muted-foreground">{read(row, 'Codigo', 'codigo') || '—'}</td><td className="px-5 py-3 font-semibold text-foreground">{read(row, 'Producto', 'producto')}</td><td className="px-5 py-3 text-muted-foreground">{read(row, 'Empaque', 'empaque')}</td><td className="px-5 py-3 text-right font-bold text-foreground">{quantity(read(row, 'Existencia', 'existencia'))}</td><td className="px-5 py-3"><span className="block h-8 rounded-lg border border-dashed border-border" /></td></tr>)}</tbody></table></div>
+              <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-5 py-2.5">Código</th><th className="px-5 py-2.5">Producto</th><th className="px-5 py-2.5">Empaque</th><th className="px-5 py-2.5 text-right">Existencia actual</th><th className="w-36 px-5 py-2.5 text-center">Conteo</th></tr></thead><tbody>{items.map((row, index) => <tr key={`${read(row, 'Codigo', 'codigo')}-${index}`} className="even:bg-muted/35"><td className="px-5 py-3 font-mono text-xs text-muted-foreground">{read(row, 'Codigo', 'codigo') || '—'}</td><td className="px-5 py-3 font-semibold text-foreground">{read(row, 'Producto', 'producto')}</td><td className="px-5 py-3 text-muted-foreground">{read(row, 'Empaque', 'empaque')}</td><td className="px-5 py-3 text-right font-bold text-foreground">{quantity(read(row, 'Existencia', 'existencia'))}</td><td className="px-5 py-3"><span className="mx-auto block h-px w-20 bg-border" /></td></tr>)}</tbody></table></div>
             </div>
           )) : <div className="grid min-h-64 place-items-center text-center"><div><PackageSearch className="mx-auto size-11 text-muted-foreground/35" /><p className="mt-3 font-semibold">Sin productos para mostrar</p><p className="mt-1 text-sm text-muted-foreground">Cambia los filtros y vuelve a generar el formato.</p></div></div>}
         </section>

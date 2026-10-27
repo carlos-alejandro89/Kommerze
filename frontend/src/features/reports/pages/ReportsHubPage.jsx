@@ -1,4 +1,4 @@
-import { ArrowRight, Boxes, ClipboardCheck, PackageCheck } from 'lucide-react';
+import { ArrowRight, BarChart3, ClipboardCheck, PackageCheck, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const REPORTS = [
@@ -18,45 +18,61 @@ const REPORTS = [
     path: '/reports/audit-format',
     tag: 'Inventario',
   },
+  {
+    title: 'Utilidad de ventas',
+    description: 'Venta, costo y utilidad de las ventas confirmadas por periodo.',
+    icon: TrendingUp,
+    color: '#7c55e8',
+    path: '/reports/profit',
+    tag: 'Finanzas',
+  },
 ];
 
 export function ReportsHubPage() {
   const navigate = useNavigate();
   return (
-    <div className="p-5 space-y-6 animate-fade-in">
-      <header>
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          <Boxes className="size-4" /> Centro de reportes
+    <div className="space-y-6 p-6 animate-fade-in">
+      <header className="rounded-[24px] border border-[#dce7f5] bg-[linear-gradient(115deg,#f4f8ff_0%,#eef5ff_58%,#f8fbff_100%)] px-6 py-5 shadow-[0_12px_34px_-30px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5579ad] dark:text-blue-300">
+          <BarChart3 className="size-4" strokeWidth={1.8} /> Centro de reportes
         </div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Selecciona un reporte</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Consulta, prepara y exporta la información de tu operación.</p>
+        <h1 className="mt-2 text-[24px] font-bold tracking-[-0.025em] text-[#101c35] dark:text-slate-100">Reportes de la operación</h1>
+        <p className="mt-1 text-[12px] text-[#7185a7] dark:text-slate-400">Selecciona el reporte que deseas consultar, preparar o exportar.</p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {REPORTS.map((report) => {
-          const Icon = report.icon;
-          return (
-            <button
-              key={report.path}
-              type="button"
-              onClick={() => navigate(report.path)}
-              className="group relative min-h-48 overflow-hidden rounded-2xl border border-border bg-surface p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg"
-            >
-              <span className="absolute -right-8 -top-8 size-28 rounded-full opacity-[.08]" style={{ backgroundColor: report.color }} />
-              <span className="relative flex items-start justify-between">
-                <span className="flex size-12 items-center justify-center rounded-2xl text-white shadow-lg" style={{ backgroundColor: report.color }}>
-                  <Icon className="size-6" />
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[14px] font-bold text-[#101c35] dark:text-slate-100">Reportes disponibles</h2>
+          <span className="text-[10px] font-semibold text-[#7890b4]">{REPORTS.length} opciones</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {REPORTS.map((report) => {
+            const Icon = report.icon;
+            return (
+              <button
+                key={report.path}
+                type="button"
+                onClick={() => navigate(report.path)}
+                className="group relative flex min-h-[88px] items-center overflow-hidden rounded-2xl border border-[#e2eaf5] bg-white/80 px-4 py-3.5 text-left shadow-[0_8px_24px_-22px_rgba(28,70,133,.45)] transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-white hover:shadow-[0_14px_30px_-22px_rgba(28,70,133,.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-white/10 dark:bg-white/[.055] dark:hover:border-white/15 dark:hover:bg-white/[.08]"
+              >
+                <span
+                  className="flex size-12 shrink-0 items-center justify-center rounded-[14px] text-white shadow-[0_10px_20px_-13px_var(--report-color)] ring-1 ring-white/40"
+                  style={{ '--report-color': report.color, background: `linear-gradient(145deg, ${report.color}c7, ${report.color})` }}
+                >
+                  <Icon className="size-[23px]" strokeWidth={1.8} />
                 </span>
-                <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{report.tag}</span>
-              </span>
-              <h2 className="relative mt-6 text-base font-bold text-foreground">{report.title}</h2>
-              <p className="relative mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{report.description}</p>
-              <span className="relative mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                Abrir reporte <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          );
-        })}
+                <span className="ml-3 min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-[12px] font-bold text-[#101c35] dark:text-slate-100">{report.title}</span>
+                    <span className="rounded-full bg-[#f1f5fb] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-[#7890b4] dark:bg-white/[.07]">{report.tag}</span>
+                  </span>
+                  <span className="mt-1 block max-w-md text-[10px] leading-[1.4] text-[#7185a7] dark:text-slate-400">{report.description}</span>
+                </span>
+                <ArrowRight className="ml-3 size-4 shrink-0 text-[#7890b4] transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+              </button>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

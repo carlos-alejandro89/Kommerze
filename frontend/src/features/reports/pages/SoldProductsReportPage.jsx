@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
   FileDown,
   FileText,
   Loader2,
@@ -13,6 +12,7 @@ import { PdfViewer } from '@/components/common/pdf-viewer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useReportsService } from '../useReportsService';
+import { ReportDateRangePicker } from '../components/ReportDateRangePicker';
 
 function localISODate(date) {
   const year = date.getFullYear();
@@ -120,51 +120,26 @@ export function SoldProductsReportPage() {
   };
 
   return (
-    <div className="p-5 space-y-5 animate-fade-in">
+    <div className="space-y-5 p-6 animate-fade-in">
       <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
           <PackageCheck className="size-4" />
           Reportes de ventas
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Productos vendidos</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-[24px] font-bold tracking-[-0.025em] text-foreground">Productos vendidos</h1>
+        <p className="text-[12px] text-muted-foreground">
           Sumatoria de unidades vendidas por presentación, considerando únicamente ventas confirmadas.
         </p>
       </header>
 
-      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
-          <div className="grid flex-1 gap-4 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <CalendarDays className="size-4 text-primary" /> Fecha inicial
-              </span>
-              <input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(event) => setFrom(event.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <CalendarDays className="size-4 text-primary" /> Fecha final
-              </span>
-              <input
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(event) => setTo(event.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </label>
-          </div>
+      <section className="rounded-[18px] border border-[#e2eaf5] bg-white/80 p-4 shadow-[0_10px_26px_-24px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+          <ReportDateRangePicker from={from} to={to} onChange={(range) => { setFrom(range.from); setTo(range.to); }} />
           <button
             type="button"
             onClick={generate}
             disabled={loading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-[11px] font-semibold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] transition hover:bg-primary/90 disabled:opacity-60"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
             Generar reporte

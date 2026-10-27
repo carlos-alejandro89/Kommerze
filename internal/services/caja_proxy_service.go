@@ -52,6 +52,22 @@ func (c *CajaProxyService) BuildSoldProductsReport(fechaInicio, fechaFin string,
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) BuildProfitReport(fechaInicio, fechaFin string, sucursalID uint) (reportmodels.ProfitReport, error) {
+	var result struct {
+		Data reportmodels.ProfitReport `json:"data"`
+	}
+	path := fmt.Sprintf(
+		"/local/reportes/utilidad?fechaInicio=%s&fechaFin=%s&sucursalId=%d",
+		url.QueryEscape(fechaInicio),
+		url.QueryEscape(fechaFin),
+		sucursalID,
+	)
+	if err := c.get(path, &result); err != nil {
+		return reportmodels.ProfitReport{}, err
+	}
+	return result.Data, nil
+}
+
 func (c *CajaProxyService) BuildAuditReport(request reportmodels.AuditReportRequest) (reportmodels.AuditReport, error) {
 	var result struct {
 		Data reportmodels.AuditReport `json:"data"`

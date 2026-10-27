@@ -9,5 +9,8 @@ export function useReportsService() {
   const generarFormatoAuditoria = (request) =>
     window.go.main.App.ServiceGenerateAuditReport(request);
 
-  return { generarProductosVendidos, generarFormatoAuditoria };
+  const generarUtilidad = (fechaInicio, fechaFin, sucursalID) =>
+    window.go.main.App.ServiceGenerateProfitReport(fechaInicio, fechaFin, Number(sucursalID || 0));
+
+  return { generarProductosVendidos, generarFormatoAuditoria, generarUtilidad };
 }

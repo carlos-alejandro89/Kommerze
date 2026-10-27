@@ -26,7 +26,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const AppVersion = "1.5.0"
+const AppVersion = "1.5.1"
 
 // App struct
 type App struct {
@@ -218,12 +218,29 @@ func (a *App) receiptService() interface {
 
 func (a *App) reportsService() interface {
 	BuildSoldProductsReport(string, string, uint) (reportmodels.SoldProductsReport, error)
+	BuildProfitReport(string, string, uint) (reportmodels.ProfitReport, error)
 	BuildAuditReport(reportmodels.AuditReportRequest) (reportmodels.AuditReport, error)
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
 	}
 	return a.services.Reports
+}
+
+func (a *App) ServiceGenerateProfitReport(fechaInicio, fechaFin string, sucursalID uint) (*reportmodels.ProfitReportOutput, error) {
+	report, err := a.reportsService().BuildProfitReport(fechaInicio, fechaFin, sucursalID)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderProfitPDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el reporte de utilidad: %w", err)
+	}
+	return &reportmodels.ProfitReportOutput{
+		Report:    report,
+		PDFBase64: base64.StdEncoding.EncodeToString(pdf),
+		FileName:  fmt.Sprintf("utilidad-%s-%s.pdf", fechaInicio, fechaFin),
+	}, nil
 }
 
 func (a *App) ServiceGenerateAuditReport(request reportmodels.AuditReportRequest) (*reportmodels.AuditReportOutput, error) {
