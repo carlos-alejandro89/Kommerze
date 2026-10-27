@@ -4,12 +4,14 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   ArrowUpRight,
+  Barcode,
   Box,
   CalendarDays,
   Clock,
   Eye,
   FileSpreadsheet,
   GitCommitVertical,
+  Image as ImageIcon,
   Layers,
   Package,
   PlayCircle,
@@ -18,12 +20,14 @@ import {
   Search,
   SlidersHorizontal,
   ScrollText,
+  ZoomIn,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PdfViewer } from '@/components/common/pdf-viewer';
 import { useActivation } from '@/providers/ActivationProvider';
+import { useCloudConfig } from '@/providers/CloudConfigProvider';
 import { ReportDateRangePicker } from '../components/ReportDateRangePicker';
 import { useReportsService } from '../useReportsService';
 
@@ -34,6 +38,72 @@ const read = (source, ...keys) => {
   }
   return undefined;
 };
+
+function KardexProductThumbnail({ src, alt, className = '', imgClassName = '', showZoom = false }) {
+  const { getCloudAssetUrl } = useCloudConfig();
+  const [hasError, setHasError] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  const url = src ? getCloudAssetUrl(src) : '';
+  const canDisplay = Boolean(url && !hasError);
+
+  return (
+    <>
+      <div
+        onClick={() => {
+          if (showZoom && canDisplay) setZoomOpen(true);
+        }}
+        className={`group relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-muted/30 p-1.5 shadow-xs transition-all ${
+          showZoom && canDisplay ? 'cursor-pointer hover:border-primary/40 hover:shadow-md' : ''
+        } dark:border-white/10 dark:bg-muted/20 ${className}`}
+        title={showZoom && canDisplay ? 'Ver imagen completa' : alt}
+      >
+        {canDisplay ? (
+          <>
+            <img
+              src={url}
+              alt={alt || 'Producto'}
+              onError={() => setHasError(true)}
+              className={`size-full object-contain transition-transform duration-300 group-hover:scale-105 ${imgClassName}`}
+            />
+            {showZoom && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                <ZoomIn className="size-4 text-white drop-shadow" />
+              </span>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-muted-foreground/40">
+            <Package className="size-8" strokeWidth={1.5} />
+          </div>
+        )}
+      </div>
+
+      {showZoom && canDisplay && (
+        <Dialog open={zoomOpen} onOpenChange={setZoomOpen}>
+          <DialogContent className="max-w-md overflow-hidden p-6 text-center">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-base font-bold text-foreground truncate">
+                {alt || 'Vista previa del producto'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-muted/20 p-4">
+              <img
+                src={url}
+                alt={alt || 'Producto'}
+                className="max-h-[360px] w-auto object-contain rounded-xl"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
 
 const qty = (value) => Number(value || 0).toLocaleString('es-MX', { maximumFractionDigits: 3 });
 const localDate = (date) =>
@@ -129,13 +199,20 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
 
             {selected && (
               <div className="mt-2 flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-primary">
-                    {read(selected, 'Producto', 'producto')}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {read(selected, 'Codigo', 'codigo')} · {read(selected, 'Empaque', 'empaque')}
-                  </p>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <KardexProductThumbnail
+                    src={read(selected, 'Imagen', 'imagen', 'imgReferencia', 'ImgReferencia')}
+                    alt={read(selected, 'Producto', 'producto')}
+                    className="size-10 rounded-xl"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-primary">
+                      {read(selected, 'Producto', 'producto')}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {read(selected, 'Codigo', 'codigo')} · {read(selected, 'Empaque', 'empaque')}
+                    </p>
+                  </div>
                 </div>
                 <span className="ml-3 shrink-0 rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
                   {read(selected, 'Empaque', 'empaque') || 'Seleccionado'}
@@ -155,24 +232,21 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
                       key={id}
                       type="button"
                       onClick={() => setSelected(option)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${
+                      className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition ${
                         active ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
                       }`}
                     >
-                      <span className="grid min-w-14 shrink-0 place-items-center rounded-lg bg-background px-2 py-1.5 text-center shadow-sm">
-                        <span className="font-mono text-[10px] font-bold text-foreground">
-                          {read(option, 'Codigo', 'codigo') || '—'}
-                        </span>
-                        <span className="text-[9px] font-medium text-muted-foreground truncate max-w-16">
-                          {read(option, 'Empaque', 'empaque')}
-                        </span>
-                      </span>
-                      <span className="min-w-0">
+                      <KardexProductThumbnail
+                        src={read(option, 'Imagen', 'imagen', 'imgReferencia', 'ImgReferencia')}
+                        alt={read(option, 'Producto', 'producto')}
+                        className="size-10 rounded-lg"
+                      />
+                      <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-semibold">
                           {read(option, 'Producto', 'producto')}
                         </span>
                         <span className="block truncate text-[10px] text-muted-foreground">
-                          {read(option, 'Empaque', 'empaque')}
+                          {read(option, 'Codigo', 'codigo')} · {read(option, 'Empaque', 'empaque')}
                         </span>
                       </span>
                     </button>
@@ -378,6 +452,7 @@ export function KardexReportPage() {
   const empaqueText = read(productInfo, 'Empaque', 'empaque') || 'PIEZA';
   const codigoText = read(productInfo, 'Codigo', 'codigo') || '—';
   const productoText = read(productInfo, 'Producto', 'producto') || 'Producto sin descripción';
+  const rawImage = read(productInfo, 'Imagen', 'imagen', 'imgReferencia', 'ImgReferencia');
 
   // Determinación de estado de stock para badge
   const stockBadge = (() => {
@@ -485,35 +560,38 @@ export function KardexReportPage() {
             {/* 1. Tarjeta Principal del Producto (ocupa 2 columnas de 6) */}
             <div className="flex flex-col justify-between rounded-[22px] border border-border/70 bg-card p-4.5 shadow-[0_4px_24px_-12px_rgba(0,0,0,0.06)] sm:col-span-2 md:col-span-2 lg:col-span-2 dark:border-white/10">
               <div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                    {empaqueText}
-                  </span>
-                  <span className="grid size-10 place-items-center rounded-2xl border border-border/60 bg-muted/40 text-primary shadow-xs">
-                    <Package className="size-5" />
-                  </span>
-                </div>
+                <div className="flex items-start gap-3.5">
+                  {/* Imagen integrada del producto con fallback y vista previa */}
+                  <KardexProductThumbnail
+                    src={rawImage}
+                    alt={productoText}
+                    showZoom={true}
+                    className="size-20 sm:size-[84px] shrink-0"
+                  />
 
-                <h2 className="mt-2.5 line-clamp-2 text-lg font-extrabold tracking-tight text-foreground">
-                  {productoText}
-                </h2>
+                  {/* Información y Chips */}
+                  <div className="min-w-0 flex-1">
+                    <h2
+                      className="line-clamp-2 text-base font-extrabold tracking-tight text-foreground sm:text-[17px] leading-snug"
+                      title={productoText}
+                    >
+                      {productoText}
+                    </h2>
 
-                <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-                  <div className="rounded-xl border border-border/50 bg-muted/30 p-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      SKU / Código
-                    </p>
-                    <p className="mt-0.5 truncate font-mono text-xs font-extrabold text-foreground">
-                      {codigoText}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-border/50 bg-muted/30 p-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Presentación
-                    </p>
-                    <p className="mt-0.5 truncate text-xs font-extrabold text-foreground">
-                      {empaqueText}
-                    </p>
+                    {/* Chips de SKU y Presentación */}
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground dark:border-white/10">
+                        <Barcode className="size-3.5 text-muted-foreground" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">SKU</span>
+                        <span className="font-mono font-bold text-foreground">{codigoText}</span>
+                      </span>
+
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                        <Package className="size-3.5" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Presentación</span>
+                        <span>{empaqueText}</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

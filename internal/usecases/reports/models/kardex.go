@@ -16,10 +16,13 @@ func (o *KardexProductOption) UnmarshalJSON(data []byte) error {
 	type Alias KardexProductOption
 	aux := struct {
 		*Alias
-		NivelIDAlt  uint `json:"nivelId"`
-		NivelIDAlt2 uint `json:"nivelID"`
-		NivelSnake  uint `json:"nivel_id"`
-		ID          uint `json:"id"`
+		NivelIDAlt  uint   `json:"nivelId"`
+		NivelIDAlt2 uint   `json:"nivelID"`
+		NivelSnake  uint   `json:"nivel_id"`
+		ID          uint   `json:"id"`
+		ImagenAlt   string `json:"imagen"`
+		ImgRefAlt   string `json:"imgReferencia"`
+		ImgRefAlt2  string `json:"ImgReferencia"`
 	}{
 		Alias: (*Alias)(o),
 	}
@@ -35,6 +38,15 @@ func (o *KardexProductOption) UnmarshalJSON(data []byte) error {
 			o.NivelID = aux.NivelSnake
 		} else if aux.ID != 0 {
 			o.NivelID = aux.ID
+		}
+	}
+	if o.Imagen == "" {
+		if aux.ImagenAlt != "" {
+			o.Imagen = aux.ImagenAlt
+		} else if aux.ImgRefAlt != "" {
+			o.Imagen = aux.ImgRefAlt
+		} else if aux.ImgRefAlt2 != "" {
+			o.Imagen = aux.ImgRefAlt2
 		}
 	}
 	return nil
