@@ -48,6 +48,7 @@ func MigrateTables(db *gorm.DB) error {
 		&models.NivelEmpaque{},
 		&models.ReglaConversionProducto{},
 		&models.SucursalProducto{},
+		&models.MovimientoDiarioStock{},
 
 		// Ventas / Clientes
 		&models.RolesFiscales{},

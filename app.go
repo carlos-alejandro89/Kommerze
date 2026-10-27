@@ -220,11 +220,34 @@ func (a *App) reportsService() interface {
 	BuildSoldProductsReport(string, string, uint) (reportmodels.SoldProductsReport, error)
 	BuildProfitReport(string, string, uint) (reportmodels.ProfitReport, error)
 	BuildAuditReport(reportmodels.AuditReportRequest) (reportmodels.AuditReport, error)
+	BuildKardexReport(reportmodels.KardexReportRequest) (reportmodels.KardexReport, error)
+	SearchKardexProducts(string) ([]reportmodels.KardexProductOption, error)
+	RefreshTodayStock(uint) error
 } {
 	if a.services.CajaProxy != nil {
 		return a.services.CajaProxy
 	}
 	return a.services.Reports
+}
+
+func (a *App) ServiceSearchKardexProducts(search string) ([]reportmodels.KardexProductOption, error) {
+	return a.reportsService().SearchKardexProducts(search)
+}
+
+func (a *App) ServiceRefreshTodayStock(sucursalID uint) error {
+	return a.reportsService().RefreshTodayStock(sucursalID)
+}
+
+func (a *App) ServiceGenerateKardexReport(request reportmodels.KardexReportRequest) (*reportmodels.KardexReportOutput, error) {
+	report, err := a.reportsService().BuildKardexReport(request)
+	if err != nil {
+		return nil, err
+	}
+	pdf, err := renders.RenderKardexPDF(report)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo generar el kardex: %w", err)
+	}
+	return &reportmodels.KardexReportOutput{Report: report, PDFBase64: base64.StdEncoding.EncodeToString(pdf), FileName: fmt.Sprintf("kardex-%s-%s-%s.pdf", report.Producto.Codigo, request.FechaInicio, request.FechaFin)}, nil
 }
 
 func (a *App) ServiceGenerateProfitReport(fechaInicio, fechaFin string, sucursalID uint) (*reportmodels.ProfitReportOutput, error) {

@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, ClipboardCheck, PackageCheck, TrendingUp } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BarChart3, ClipboardCheck, PackageCheck, TrendingUp, ScrollText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const REPORTS = [
@@ -26,18 +26,26 @@ const REPORTS = [
     path: '/reports/profit',
     tag: 'Finanzas',
   },
+  {
+    title: 'Kardex del producto',
+    description: 'Saldos diarios y trazabilidad cronológica de movimientos por presentación.',
+    icon: ScrollText,
+    color: '#ea7b2c',
+    path: '/reports/kardex',
+    tag: 'Inventario',
+  },
 ];
 
 export function ReportsHubPage() {
   const navigate = useNavigate();
   return (
     <div className="space-y-6 p-6 animate-fade-in">
-      <header className="rounded-[24px] border border-[#dce7f5] bg-[linear-gradient(115deg,#f4f8ff_0%,#eef5ff_58%,#f8fbff_100%)] px-6 py-5 shadow-[0_12px_34px_-30px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5579ad] dark:text-blue-300">
-          <BarChart3 className="size-4" strokeWidth={1.8} /> Centro de reportes
+      <header className="flex items-center gap-4 rounded-[24px] border border-[#dce7f5] bg-[linear-gradient(115deg,#f4f8ff_0%,#eef5ff_58%,#f8fbff_100%)] px-6 py-5 shadow-[0_12px_34px_-30px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
+        <button type="button" onClick={() => navigate(-1)} aria-label="Regresar" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#dce7f5] bg-white/75 text-[#7185a7] transition hover:bg-white hover:text-[#101c35] dark:border-white/10 dark:bg-white/[.06] dark:hover:text-slate-100"><ArrowLeft className="size-5" /></button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-lg bg-blue-500/10 text-primary"><BarChart3 className="size-4" strokeWidth={1.8} /></span><h1 className="text-[24px] font-bold tracking-[-0.025em] text-[#101c35] dark:text-slate-100">Reportes de la operación</h1></div>
+          <p className="mt-1 text-[12px] text-[#7185a7] dark:text-slate-400">Selecciona el reporte que deseas consultar, preparar o exportar.</p>
         </div>
-        <h1 className="mt-2 text-[24px] font-bold tracking-[-0.025em] text-[#101c35] dark:text-slate-100">Reportes de la operación</h1>
-        <p className="mt-1 text-[12px] text-[#7185a7] dark:text-slate-400">Selecciona el reporte que deseas consultar, preparar o exportar.</p>
       </header>
 
       <section>

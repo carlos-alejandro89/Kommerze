@@ -1679,6 +1679,184 @@ export namespace models {
 	        this.dataBase64 = source["dataBase64"];
 	    }
 	}
+	export class KardexDailyRow {
+	    Fecha: string;
+	    InventarioInicial: number;
+	    Compras: number;
+	    Ventas: number;
+	    TransferenciasEntrada: number;
+	    TransferenciasSalida: number;
+	    BajasMercancia: number;
+	    Conversiones: number;
+	    AjustesAuditoria: number;
+	    InventarioFinal: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexDailyRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Fecha = source["Fecha"];
+	        this.InventarioInicial = source["InventarioInicial"];
+	        this.Compras = source["Compras"];
+	        this.Ventas = source["Ventas"];
+	        this.TransferenciasEntrada = source["TransferenciasEntrada"];
+	        this.TransferenciasSalida = source["TransferenciasSalida"];
+	        this.BajasMercancia = source["BajasMercancia"];
+	        this.Conversiones = source["Conversiones"];
+	        this.AjustesAuditoria = source["AjustesAuditoria"];
+	        this.InventarioFinal = source["InventarioFinal"];
+	    }
+	}
+	export class KardexMovementRow {
+	    Fecha: string;
+	    Tipo: string;
+	    Documento: string;
+	    Entrada: number;
+	    Salida: number;
+	    Existencia: number;
+	    Nota: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexMovementRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Fecha = source["Fecha"];
+	        this.Tipo = source["Tipo"];
+	        this.Documento = source["Documento"];
+	        this.Entrada = source["Entrada"];
+	        this.Salida = source["Salida"];
+	        this.Existencia = source["Existencia"];
+	        this.Nota = source["Nota"];
+	    }
+	}
+	export class KardexProductOption {
+	    NivelID: number;
+	    Codigo: string;
+	    Producto: string;
+	    Empaque: string;
+	    Imagen: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexProductOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.NivelID = source["NivelID"];
+	        this.Codigo = source["Codigo"];
+	        this.Producto = source["Producto"];
+	        this.Empaque = source["Empaque"];
+	        this.Imagen = source["Imagen"];
+	    }
+	}
+	export class KardexReport {
+	    FechaInicio: string;
+	    FechaFin: string;
+	    GeneradoEn: string;
+	    Empresa: string;
+	    Sucursal: string;
+	    Producto: KardexProductOption;
+	    SaldoInicial: number;
+	    SaldoFinal: number;
+	    Entradas: number;
+	    Salidas: number;
+	    Resumen: KardexDailyRow[];
+	    Movimientos: KardexMovementRow[];
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.FechaInicio = source["FechaInicio"];
+	        this.FechaFin = source["FechaFin"];
+	        this.GeneradoEn = source["GeneradoEn"];
+	        this.Empresa = source["Empresa"];
+	        this.Sucursal = source["Sucursal"];
+	        this.Producto = this.convertValues(source["Producto"], KardexProductOption);
+	        this.SaldoInicial = source["SaldoInicial"];
+	        this.SaldoFinal = source["SaldoFinal"];
+	        this.Entradas = source["Entradas"];
+	        this.Salidas = source["Salidas"];
+	        this.Resumen = this.convertValues(source["Resumen"], KardexDailyRow);
+	        this.Movimientos = this.convertValues(source["Movimientos"], KardexMovementRow);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class KardexReportOutput {
+	    Report: KardexReport;
+	    PDFBase64: string;
+	    FileName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexReportOutput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Report = this.convertValues(source["Report"], KardexReport);
+	        this.PDFBase64 = source["PDFBase64"];
+	        this.FileName = source["FileName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class KardexReportRequest {
+	    NivelID: number;
+	    SucursalID: number;
+	    FechaInicio: string;
+	    FechaFin: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KardexReportRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.NivelID = source["NivelID"];
+	        this.SucursalID = source["SucursalID"];
+	        this.FechaInicio = source["FechaInicio"];
+	        this.FechaFin = source["FechaFin"];
+	    }
+	}
 	export class PermisoSistema {
 	    ID: number;
 	    Guid: number[];

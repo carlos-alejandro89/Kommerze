@@ -154,6 +154,10 @@ export function ServiceGenerateConversionReport(arg1) {
   return window['go']['main']['App']['ServiceGenerateConversionReport'](arg1);
 }
 
+export function ServiceGenerateKardexReport(arg1) {
+  return window['go']['main']['App']['ServiceGenerateKardexReport'](arg1);
+}
+
 export function ServiceGenerateProfitReport(arg1, arg2, arg3) {
   return window['go']['main']['App']['ServiceGenerateProfitReport'](arg1, arg2, arg3);
 }
@@ -358,6 +362,10 @@ export function ServicePrintReceipt(arg1) {
   return window['go']['main']['App']['ServicePrintReceipt'](arg1);
 }
 
+export function ServiceRefreshTodayStock(arg1) {
+  return window['go']['main']['App']['ServiceRefreshTodayStock'](arg1);
+}
+
 export function ServiceResetPassword(arg1, arg2) {
   return window['go']['main']['App']['ServiceResetPassword'](arg1, arg2);
 }
@@ -384,6 +392,10 @@ export function ServiceSaveKommerzConfig(arg1) {
 
 export function ServiceSaveReceiptLogo(arg1) {
   return window['go']['main']['App']['ServiceSaveReceiptLogo'](arg1);
+}
+
+export function ServiceSearchKardexProducts(arg1) {
+  return window['go']['main']['App']['ServiceSearchKardexProducts'](arg1);
 }
 
 export function ServiceSelectInvoiceFolder() {

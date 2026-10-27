@@ -82,6 +82,8 @@ export function ServiceGenerateAuditReport(arg1:models.AuditReportRequest):Promi
 
 export function ServiceGenerateConversionReport(arg1:string):Promise<models.DocumentOutput>;
 
+export function ServiceGenerateKardexReport(arg1:models.KardexReportRequest):Promise<models.KardexReportOutput>;
+
 export function ServiceGenerateProfitReport(arg1:string,arg2:string,arg3:number):Promise<models.ProfitReportOutput>;
 
 export function ServiceGeneratePurchaseReport(arg1:string):Promise<models.DocumentOutput>;
@@ -184,6 +186,8 @@ export function ServicePrepararFacturacion(arg1:string):Promise<dto.FacturacionP
 
 export function ServicePrintReceipt(arg1:string):Promise<models.DocumentOutput>;
 
+export function ServiceRefreshTodayStock(arg1:number):Promise<void>;
+
 export function ServiceResetPassword(arg1:string,arg2:string):Promise<models.Usuario>;
 
 export function ServiceResolverTransferencia(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -197,6 +201,8 @@ export function ServiceSaveDBConfig(arg1:string,arg2:string,arg3:string,arg4:str
 export function ServiceSaveKommerzConfig(arg1:services.KommerzConfig):Promise<void>;
 
 export function ServiceSaveReceiptLogo(arg1:string):Promise<void>;
+
+export function ServiceSearchKardexProducts(arg1:string):Promise<Array<models.KardexProductOption>>;
 
 export function ServiceSelectInvoiceFolder():Promise<string>;
 

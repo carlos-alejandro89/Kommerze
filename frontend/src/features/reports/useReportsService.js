@@ -12,5 +12,14 @@ export function useReportsService() {
   const generarUtilidad = (fechaInicio, fechaFin, sucursalID) =>
     window.go.main.App.ServiceGenerateProfitReport(fechaInicio, fechaFin, Number(sucursalID || 0));
 
-  return { generarProductosVendidos, generarFormatoAuditoria, generarUtilidad };
+  const buscarProductosKardex = (search = '') =>
+    window.go.main.App.ServiceSearchKardexProducts(search);
+
+  const generarKardex = (request) =>
+    window.go.main.App.ServiceGenerateKardexReport(request);
+
+  const actualizarStockDiario = (sucursalID) =>
+    window.go.main.App.ServiceRefreshTodayStock(Number(sucursalID || 0));
+
+  return { generarProductosVendidos, generarFormatoAuditoria, generarUtilidad, buscarProductosKardex, generarKardex, actualizarStockDiario };
 }

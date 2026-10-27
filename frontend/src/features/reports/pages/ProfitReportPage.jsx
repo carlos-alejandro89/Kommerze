@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileDown, FileText, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
+import { ArrowLeft, FileDown, FileText, SlidersHorizontal, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PdfViewer } from '@/components/common/pdf-viewer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useActivation } from '@/providers/ActivationProvider';
-import { ReportDateRangePicker } from '../components/ReportDateRangePicker';
+import { ReportDateFilterDialog } from '../components/ReportDateFilterDialog';
 import { useReportsService } from '../useReportsService';
 
 const read = (source, pascal, camel) => source?.[pascal] ?? source?.[camel];
@@ -31,6 +32,7 @@ function documentURL(output) {
 }
 
 export function ProfitReportPage() {
+  const navigate = useNavigate();
   const defaults = useMemo(initialDates, []);
   const { store } = useActivation();
   const { generarUtilidad } = useReportsService();
@@ -38,6 +40,7 @@ export function ProfitReportPage() {
   const [to, setTo] = useState(defaults.to);
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewer, setViewer] = useState({ open: false, url: '', fileName: '' });
   const branchID = store?.ID ?? store?.id ?? 0;
   const report = read(output, 'Report', 'report');
@@ -45,13 +48,16 @@ export function ProfitReportPage() {
 
   useEffect(() => () => { if (viewer.url) URL.revokeObjectURL(viewer.url); }, [viewer.url]);
 
-  const generate = async () => {
-    if (!from || !to) return toast.warning('Selecciona la fecha inicial y final.');
-    if (to < from) return toast.warning('La fecha final no puede ser anterior a la fecha inicial.');
+  const generate = async (range = { from, to }) => {
+    if (!range.from || !range.to) return toast.warning('Selecciona la fecha inicial y final.');
+    if (range.to < range.from) return toast.warning('La fecha final no puede ser anterior a la fecha inicial.');
     if (!branchID) return toast.error('No fue posible identificar la sucursal de este dispositivo.');
     setLoading(true);
     try {
-      setOutput(await generarUtilidad(from, to, branchID));
+      setFrom(range.from);
+      setTo(range.to);
+      setOutput(await generarUtilidad(range.from, range.to, branchID));
+      setFiltersOpen(false);
     } catch (error) {
       toast.error(error?.message || String(error));
     } finally {
@@ -78,20 +84,17 @@ export function ProfitReportPage() {
 
   return (
     <div className="space-y-5 p-6 animate-fade-in">
-      <header>
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary"><TrendingUp className="size-4" /> Reportes financieros</div>
-        <h1 className="mt-1 text-[24px] font-bold tracking-[-0.025em] text-foreground">Utilidad de ventas</h1>
-        <p className="mt-1 text-[12px] text-muted-foreground">Utilidad calculada con las partidas de ventas confirmadas en el periodo.</p>
-      </header>
-
-      <section className="rounded-[18px] border border-[#e2eaf5] bg-white/80 p-4 shadow-[0_10px_26px_-24px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <ReportDateRangePicker from={from} to={to} onChange={(range) => { setFrom(range.from); setTo(range.to); }} />
-          <button type="button" onClick={generate} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-[11px] font-semibold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] transition hover:bg-primary/90 disabled:opacity-60">
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Generar reporte
-          </button>
+      <header className="flex flex-col gap-4 rounded-[22px] border border-[#dce7f5] bg-white/80 px-5 py-4 shadow-[0_12px_30px_-28px_rgba(28,70,133,.5)] sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/[.045]">
+        <button type="button" onClick={() => navigate(-1)} aria-label="Regresar" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"><ArrowLeft className="size-5" /></button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><TrendingUp className="size-4" /></span><h1 className="text-[24px] font-bold tracking-[-0.025em] text-foreground">Utilidad de ventas</h1></div>
+          <p className="mt-1 text-[12px] text-muted-foreground">Utilidad calculada con las partidas de ventas confirmadas en el periodo.</p>
         </div>
-      </section>
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <div className="sm:text-right"><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Periodo</p><p className="mt-0.5 text-xs font-semibold text-foreground">{from.split('-').reverse().join('/')} — {to.split('-').reverse().join('/')}</p></div>
+          <button type="button" onClick={() => setFiltersOpen(true)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 text-xs font-semibold text-primary transition hover:bg-primary/10"><SlidersHorizontal className="size-4" /> Configurar filtros</button>
+        </div>
+      </header>
 
       {report ? <>
         <section className="grid gap-3 sm:grid-cols-3">
@@ -106,6 +109,7 @@ export function ProfitReportPage() {
       </> : <section className="grid min-h-64 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 text-center"><div><TrendingUp className="mx-auto size-11 text-primary/35" /><h2 className="mt-3 font-semibold">Selecciona un periodo</h2><p className="mt-1 text-sm text-muted-foreground">Genera el reporte para consultar la utilidad de las ventas confirmadas.</p></div></section>}
 
       <Dialog open={viewer.open} onOpenChange={(open) => setViewer((current) => ({ ...current, open }))}><DialogContent className="h-[92vh] max-w-6xl overflow-hidden p-0"><DialogHeader className="border-b border-border px-5 py-4"><DialogTitle>Reporte de utilidad</DialogTitle></DialogHeader><PdfViewer fileUrl={viewer.url} fileName={viewer.fileName} className="h-[calc(92vh-72px)] rounded-none border-0" /></DialogContent></Dialog>
+      <ReportDateFilterDialog open={filtersOpen} onOpenChange={setFiltersOpen} from={from} to={to} loading={loading} title="Filtros del reporte de utilidad" description="Selecciona el periodo de ventas confirmadas que deseas analizar." onApply={generate} />
     </div>
   );
 }

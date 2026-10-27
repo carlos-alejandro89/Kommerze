@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, ClipboardCheck, FileDown, FileText, Layers3, Loader2, PackageSearch, Tags } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, ChevronDown, ClipboardCheck, FileDown, FileText, Layers3, PackageSearch, Search, SlidersHorizontal, Tags } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PdfViewer } from '@/components/common/pdf-viewer';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useReportsService } from '../useReportsService';
@@ -11,23 +12,44 @@ const read = (source, pascal, camel) => source?.[pascal] ?? source?.[camel];
 const quantity = (value) => Number(value || 0).toLocaleString('es-MX', { maximumFractionDigits: 3 });
 
 function MultiSelect({ label, icon: Icon, options, selected, onChange, valueKey, labelKey }) {
+  const rootRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const summary = selected.length === 0
     ? 'Todas'
     : selected.length === 1
       ? read(options.find((item) => Number(read(item, valueKey, valueKey.toLowerCase())) === selected[0]), labelKey, labelKey[0].toLowerCase() + labelKey.slice(1))
       : `${selected.length} seleccionadas`;
   const toggle = (id) => onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+  const visibleOptions = options.filter((item) => {
+    const name = read(item, labelKey, labelKey[0].toLowerCase() + labelKey.slice(1)) || '';
+    return String(name).toLowerCase().includes(search.trim().toLowerCase());
+  });
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOutside = (event) => {
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', closeOutside);
+    return () => document.removeEventListener('mousedown', closeOutside);
+  }, [open]);
 
   return (
-    <details className="group relative">
-      <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-[10px] border border-[#dfe7f2] bg-background px-3 text-[11px] text-foreground outline-none transition hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/10">
+    <div ref={rootRef} className="relative">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="flex h-10 w-full items-center gap-2 rounded-[10px] border border-[#dfe7f2] bg-background px-3 text-left text-[11px] text-foreground outline-none transition hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/10">
         <Icon className="size-4 text-primary" />
         <span className="min-w-0 flex-1"><span className="font-bold uppercase tracking-[0.07em] text-muted-foreground">{label}</span><span className="ml-2 font-semibold text-foreground">{summary}</span></span>
-        <ChevronDown className="size-4 text-muted-foreground transition group-open:rotate-180" />
-      </summary>
-      <div className="absolute z-40 mt-1.5 max-h-64 w-full min-w-64 overflow-auto rounded-xl border border-[#dfe7f2] bg-surface p-1.5 shadow-[0_16px_35px_-18px_rgba(28,70,133,.45)]">
-        <button type="button" onClick={() => onChange([])} className="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-muted">Seleccionar todas</button>
-        {options.map((item) => {
+        <ChevronDown className={`size-4 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="absolute z-40 mt-1.5 w-full min-w-64 overflow-hidden rounded-xl border border-[#dfe7f2] bg-surface shadow-[0_16px_35px_-18px_rgba(28,70,133,.45)]">
+        <div className="border-b border-border/70 p-2"><div className="relative"><Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar ${label.toLowerCase()}...`} className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10" /></div></div>
+        <div className="max-h-52 overflow-auto p-1.5">
+        <button type="button" onClick={() => onChange([])} className="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-muted">Todas</button>
+        {visibleOptions.map((item) => {
           const id = Number(read(item, valueKey, valueKey.toLowerCase()));
           const name = read(item, labelKey, labelKey[0].toLowerCase() + labelKey.slice(1));
           const active = selected.includes(id);
@@ -38,12 +60,16 @@ function MultiSelect({ label, icon: Icon, options, selected, onChange, valueKey,
             </button>
           );
         })}
+        {!visibleOptions.length && <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin coincidencias</p>}
+        </div>
       </div>
-    </details>
+      }
+    </div>
   );
 }
 
 export function AuditReportPage() {
+  const navigate = useNavigate();
   const { store } = useActivation();
   const { generarFormatoAuditoria } = useReportsService();
   const [lines, setLines] = useState([]);
@@ -51,6 +77,10 @@ export function AuditReportPage() {
   const [selectedLines, setSelectedLines] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [withStock, setWithStock] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftLines, setDraftLines] = useState([]);
+  const [draftBrands, setDraftBrands] = useState([]);
+  const [draftWithStock, setDraftWithStock] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState(null);
@@ -77,16 +107,27 @@ export function AuditReportPage() {
     return result;
   }, {}), [rows]);
 
-  const generate = async () => {
+  const openFilters = () => {
+    setDraftLines(selectedLines);
+    setDraftBrands(selectedBrands);
+    setDraftWithStock(withStock);
+    setFiltersOpen(true);
+  };
+
+  const generate = async (filters = { lines: selectedLines, brands: selectedBrands, withStock }) => {
     if (!branchID) return toast.error('No fue posible identificar la sucursal de este dispositivo.');
     setLoading(true);
     try {
       setOutput(await generarFormatoAuditoria({
         SucursalID: Number(branchID),
-        LineasIDs: selectedLines,
-        MarcasIDs: selectedBrands,
-        ConExistencia: withStock,
+        LineasIDs: filters.lines,
+        MarcasIDs: filters.brands,
+        ConExistencia: filters.withStock,
       }));
+      setSelectedLines(filters.lines);
+      setSelectedBrands(filters.brands);
+      setWithStock(filters.withStock);
+      setFiltersOpen(false);
     } catch (error) {
       toast.error(error?.message || String(error));
     } finally {
@@ -118,30 +159,22 @@ export function AuditReportPage() {
 
   return (
     <div className="space-y-5 p-6 animate-fade-in">
-      <header>
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary"><ClipboardCheck className="size-4" /> Reportes de inventario</div>
-        <h1 className="mt-1 text-[24px] font-bold tracking-[-0.025em] text-foreground">Formato de auditoría</h1>
-        <p className="mt-1 text-[12px] text-muted-foreground">Prepara el inventario agrupado por línea para realizar un conteo físico.</p>
-      </header>
-
-      <section className="rounded-[18px] border border-[#e2eaf5] bg-white/80 p-4 shadow-[0_10px_26px_-24px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_230px_auto] lg:items-end">
-          <MultiSelect label="Líneas" icon={Layers3} options={lines} selected={selectedLines} onChange={setSelectedLines} valueKey="ID" labelKey="NombreLinea" />
-          <MultiSelect label="Marcas" icon={Tags} options={brands} selected={selectedBrands} onChange={setSelectedBrands} valueKey="ID" labelKey="NombreMarca" />
-          <div className="flex h-10 items-center justify-between rounded-[10px] border border-[#dfe7f2] bg-background px-3">
-            <div><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Existencia</p><p className="text-[11px] font-semibold text-foreground">{withStock ? 'Con existencia' : 'Sin existencia'}</p></div>
-            <Switch checked={withStock} onCheckedChange={setWithStock} aria-label="Cambiar filtro de existencia" />
-          </div>
-          <button type="button" disabled={loading || loadingCatalogs} onClick={generate} className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-[11px] font-semibold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] hover:bg-primary/90 disabled:opacity-60">
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} Generar formato
-          </button>
+      <header className="flex flex-col gap-4 rounded-[22px] border border-[#dce7f5] bg-white/80 px-5 py-4 shadow-[0_12px_30px_-28px_rgba(28,70,133,.5)] sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/[.045]">
+        <button type="button" onClick={() => navigate(-1)} aria-label="Regresar" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"><ArrowLeft className="size-5" /></button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><ClipboardCheck className="size-4" /></span><h1 className="text-[24px] font-bold tracking-[-0.025em] text-foreground">Formato de auditoría</h1></div>
+          <p className="mt-1 text-[12px] text-muted-foreground">Prepara el inventario agrupado por línea para realizar un conteo físico.</p>
         </div>
-      </section>
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <div className="max-w-sm sm:text-right"><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Filtros actuales</p><p className="mt-0.5 text-xs font-semibold text-foreground">{selectedLines.length ? `${selectedLines.length} líneas` : 'Todas las líneas'} · {selectedBrands.length ? `${selectedBrands.length} marcas` : 'Todas las marcas'} · {withStock ? 'Solo con existencias' : 'Todos los productos'}</p></div>
+          <button type="button" onClick={openFilters} disabled={loadingCatalogs} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 text-xs font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50"><SlidersHorizontal className="size-4" /> Configurar filtros</button>
+        </div>
+      </header>
 
       {report ? (
         <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
           <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-sm font-semibold text-foreground">{read(report, 'Sucursal', 'sucursal') || 'Sucursal actual'}</h2><p className="mt-1 text-xs text-muted-foreground">{rows.length} productos · {withStock ? 'Con existencia' : 'Sin existencia'}</p></div>
+            <div><h2 className="text-sm font-semibold text-foreground">{read(report, 'Sucursal', 'sucursal') || 'Sucursal actual'}</h2><p className="mt-1 text-xs text-muted-foreground">{rows.length} productos · {withStock ? 'Solo con existencias' : 'Todos los productos'}</p></div>
             <div className="flex gap-2"><button onClick={openPDF} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><FileText className="size-4 text-primary" /> Ver PDF</button><button onClick={downloadPDF} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"><FileDown className="size-4" /> Descargar PDF</button></div>
           </div>
           {rows.length ? Object.entries(grouped).map(([line, items]) => (
@@ -153,6 +186,18 @@ export function AuditReportPage() {
         </section>
       ) : <section className="grid min-h-72 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 text-center"><div><ClipboardCheck className="mx-auto size-12 text-primary/35" /><h2 className="mt-4 font-semibold">Configura el formato</h2><p className="mt-1 text-sm text-muted-foreground">Selecciona los filtros para preparar la auditoría.</p></div></section>}
 
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent className="overflow-visible rounded-3xl p-0 sm:max-w-[760px]">
+          <DialogHeader className="border-b border-border/70 px-6 py-5 text-left"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><SlidersHorizontal className="size-5" /></div><div><DialogTitle>Filtros del formato de auditoría</DialogTitle><DialogDescription>Selecciona las líneas, marcas y disponibilidad que deseas incluir.</DialogDescription></div></div></DialogHeader>
+          <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+            <MultiSelect label="Líneas" icon={Layers3} options={lines} selected={draftLines} onChange={setDraftLines} valueKey="ID" labelKey="NombreLinea" />
+            <MultiSelect label="Marcas" icon={Tags} options={brands} selected={draftBrands} onChange={setDraftBrands} valueKey="ID" labelKey="NombreMarca" />
+            <div className="flex h-12 items-center justify-between rounded-xl border border-[#dfe7f2] bg-background px-3 md:col-span-2"><div><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Inventario</p><p className="text-[11px] font-semibold text-foreground">Solo con existencias</p></div><Switch checked={draftWithStock} onCheckedChange={setDraftWithStock} aria-label="Mostrar solo productos con existencias" /></div>
+            <div className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground md:col-span-2">Si no seleccionas líneas o marcas, el formato incluirá todas las opciones disponibles.</div>
+          </div>
+          <DialogFooter className="border-t border-border/70 bg-muted/20 px-6 py-4"><button type="button" onClick={() => setFiltersOpen(false)} className="h-10 rounded-xl border border-border bg-background px-4 text-xs font-semibold transition hover:bg-muted">Cancelar</button><button type="button" disabled={loading || loadingCatalogs} onClick={() => generate({ lines: draftLines, brands: draftBrands, withStock: draftWithStock })} className="h-10 rounded-xl bg-primary px-5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50">Generar formato</button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={viewer.open} onOpenChange={(open) => setViewer((current) => ({ ...current, open }))}><DialogContent className="h-[92vh] max-w-5xl overflow-hidden p-0"><DialogHeader className="border-b border-border px-5 py-4"><DialogTitle>Formato de auditoría</DialogTitle></DialogHeader><PdfViewer fileUrl={viewer.url} fileName={viewer.fileName} className="h-[calc(92vh-72px)] rounded-none border-0" /></DialogContent></Dialog>
     </div>
   );

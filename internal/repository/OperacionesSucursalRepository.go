@@ -130,6 +130,9 @@ func (o *OperacionesSucursalRepository) SucursalInicioOperacion(datos dto.Sucurs
 		Create(&operacion).Error; err != nil {
 		return dto.NewResponseDto(false, "No se pudo guardar la operación de sucursal: "+err.Error(), nil, []string{err.Error()})
 	}
+	if err := NewMovimientoDiarioStockRepository(o.db).Inicializar(tx, fechaInicio); err != nil {
+		return dto.NewResponseDto(false, "No se pudo inicializar el movimiento diario de inventario: "+err.Error(), nil, []string{err.Error()})
+	}
 
 	if err := tx.Commit().Error; err != nil {
 		return dto.NewResponseDto(false, "No se pudo confirmar el inicio de la operación: "+err.Error(), nil, []string{err.Error()})
@@ -624,6 +627,9 @@ func (o *OperacionesSucursalRepository) CerrarOperacionSucursal(datos dto.Cerrar
 
 	// Calcular acumulados automáticamente
 	acum := o.CalcularAcumuladosDia(operacion)
+	if err := NewMovimientoDiarioStockRepository(o.db).Recalcular(time.Now(), operacion.SucursalID); err != nil {
+		return dto.NewResponseDto(false, "No se pudo consolidar el movimiento diario de inventario: "+err.Error(), nil, []string{err.Error()})
+	}
 
 	ahora := time.Now()
 	estatusID := uint(2) // cerrado

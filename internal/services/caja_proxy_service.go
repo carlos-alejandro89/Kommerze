@@ -78,6 +78,29 @@ func (c *CajaProxyService) BuildAuditReport(request reportmodels.AuditReportRequ
 	return result.Data, nil
 }
 
+func (c *CajaProxyService) SearchKardexProducts(search string) ([]reportmodels.KardexProductOption, error) {
+	var result struct {
+		Data []reportmodels.KardexProductOption `json:"data"`
+	}
+	if err := c.get("/local/reportes/kardex/productos?q="+url.QueryEscape(search), &result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+func (c *CajaProxyService) RefreshTodayStock(sucursalID uint) error {
+	var result map[string]any
+	return c.post("/local/reportes/kardex/actualizar", map[string]uint{"sucursalId": sucursalID}, &result)
+}
+func (c *CajaProxyService) BuildKardexReport(request reportmodels.KardexReportRequest) (reportmodels.KardexReport, error) {
+	var result struct {
+		Data reportmodels.KardexReport `json:"data"`
+	}
+	if err := c.post("/local/reportes/kardex", request, &result); err != nil {
+		return reportmodels.KardexReport{}, err
+	}
+	return result.Data, nil
+}
+
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
 func (c *CajaProxyService) get(path string, out any) error {

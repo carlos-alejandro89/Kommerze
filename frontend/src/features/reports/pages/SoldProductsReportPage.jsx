@@ -2,17 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   FileDown,
   FileText,
-  Loader2,
+  ArrowLeft,
   PackageCheck,
-  RefreshCw,
   ShoppingBag,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PdfViewer } from '@/components/common/pdf-viewer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useReportsService } from '../useReportsService';
-import { ReportDateRangePicker } from '../components/ReportDateRangePicker';
+import { ReportDateFilterDialog } from '../components/ReportDateFilterDialog';
 
 function localISODate(date) {
   const year = date.getFullYear();
@@ -51,6 +52,7 @@ function valueOf(source, pascal, camel) {
 }
 
 export function SoldProductsReportPage() {
+  const navigate = useNavigate();
   const defaults = useMemo(initialDates, []);
   const { store } = useActivation();
   const { generarProductosVendidos } = useReportsService();
@@ -58,6 +60,7 @@ export function SoldProductsReportPage() {
   const [to, setTo] = useState(defaults.to);
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewer, setViewer] = useState({ open: false, url: '', fileName: '' });
 
   const report = valueOf(output, 'Report', 'report');
@@ -71,12 +74,12 @@ export function SoldProductsReportPage() {
     [viewer.url],
   );
 
-  const generate = async () => {
-    if (!from || !to) {
+  const generate = async (range = { from, to }) => {
+    if (!range.from || !range.to) {
       toast.warning('Selecciona la fecha inicial y final.');
       return;
     }
-    if (to < from) {
+    if (range.to < range.from) {
       toast.warning('La fecha final no puede ser anterior a la fecha inicial.');
       return;
     }
@@ -86,7 +89,10 @@ export function SoldProductsReportPage() {
     }
     setLoading(true);
     try {
-      setOutput(await generarProductosVendidos(from, to, branchID));
+      setFrom(range.from);
+      setTo(range.to);
+      setOutput(await generarProductosVendidos(range.from, range.to, branchID));
+      setFiltersOpen(false);
     } catch (error) {
       toast.error(error?.message || String(error));
     } finally {
@@ -121,31 +127,17 @@ export function SoldProductsReportPage() {
 
   return (
     <div className="space-y-5 p-6 animate-fade-in">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
-          <PackageCheck className="size-4" />
-          Reportes de ventas
+      <header className="flex flex-col gap-4 rounded-[22px] border border-[#dce7f5] bg-white/80 px-5 py-4 shadow-[0_12px_30px_-28px_rgba(28,70,133,.5)] sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/[.045]">
+        <button type="button" onClick={() => navigate(-1)} aria-label="Regresar" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"><ArrowLeft className="size-5" /></button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><PackageCheck className="size-4" /></span><h1 className="text-[24px] font-bold tracking-[-0.025em] text-foreground">Productos vendidos</h1></div>
+          <p className="mt-1 text-[12px] text-muted-foreground">Sumatoria de unidades vendidas por presentación, considerando únicamente ventas confirmadas.</p>
         </div>
-        <h1 className="text-[24px] font-bold tracking-[-0.025em] text-foreground">Productos vendidos</h1>
-        <p className="text-[12px] text-muted-foreground">
-          Sumatoria de unidades vendidas por presentación, considerando únicamente ventas confirmadas.
-        </p>
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <div className="sm:text-right"><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Periodo</p><p className="mt-0.5 text-xs font-semibold text-foreground">{formatDate(from)} — {formatDate(to)}</p></div>
+          <button type="button" onClick={() => setFiltersOpen(true)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 text-xs font-semibold text-primary transition hover:bg-primary/10"><SlidersHorizontal className="size-4" /> Configurar filtros</button>
+        </div>
       </header>
-
-      <section className="rounded-[18px] border border-[#e2eaf5] bg-white/80 p-4 shadow-[0_10px_26px_-24px_rgba(28,70,133,.5)] dark:border-white/10 dark:bg-white/[.045]">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <ReportDateRangePicker from={from} to={to} onChange={(range) => { setFrom(range.from); setTo(range.to); }} />
-          <button
-            type="button"
-            onClick={generate}
-            disabled={loading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-[11px] font-semibold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] transition hover:bg-primary/90 disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            Generar reporte
-          </button>
-        </div>
-      </section>
 
       {report ? (
         <>
@@ -238,6 +230,7 @@ export function SoldProductsReportPage() {
           <PdfViewer fileUrl={viewer.url} fileName={viewer.fileName} className="h-[calc(92vh-72px)] rounded-none border-0" />
         </DialogContent>
       </Dialog>
+      <ReportDateFilterDialog open={filtersOpen} onOpenChange={setFiltersOpen} from={from} to={to} loading={loading} title="Filtros de productos vendidos" description="Selecciona el periodo que deseas incluir en el reporte." onApply={generate} />
     </div>
   );
 }

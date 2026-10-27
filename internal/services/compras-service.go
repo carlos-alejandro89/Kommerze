@@ -129,7 +129,7 @@ func (s *ComprasService) CrearCompra(datos dto.CrearCompraDto) (*dto.ResponseDto
 			return fmt.Errorf("no se encontró el tipo de pedido Compra sincronizado: %w", err)
 		}
 		var estatus models.Estatus
-		if err := tx.Where("LOWER(nombre) = ?", "completado").First(&estatus).Error; err != nil {
+		if err := tx.Where("guid = ? AND deleted_at IS NULL", models.EstatusCompletadoGuid).First(&estatus).Error; err != nil {
 			return fmt.Errorf("no se encontró el estatus Completado sincronizado: %w", err)
 		}
 		uuidFiscal := strings.ToUpper(strings.TrimSpace(datos.UUIDFiscal))

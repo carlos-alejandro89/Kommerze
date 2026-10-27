@@ -177,6 +177,9 @@ func (l *LocalServerService) Start(addr string) {
 	mux.HandleFunc("/local/reportes/productos-vendidos", l.handleSoldProductsReport)
 	mux.HandleFunc("/local/reportes/utilidad", l.handleProfitReport)
 	mux.HandleFunc("/local/reportes/formato-auditoria", l.handleAuditReport)
+	mux.HandleFunc("/local/reportes/kardex", l.handleKardexReport)
+	mux.HandleFunc("/local/reportes/kardex/productos", l.handleKardexProducts)
+	mux.HandleFunc("/local/reportes/kardex/actualizar", l.handleKardexRefresh)
 	mux.HandleFunc("/local/cotizaciones/solicitar-autorizacion", l.handleSolicitarAutorizacion)
 	mux.HandleFunc("/local/cotizaciones/convertir-venta", l.handleConvertirVenta)
 	mux.HandleFunc("/local/cotizaciones/detalle", l.handleDetalleCotizacion)
@@ -202,6 +205,46 @@ func (l *LocalServerService) Start(addr string) {
 	if err := l.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Printf("[LocalServer] Error: %v", err)
 	}
+}
+
+func (l *LocalServerService) handleKardexProducts(w http.ResponseWriter, r *http.Request) {
+	items, err := l.reports.SearchKardexProducts(r.URL.Query().Get("q"))
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"success": true, "data": items})
+}
+func (l *LocalServerService) handleKardexReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, 405, "metodo no permitido")
+		return
+	}
+	var req reportmodels.KardexReportRequest
+	if json.NewDecoder(r.Body).Decode(&req) != nil {
+		writeError(w, 400, "filtros invalidos")
+		return
+	}
+	data, err := l.reports.BuildKardexReport(req)
+	if err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"success": true, "data": data})
+}
+func (l *LocalServerService) handleKardexRefresh(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		SucursalID uint `json:"sucursalId"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		writeError(w, 400, "solicitud invalida")
+		return
+	}
+	if err := l.reports.RefreshTodayStock(body.SucursalID); err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"success": true})
 }
 
 func (l *LocalServerService) handleSoldProductsReport(w http.ResponseWriter, r *http.Request) {
