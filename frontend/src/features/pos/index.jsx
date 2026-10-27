@@ -15,7 +15,7 @@ import { Content } from '@/components/layout/content';
 import { ContentHeader } from '@/components/layout/content-header';
 import { cn } from '@/lib/utils';
 import { Pattern as NoProducts } from './no-products';
-import { ProductDetailsSheet } from './product-details-sheet';
+import { PriceConfigurationDialog } from './components/PriceConfigurationDialog';
 import { Steps } from './steps';
 import { ResumenCuenta } from './resumen';
 import { SearchDropdown } from './components/SearchDropdown';
@@ -31,12 +31,16 @@ const PLACEHOLDER_IMG = '/media/misc/placeholder.svg';
 
 // ── Mapeo de ProductoDto a item del carrito ──────────────────────────────────
 function mapProductoToCartItem(producto, getCloudAssetUrl) {
+    const purchasePrice = producto.PrecioCompra ?? producto.precioCompra ?? producto.precio_compra ?? 0;
     return {
         id: producto.Guid,
         sku: producto.Codigo,
         name: producto.Descripcion,
         category: producto.Categoria || '',
         price: producto.PrecioVenta,
+        originalPrice: producto.PrecioVenta,
+        purchasePrice: Number(purchasePrice),
+        taxRate: 16,
         empaque: producto.Empaque,
         discount: producto.Descuento,
         fraccionable: producto.Fraccionable,
@@ -51,7 +55,7 @@ function mapProductoToCartItem(producto, getCloudAssetUrl) {
 export default function POSPage() {
     const location = useLocation();
     const { getCloudAssetUrl } = useCloudConfig();
-    const { cart, addItem, changeQuantity, updateQuantity, removeItem, clearCart, subtotal, descuento, total } = useCartState();
+    const { cart, addItem, changeQuantity, updateQuantity, removeItem, updateItemPrice, clearCart, subtotal, descuento, total } = useCartState();
     const posService = usePosService();
 
     // ── Búsqueda ─────────────────────────────────────────────────────────────
@@ -62,8 +66,8 @@ export default function POSPage() {
     const [activeSuggestion, setActiveSuggestion] = React.useState(-1);
     const searchInputRef = React.useRef(null);
 
-    // ── Sheet de detalles ────────────────────────────────────────────────────
-    const [open, setOpen] = React.useState(false);
+    // ── Configuración de precio del artículo seleccionado ────────────────────
+    const [priceDialogOpen, setPriceDialogOpen] = React.useState(false);
     const [itemSelected, setItemSelected] = React.useState({});
 
     // ── Estado de flash por item ─────────────────────────────────────────────
@@ -245,23 +249,40 @@ export default function POSPage() {
     };
 
     // ── Detalles del producto ─────────────────────────────────────────────────
-    const handleProductDetails = (productId) => {
+    const handleProductDetails = async (productId) => {
         const item = cart.find(item => item.id === productId);
-        if (item) {
-            setItemSelected(item);
-            setOpen(true);
+        if (!item) return;
+
+        try {
+            // El carrito puede provenir de localStorage y no contener todavía
+            // PrecioCompra. Se vuelve a consultar el producto por su GUID para
+            // calcular siempre con el costo vigente de sucursal_producto.
+            const productos = await posService.buscarProductos(productId, false);
+            const producto = productos?.find(candidate => candidate.Guid === productId) || productos?.[0];
+            if (!producto) {
+                showToast('No fue posible obtener el precio de compra del producto', 'error');
+                return;
+            }
+
+            const productoActual = mapProductoToCartItem(producto, getCloudAssetUrl);
+            setItemSelected({
+                ...productoActual,
+                ...item,
+                purchasePrice: productoActual.purchasePrice,
+                taxRate: productoActual.taxRate,
+            });
+            setPriceDialogOpen(true);
+        } catch {
+            showToast('No fue posible consultar el precio de compra del producto', 'error');
         }
     };
 
-    // handleAddToCart: agrega 1 unidad del producto seleccionado en el Sheet
-    const handleAddToCart = ({ productId }) => {
-        const item = cart.find(i => i.id === productId);
-        if (item) {
-            changeQuantity(item.id, 1);
-            showToast(`${item.sku || item.name} +1`);
-        }
-        setOpen(false);
-        setTimeout(() => searchInputRef.current?.focus(), 100);
+    const handleApplyPrice = ({ price, percentage }) => {
+        if (!itemSelected?.id) return;
+        updateItemPrice(itemSelected.id, price, percentage);
+        setItemSelected(current => ({ ...current, price, discount: 0, utilityPercent: percentage, customPrice: true }));
+        setPriceDialogOpen(false);
+        showToast(`${itemSelected.sku || itemSelected.name}: precio actualizado`);
     };
 
     return (
@@ -345,11 +366,11 @@ export default function POSPage() {
                             {/* Lista del carrito */}
                             <Card className="relative z-[var(--z-layer-base)] mx-4 mb-4 flex-1 overflow-hidden border-zinc-200 shadow-none dark:border-zinc-800">
                                 <CardContent className="p-4 h-full overflow-y-auto bg-transparent">
-                                    <ProductDetailsSheet
-                                        open={open}
-                                        onOpenChange={() => setOpen(false)}
-                                        itemSelected={itemSelected}
-                                        addToCart={handleAddToCart}
+                                    <PriceConfigurationDialog
+                                        open={priceDialogOpen}
+                                        onOpenChange={setPriceDialogOpen}
+                                        item={itemSelected}
+                                        onApply={handleApplyPrice}
                                     />
 
                                     <div className="flex flex-col gap-3">
@@ -380,7 +401,7 @@ export default function POSPage() {
                 </div>
             </Content>
 
-            <div className="fixed bottom-6 right-4 z-[9999] w-[calc(100vw-2rem)] max-w-[308px] isolate lg:w-[308px]">
+            <div className="fixed bottom-6 right-4 z-[var(--z-layer-sticky)] w-[calc(100vw-2rem)] max-w-[308px] isolate lg:w-[308px]">
                 <ResumenCuenta
                     subtotal={subtotal}
                     descuento={descuento}

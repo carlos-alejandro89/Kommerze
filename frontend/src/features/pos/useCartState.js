@@ -38,6 +38,9 @@ export function useCartState() {
                 next = [...prev];
                 next[existingIndex] = {
                     ...next[existingIndex],
+                    purchasePrice: product.purchasePrice,
+                    taxRate: product.taxRate,
+                    originalPrice: product.originalPrice,
                     quantity: next[existingIndex].quantity + 1,
                 };
             } else {
@@ -82,6 +85,17 @@ export function useCartState() {
     }, [persist]);
 
     /**
+     * Sustituye el precio unitario de un renglón. Un precio personalizado ya
+     * representa el precio final calculado, por lo que elimina el descuento
+     * comercial previo para no aplicarlo dos veces.
+     */
+    const updateItemPrice = useCallback((id, price, utilityPercent) => {
+        setCart(prev => persist(prev.map(item => item.id === id
+            ? { ...item, price, discount: 0, utilityPercent, customPrice: true }
+            : item)));
+    }, [persist]);
+
+    /**
      * Vacía el carrito completamente.
      */
     const clearCart = useCallback(() => {
@@ -102,6 +116,7 @@ export function useCartState() {
         updateQuantity,
         changeQuantity,
         removeItem,
+        updateItemPrice,
         clearCart,
         subtotal,
         descuento,
