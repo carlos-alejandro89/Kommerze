@@ -2,9 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   Box,
+  CalendarDays,
+  Clock,
+  Eye,
   FileSpreadsheet,
+  GitCommitVertical,
   Layers,
   Package,
   PlayCircle,
@@ -34,6 +39,22 @@ const qty = (value) => Number(value || 0).toLocaleString('es-MX', { maximumFract
 const localDate = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const formatDate = (value) => (value ? value.split('-').reverse().join('/') : '—');
+
+const formatTimelineDate = (iso) => {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${mins}`;
+  } catch {
+    return iso;
+  }
+};
 
 function fileURL(output) {
   const base64 = read(output, 'PDFBase64', 'pdfBase64');
@@ -101,7 +122,7 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nivel ID, código o descripción"
+                placeholder="Código, clave o descripción del producto"
                 className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary"
               />
             </div>
@@ -116,8 +137,8 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
                     {read(selected, 'Codigo', 'codigo')} · {read(selected, 'Empaque', 'empaque')}
                   </p>
                 </div>
-                <span className="ml-3 shrink-0 rounded-lg bg-primary px-2 py-1 font-mono text-[10px] font-bold text-primary-foreground">
-                  Nivel {selectedNivelId}
+                <span className="ml-3 shrink-0 rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                  {read(selected, 'Empaque', 'empaque') || 'Seleccionado'}
                 </span>
               </div>
             )}
@@ -138,10 +159,12 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
                         active ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
                       }`}
                     >
-                      <span className="grid min-w-12 shrink-0 place-items-center rounded-lg bg-background px-2 py-1.5 text-center shadow-sm">
-                        <span className="font-mono text-[9px] text-muted-foreground">Nivel {id}</span>
-                        <span className="font-mono text-[10px] font-semibold">
+                      <span className="grid min-w-14 shrink-0 place-items-center rounded-lg bg-background px-2 py-1.5 text-center shadow-sm">
+                        <span className="font-mono text-[10px] font-bold text-foreground">
                           {read(option, 'Codigo', 'codigo') || '—'}
+                        </span>
+                        <span className="text-[9px] font-medium text-muted-foreground truncate max-w-16">
+                          {read(option, 'Empaque', 'empaque')}
                         </span>
                       </span>
                       <span className="min-w-0">
@@ -158,7 +181,7 @@ function KardexFilterDialog({ open, onOpenChange, from, to, product, onApply, se
               )}
               {!searching && !options.length && (
                 <p className="p-4 text-center text-xs text-muted-foreground">
-                  No se encontraron niveles con ese criterio.
+                  No se encontraron productos con ese criterio.
                 </p>
               )}
             </div>
@@ -201,11 +224,68 @@ export function KardexReportPage() {
   const [loading, setLoading] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [viewer, setViewer] = useState({ open: false, url: '', fileName: '' });
+  const [activeTab, setActiveTab] = useState('consolidado'); // 'consolidado' | 'timeline'
+  const [timelineFilter, setTimelineFilter] = useState('TODOS');
+  const [detailModal, setDetailModal] = useState({ open: false, row: null });
 
   const report = read(output, 'Report', 'report');
   const rows = read(report, 'Movimientos', 'movimientos') || [];
   const summary = read(report, 'Resumen', 'resumen') || [];
   const productInfo = read(report, 'Producto', 'producto') || product;
+
+  const filteredRows = rows.filter((r) => {
+    if (timelineFilter === 'TODOS') return true;
+    const t = String(read(r, 'Tipo', 'tipo') || '').toUpperCase();
+    if (timelineFilter === 'VENTAS') return t.includes('VENTA');
+    if (timelineFilter === 'COMPRAS') return t.includes('COMPRA');
+    if (timelineFilter === 'TRANSFERENCIAS') return t.includes('TRANS');
+    if (timelineFilter === 'BAJAS') return t.includes('BAJA') || t.includes('MERMA');
+    return true;
+  });
+
+  const getTimelineIcon = (tipo) => {
+    const t = String(tipo || '').toUpperCase();
+    if (t.includes('TRANS')) {
+      return {
+        icon: <ArrowLeftRight className="size-4 text-blue-600" />,
+        boxClass: 'border-blue-500/20 bg-blue-50/70 dark:bg-blue-950/40 text-blue-600',
+        badgeClass: 'bg-blue-500/10 text-blue-600 border border-blue-500/20',
+      };
+    }
+    if (t.includes('VENTA')) {
+      return {
+        icon: <ArrowUpRight className="size-4 text-rose-600" />,
+        boxClass: 'border-rose-500/20 bg-rose-50/70 dark:bg-rose-950/40 text-rose-600',
+        badgeClass: 'bg-rose-500/10 text-rose-600 border border-rose-500/20',
+      };
+    }
+    if (t.includes('COMPRA')) {
+      return {
+        icon: <ArrowDownLeft className="size-4 text-emerald-600" />,
+        boxClass: 'border-emerald-500/20 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-600',
+        badgeClass: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20',
+      };
+    }
+    if (t.includes('CONV')) {
+      return {
+        icon: <ArrowLeftRight className="size-4 text-purple-600" />,
+        boxClass: 'border-purple-500/20 bg-purple-50/70 dark:bg-purple-950/40 text-purple-600',
+        badgeClass: 'bg-purple-500/10 text-purple-600 border border-purple-500/20',
+      };
+    }
+    if (t.includes('BAJA') || t.includes('MERMA')) {
+      return {
+        icon: <ArrowUpRight className="size-4 text-orange-600" />,
+        boxClass: 'border-orange-500/20 bg-orange-50/70 dark:bg-orange-950/40 text-orange-600',
+        badgeClass: 'bg-orange-500/10 text-orange-600 border border-orange-500/20',
+      };
+    }
+    return {
+      icon: <SlidersHorizontal className="size-4 text-amber-600" />,
+      boxClass: 'border-amber-500/20 bg-amber-50/70 dark:bg-amber-950/40 text-amber-600',
+      badgeClass: 'bg-amber-500/10 text-amber-600 border border-amber-500/20',
+    };
+  };
 
   useEffect(() => () => {
     if (viewer.url) URL.revokeObjectURL(viewer.url);
@@ -310,7 +390,7 @@ export function KardexReportPage() {
     }
     if (saldoFinal < 10) {
       return {
-        label: 'Nivel Bajo',
+        label: 'Stock Bajo',
         className: 'bg-amber-500/10 text-amber-600 border border-amber-500/20',
         dot: 'bg-amber-500',
       };
@@ -349,13 +429,10 @@ export function KardexReportPage() {
             <Layers className="size-6" />
           </span>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div>
               <h1 className="text-[22px] font-extrabold tracking-[-0.025em] text-foreground">
                 Kárdex Cronológico
               </h1>
-              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-primary">
-                POS INVENTORY V2.4
-              </span>
             </div>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
               Auditoría en tiempo real & Saldo Rodante · Periodo: {formatDate(from)} al {formatDate(to)}
@@ -410,7 +487,7 @@ export function KardexReportPage() {
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                    {empaqueText} · NIVEL {nivelId}
+                    {empaqueText}
                   </span>
                   <span className="grid size-10 place-items-center rounded-2xl border border-border/60 bg-muted/40 text-primary shadow-xs">
                     <Package className="size-5" />
@@ -435,7 +512,7 @@ export function KardexReportPage() {
                       Presentación
                     </p>
                     <p className="mt-0.5 truncate text-xs font-extrabold text-foreground">
-                      {empaqueText} (Nvl {nivelId})
+                      {empaqueText}
                     </p>
                   </div>
                 </div>
@@ -558,47 +635,113 @@ export function KardexReportPage() {
             </div>
           </section>
 
-          {/* ── TABLAS DE RESUMEN Y MOVIMIENTOS DETALLADOS ── */}
+          {/* ── SECCIÓN DE TABLAS EN 2 PESTAÑAS: 1) CONSOLIDADO DIARIO (PRIMERO) | 2) LÍNEA DE TIEMPO ── */}
           <section className="overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[0_4px_24px_-12px_rgba(0,0,0,0.06)] dark:border-white/10">
-            {/* Header de sección de tablas */}
-            <div className="flex flex-col gap-3 border-b border-border/60 px-6 py-4.5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold tracking-tight text-foreground">
-                  Trazabilidad de Movimientos & Auditoría
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Registro cronológico detallado de entradas, salidas y existencias calculadas.
-                </p>
+            {/* Header / Barra de Pestañas */}
+            <div className="flex flex-col gap-4 border-b border-border/60 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+              {/* Selector de Pestañas (Consolidado Diario es la primera pestaña) */}
+              <div className="inline-flex rounded-2xl border border-border/60 bg-muted/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('consolidado')}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+                    activeTab === 'consolidado'
+                      ? 'bg-card text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <CalendarDays className="size-4 text-primary" />
+                  <span>Consolidado Diario</span>
+                  {summary.length > 0 && (
+                    <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+                      {summary.length} días
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('timeline')}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+                    activeTab === 'timeline'
+                      ? 'bg-card text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <GitCommitVertical className="size-4 text-primary" />
+                  <span>Línea de Tiempo</span>
+                  {rows.length > 0 && (
+                    <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+                      {rows.length}
+                    </span>
+                  )}
+                </button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-[11px] font-semibold text-muted-foreground">
-                  {rows.length} transacciones
-                </span>
-              </div>
+
+              {/* Filtros de Tipo para la Línea de Tiempo (idénticos al diseño de referencia) */}
+              {activeTab === 'timeline' && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { key: 'TODOS', label: 'Ver Todos' },
+                    { key: 'VENTAS', label: 'Ventas' },
+                    { key: 'COMPRAS', label: 'Compras' },
+                    { key: 'TRANSFERENCIAS', label: 'Transferencias' },
+                    { key: 'BAJAS', label: 'Bajas / Mermas' },
+                  ].map((f) => {
+                    const isSelected = timelineFilter === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setTimelineFilter(f.key)}
+                        className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground shadow-xs'
+                            : 'border border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {activeTab === 'consolidado' && (
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-[11px] font-semibold text-muted-foreground">
+                    Período: {formatDate(from)} al {formatDate(to)}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Resumen Diario Consolidado */}
-            {summary.length > 0 && (
-              <div className="border-b border-border/60">
-                <div className="bg-muted/20 px-6 py-3">
+            {/* ── TAB 1: CONSOLIDADO DIARIO (PRIMER TAB) ── */}
+            {activeTab === 'consolidado' && (
+              <div>
+                <div className="flex items-center justify-between bg-muted/20 px-6 py-3 border-b border-border/40">
                   <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                    Consolidado diario de existencias (movimiento_diario_stock)
+                    Tabla consolidada de existencias por día (movimiento_diario_stock)
                   </p>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {summary.length} registros diarios
+                  </span>
                 </div>
-                <div className="overflow-x-auto">
+
+                <div className="overflow-x-auto max-h-[520px]">
                   <table className="w-full text-left text-[11px]">
-                    <thead className="bg-muted/40 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm text-[9px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                       <tr>
-                        <th className="px-5 py-2.5">Fecha</th>
-                        <th className="px-4 py-2.5 text-right">Inicial</th>
-                        <th className="px-4 py-2.5 text-right text-emerald-600">Compras</th>
-                        <th className="px-4 py-2.5 text-right text-rose-600">Ventas</th>
-                        <th className="px-4 py-2.5 text-right">Trans. entrada</th>
-                        <th className="px-4 py-2.5 text-right">Trans. salida</th>
-                        <th className="px-4 py-2.5 text-right">Bajas</th>
-                        <th className="px-4 py-2.5 text-right">Conversiones</th>
-                        <th className="px-4 py-2.5 text-right">Ajustes</th>
-                        <th className="px-5 py-2.5 text-right text-primary">Final</th>
+                        <th className="px-5 py-3">Fecha</th>
+                        <th className="px-4 py-3 text-right">Inicial</th>
+                        <th className="px-4 py-3 text-right text-emerald-600">Compras</th>
+                        <th className="px-4 py-3 text-right text-rose-600">Ventas</th>
+                        <th className="px-4 py-3 text-right">Trans. entrada</th>
+                        <th className="px-4 py-3 text-right">Trans. salida</th>
+                        <th className="px-4 py-3 text-right">Bajas</th>
+                        <th className="px-4 py-3 text-right">Conversiones</th>
+                        <th className="px-4 py-3 text-right">Ajustes</th>
+                        <th className="px-5 py-3 text-right text-primary font-extrabold">Final</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40 font-mono">
@@ -608,10 +751,10 @@ export function KardexReportPage() {
                             {formatDate(read(day, 'Fecha', 'fecha'))}
                           </td>
                           <td className="px-4 py-2.5 text-right">{qty(read(day, 'InventarioInicial', 'inventarioInicial'))}</td>
-                          <td className="px-4 py-2.5 text-right text-emerald-600">
+                          <td className="px-4 py-2.5 text-right font-semibold text-emerald-600">
                             {qty(read(day, 'Compras', 'compras'))}
                           </td>
-                          <td className="px-4 py-2.5 text-right text-rose-600">
+                          <td className="px-4 py-2.5 text-right font-semibold text-rose-600">
                             {qty(read(day, 'Ventas', 'ventas'))}
                           </td>
                           <td className="px-4 py-2.5 text-right">{qty(read(day, 'TransferenciasEntrada', 'transferenciasEntrada'))}</td>
@@ -619,89 +762,136 @@ export function KardexReportPage() {
                           <td className="px-4 py-2.5 text-right">{qty(read(day, 'BajasMercancia', 'bajasMercancia'))}</td>
                           <td className="px-4 py-2.5 text-right">{qty(read(day, 'Conversiones', 'conversiones'))}</td>
                           <td className="px-4 py-2.5 text-right">{qty(read(day, 'AjustesAuditoria', 'ajustesAuditoria'))}</td>
-                          <td className="px-5 py-2.5 text-right font-bold text-primary">
+                          <td className="px-5 py-2.5 text-right font-extrabold text-primary">
                             {qty(read(day, 'InventarioFinal', 'inventarioFinal'))}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  {!summary.length && (
+                    <div className="p-12 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        No existe un consolidado diario para el periodo seleccionado.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Tabla de Detalle Cronológico */}
-            <div className="max-h-[460px] overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
-                  <tr>
-                    <th className="px-6 py-3">Fecha y hora</th>
-                    <th className="px-4 py-3">Tipo</th>
-                    <th className="px-4 py-3">Documento</th>
-                    <th className="px-4 py-3">Nota</th>
-                    <th className="px-4 py-3 text-right">Entrada</th>
-                    <th className="px-4 py-3 text-right">Salida</th>
-                    <th className="px-6 py-3 text-right">Existencia</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40 font-mono">
-                  {rows.map((row, index) => {
-                    const tipo = read(row, 'Tipo', 'tipo');
-                    const entradaVal = Number(read(row, 'Entrada', 'entrada') || 0);
-                    const salidaVal = Number(read(row, 'Salida', 'salida') || 0);
-                    return (
-                      <tr key={`${read(row, 'Documento', 'documento')}-${index}`} className="hover:bg-muted/20 transition">
-                        <td className="px-6 py-3 font-sans text-xs text-foreground">
-                          {new Date(read(row, 'Fecha', 'fecha')).toLocaleString('es-MX')}
-                        </td>
-                        <td className="px-4 py-3 font-sans">
-                          <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${getTipoBadgeClass(tipo)}`}>
-                            {tipo}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-bold text-foreground">
-                          {read(row, 'Documento', 'documento')}
-                        </td>
-                        <td className="max-w-xs truncate px-4 py-3 font-sans text-xs text-muted-foreground">
-                          {read(row, 'Nota', 'nota') || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-extrabold text-emerald-600">
-                          {entradaVal > 0 ? (
-                            <span className="inline-flex items-center gap-1">
-                              <ArrowDownLeft className="size-3.5" />
-                              +{qty(entradaVal)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/50">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right font-extrabold text-rose-600">
-                          {salidaVal > 0 ? (
-                            <span className="inline-flex items-center gap-1">
-                              <ArrowUpRight className="size-3.5" />
-                              -{qty(salidaVal)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/50">—</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-3 text-right font-extrabold text-primary">
-                          {qty(read(row, 'Existencia', 'existencia'))}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {/* ── TAB 2: LÍNEA DE TIEMPO (ASPECTO VISUAL DE LA IMAGEN) ── */}
+            {activeTab === 'timeline' && (
+              <div className="p-6 sm:p-8 max-h-[600px] overflow-y-auto">
+                {filteredRows.length > 0 ? (
+                  <div className="relative pl-8 sm:pl-10 space-y-5">
+                    {/* Línea vertical de la cronología */}
+                    <div className="absolute left-3.5 sm:left-4.5 top-4 bottom-4 w-0.5 bg-border/70 dark:bg-border/40" />
 
-              {!rows.length && (
-                <div className="p-12 text-center">
-                  <p className="text-xs font-semibold text-muted-foreground">
-                    No existen movimientos confirmados para este producto en el periodo seleccionado.
-                  </p>
-                </div>
-              )}
-            </div>
+                    {filteredRows.map((row, index) => {
+                      const tipo = read(row, 'Tipo', 'tipo');
+                      const doc = read(row, 'Documento', 'documento');
+                      const fechaIso = read(row, 'Fecha', 'fecha');
+                      const nota = read(row, 'Nota', 'nota');
+                      const entradaVal = Number(read(row, 'Entrada', 'entrada') || 0);
+                      const salidaVal = Number(read(row, 'Salida', 'salida') || 0);
+                      const existencia = Number(read(row, 'Existencia', 'existencia') || 0);
+                      const iconMeta = getTimelineIcon(tipo);
+
+                      return (
+                        <div key={`${doc}-${index}`} className="relative group">
+                          {/* Nodo central sobre la línea vertical */}
+                          <div
+                            className={`absolute -left-8 sm:-left-10 top-3.5 grid size-8 place-items-center rounded-xl border shadow-xs transition-transform group-hover:scale-110 z-10 ${iconMeta.boxClass}`}
+                          >
+                            {iconMeta.icon}
+                          </div>
+
+                          {/* Tarjeta del evento en la cronología */}
+                          <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs transition hover:shadow-md dark:border-white/10">
+                            {/* Cabecera del ítem */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                              <div className="flex items-center gap-2.5">
+                                <span className={`inline-block rounded-md px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${iconMeta.badgeClass}`}>
+                                  {tipo}
+                                </span>
+                                <span className="font-mono text-xs font-extrabold text-foreground">
+                                  {doc}
+                                </span>
+                                <span className="text-muted-foreground/40 text-xs">|</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {read(report, 'Sucursal', 'sucursal') || 'Almacén Central'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                                <Clock className="size-3.5" />
+                                <span>{formatTimelineDate(fechaIso)}</span>
+                              </div>
+                            </div>
+
+                            {/* Cuerpo del ítem */}
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
+                              {/* Izquierda: Descripción / Nota / Operador */}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-foreground">
+                                  {nota || (entradaVal > 0 ? 'Entrada confirmada de inventario.' : 'Venta / Salida de mostrador directa.')}
+                                </p>
+                                <p className="mt-1 text-[11px] text-muted-foreground font-mono">
+                                  Doc: {doc} · Presentación: {empaqueText}
+                                </p>
+                              </div>
+
+                              {/* Derecha: Píldora de Variación + Saldo Resultante + Icono Ver */}
+                              <div className="flex shrink-0 items-center gap-5 rounded-2xl border border-border/50 bg-muted/30 px-5 py-2.5">
+                                <div>
+                                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground text-right">
+                                    Variación
+                                  </p>
+                                  <p
+                                    className={`font-mono text-sm font-extrabold text-right ${
+                                      entradaVal > 0 ? 'text-emerald-600' : 'text-rose-600'
+                                    }`}
+                                  >
+                                    {entradaVal > 0 ? `+${qty(entradaVal)} uds` : `-${qty(salidaVal)} uds`}
+                                  </p>
+                                </div>
+
+                                <div className="h-7 w-px bg-border/60" />
+
+                                <div>
+                                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground text-right">
+                                    Saldo Resultante
+                                  </p>
+                                  <p className="font-mono text-sm font-extrabold text-primary text-right">
+                                    {qty(existencia)} uds
+                                  </p>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailModal({ open: true, row })}
+                                  className="grid size-8 place-items-center rounded-xl border border-border/60 bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                  title="Ver detalle del movimiento"
+                                >
+                                  <Eye className="size-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      No hay movimientos que coincidan con el filtro seleccionado ({timelineFilter}).
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </>
       ) : (
@@ -750,6 +940,80 @@ export function KardexReportPage() {
             fileName={viewer.fileName}
             className="h-[calc(92vh-72px)] rounded-none border-0"
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Detalle de Movimiento */}
+      <Dialog open={detailModal.open} onOpenChange={(open) => setDetailModal((m) => ({ ...m, open }))}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="border-b border-border px-6 py-4.5">
+            <DialogTitle className="flex items-center gap-2.5">
+              <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Box className="size-5" />
+              </span>
+              <span>
+                <span className="block text-base font-bold">Detalle de Transacción</span>
+                <span className="font-mono text-xs font-normal text-muted-foreground">
+                  Folio: {read(detailModal.row, 'Documento', 'documento')}
+                </span>
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailModal.row && (
+            <div className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Tipo de Movimiento</p>
+                  <p className="mt-1 font-bold text-foreground">{read(detailModal.row, 'Tipo', 'tipo')}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Fecha y Hora</p>
+                  <p className="mt-1 font-mono font-bold text-foreground">
+                    {formatTimelineDate(read(detailModal.row, 'Fecha', 'fecha'))}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Nota / Comentarios</p>
+                <p className="mt-1 text-foreground">
+                  {read(detailModal.row, 'Nota', 'nota') || 'Sin comentarios adicionales registrados en el documento.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 font-mono">
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+                  <p className="text-[10px] uppercase font-bold text-emerald-600">Entrada</p>
+                  <p className="mt-1 text-sm font-extrabold text-emerald-600">
+                    +{qty(read(detailModal.row, 'Entrada', 'entrada'))}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-center">
+                  <p className="text-[10px] uppercase font-bold text-rose-600">Salida</p>
+                  <p className="mt-1 text-sm font-extrabold text-rose-600">
+                    -{qty(read(detailModal.row, 'Salida', 'salida'))}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center">
+                  <p className="text-[10px] uppercase font-bold text-primary">Saldo Resultante</p>
+                  <p className="mt-1 text-sm font-extrabold text-primary">
+                    {qty(read(detailModal.row, 'Existencia', 'existencia'))}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDetailModal({ open: false, row: null })}
+                  className="rounded-xl bg-primary px-4.5 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-95"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
