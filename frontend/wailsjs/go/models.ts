@@ -2332,6 +2332,7 @@ export namespace models {
 	    CorreoElectronico: string;
 	    CorreoConfirmado: boolean;
 	    Telefono: string;
+	    ImgPerfil: string;
 	    PerfilID: number;
 	    Perfil: Perfil;
 	    permisos: string[];
@@ -2351,6 +2352,7 @@ export namespace models {
 	        this.CorreoElectronico = source["CorreoElectronico"];
 	        this.CorreoConfirmado = source["CorreoConfirmado"];
 	        this.Telefono = source["Telefono"];
+	        this.ImgPerfil = source["ImgPerfil"];
 	        this.PerfilID = source["PerfilID"];
 	        this.Perfil = this.convertValues(source["Perfil"], Perfil);
 	        this.permisos = source["permisos"];

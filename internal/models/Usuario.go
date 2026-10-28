@@ -9,6 +9,7 @@ type Usuario struct {
 
 	CorreoConfirmado bool
 	Telefono         string
+	ImgPerfil        string `gorm:"size:500"`
 
 	PerfilID uint
 	Perfil   Perfil `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`

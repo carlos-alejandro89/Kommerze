@@ -24,13 +24,13 @@ import {
   ShoppingCart,
   Store,
   Sun,
-  User,
   Users,
   WalletCards,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActivation } from '@/providers/ActivationProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { UserAvatar } from '@/components/common/user-avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { HomeStatusBar } from '../components/HomeStatusBar';
 import { WebSocketStatusIndicator } from '@/components/WebSocketStatusIndicator';
@@ -196,7 +196,6 @@ export function MainMenuV2() {
 
   const userName = user?.Nombre ?? user?.nombre ?? user?.CorreoElectronico ?? 'Usuario';
   const firstName = userName.split(' ').filter(Boolean)[0] || 'Usuario';
-  const initials = userName.split(' ').filter(Boolean).slice(0, 2).map(word => word[0]?.toUpperCase()).join('');
   const storeName = store?.Nombre ?? store?.NombreSucursal ?? store?.nombre ?? license?.sucursal?.nombreSucursal ?? 'Matriz Centro';
   const storeID = store?.ID ?? store?.id ?? 0;
 
@@ -423,18 +422,14 @@ export function MainMenuV2() {
                     aria-label="Menú de usuario"
                     aria-expanded={userMenuOpen}
                   >
-                    <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#ffbf8a] to-[#b96b41] text-xs font-extrabold text-white shadow-sm">
-                      {initials || <User className="size-5" />}
-                    </span>
+                    <UserAvatar user={user} className="size-9 shadow-sm" fallbackClassName="bg-gradient-to-br from-[#ffbf8a] to-[#b96b41] text-xs font-extrabold text-white" iconClassName="size-5" />
                     <ChevronDown className={`size-4 text-[#6a83ab] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {userMenuOpen && (
                     <div className="absolute right-0 top-[calc(100%+8px)] z-[var(--z-layer-dropdown)] w-64 overflow-hidden rounded-2xl border border-[#dce5f2] bg-white shadow-[0_20px_48px_-22px_rgba(28,61,112,.42)] dark:border-white/10 dark:bg-[#101d31]">
                       <div className="flex items-center gap-3 border-b border-[#e7edf6] px-4 py-4 dark:border-white/10">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#ffbf8a] to-[#b96b41] text-xs font-extrabold text-white">
-                          {initials || <User className="size-5" />}
-                        </span>
+                        <UserAvatar user={user} className="size-10" fallbackClassName="bg-gradient-to-br from-[#ffbf8a] to-[#b96b41] text-xs font-extrabold text-white" iconClassName="size-5" />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-[#12213d] dark:text-slate-100">{userName}</div>
                           {user?.CorreoElectronico && (

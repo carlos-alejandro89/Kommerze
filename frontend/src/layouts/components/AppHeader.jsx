@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Clock, Sun, Moon, LogOut, User, ChevronDown, Users, ReceiptText, Truck, Handshake, Settings, ClipboardCheck, Building2, ShoppingCart, Repeat2 } from 'lucide-react';
+import { Clock, Sun, Moon, LogOut, ChevronDown, Users, ReceiptText, Truck, Handshake, Settings, ClipboardCheck, Building2, ShoppingCart, Repeat2 } from 'lucide-react';
 import { MAIN_NAV } from '@/config/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useActivation } from '@/providers/ActivationProvider';
 import { NotificationBell } from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
 import { WebSocketStatusIndicator } from '@/components/WebSocketStatusIndicator';
+import { UserAvatar } from '@/components/common/user-avatar';
 
 const THEME_KEY = 'kommerze-theme';
 
@@ -96,12 +97,6 @@ export function AppHeader({ showPageTitle = true }) {
   const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
 
-  const initials = userName
-    .split(' ')
-    .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? '')
-    .join('');
-
   const handleLogout = () => {
     setMenuOpen(false);
     logout();
@@ -185,9 +180,7 @@ export function AppHeader({ showPageTitle = true }) {
             aria-label="Menú de usuario"
             aria-expanded={menuOpen}
           >
-            <div className="flex size-6 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30 text-[10px] font-bold text-primary shrink-0">
-              {initials || <User className="size-3.5" />}
-            </div>
+            <UserAvatar user={user} className="size-6 ring-1 ring-primary/30" fallbackClassName="bg-primary/20 text-[10px] text-primary" iconClassName="size-3.5" />
             <span className="text-[12px] font-medium text-foreground max-w-[110px] truncate hidden sm:block">
               {userName}
             </span>
@@ -209,9 +202,7 @@ export function AppHeader({ showPageTitle = true }) {
               {/* Info usuario */}
               <div className="px-4 py-3 border-b border-border">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30 text-sm font-bold text-primary shrink-0">
-                    {initials || <User className="size-4" />}
-                  </div>
+                  <UserAvatar user={user} className="size-8 ring-1 ring-primary/30" fallbackClassName="bg-primary/20 text-sm text-primary" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{userName}</p>
                     {userEmail && (

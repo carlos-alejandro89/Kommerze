@@ -1006,6 +1006,7 @@ func (c *CatalogosRepository) SaveUsuarios(data []any) error {
 				CorreoElectronico: fmt.Sprintf("%v", fMap["correoElectronico"]),
 				Password:          fmt.Sprintf("%v", fMap["password"]),
 				Telefono:          fmt.Sprintf("%v", fMap["telefono"]),
+				ImgPerfil:         valorTextoUsuarioSync(fMap, "imgPerfil", "ImgPerfil"),
 				CorreoConfirmado:  fmt.Sprintf("%v", fMap["correoConfirmado"]) == "true",
 				PerfilID:          perfilID,
 			}
@@ -1016,6 +1017,15 @@ func (c *CatalogosRepository) SaveUsuarios(data []any) error {
 		}
 		return nil
 	})
+}
+
+func valorTextoUsuarioSync(data map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := data[key]; ok && value != nil {
+			return strings.TrimSpace(fmt.Sprintf("%v", value))
+		}
+	}
+	return ""
 }
 
 func perfilGuidUsuarioSync(data map[string]any) (uuid.UUID, error) {
